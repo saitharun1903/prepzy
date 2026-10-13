@@ -13,7 +13,7 @@ services:
   - type: web
     name: elevate-web
     runtime: node
-    region: ohio
+    region: singapore
     plan: free
     # --include=dev: NODE_ENV=production would otherwise skip the build tools (Tailwind, TypeScript).
     buildCommand: npm ci --include=dev --no-audit --no-fund && npm run build -w apps/web
@@ -39,7 +39,7 @@ services:
   - type: web
     name: elevate-api
     runtime: docker
-    region: ohio
+    region: singapore
     plan: free
     dockerfilePath: ./services/api/Dockerfile
     dockerContext: .
