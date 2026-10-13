@@ -58,7 +58,7 @@ Prices and limits were checked in October 2026; re-check them when you sign up.
 The Groq model's answer quality has not been evaluated yet (`ai/evaluation/run_eval.py`).
 
 ### Steps (you)
-1. **Neon:** create a project in Singapore. Owner connection string, with `postgresql://` changed to
+1. **Neon:** create a project in AWS US East 2 (Ohio), next to Render's ohio region. Owner connection string, with `postgresql://` changed to
    `postgresql+psycopg://`, is `ELEVATE_MIGRATION_DATABASE_URL`. Choose a strong `ELEVATE_DB_APP_PASSWORD`;
    `ELEVATE_DATABASE_URL` is the same string with user `elevate_app` and that password (keep `?sslmode=require`).
 2. **Groq:** console.groq.com, API Keys, create a key: `ELEVATE_OPENAI_API_KEY`.
