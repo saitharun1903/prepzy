@@ -79,6 +79,9 @@ await build({
 });
 
 for (const f of ["popup.html", "sidepanel.html", "ui.css"]) copyFileSync(join(ROOT, "src/ui", f), join(outdir, f));
+// Bundled UI font (Geist, SIL OFL 1.1) — packaged locally; the extension never loads remote fonts.
+mkdirSync(join(outdir, "fonts"), { recursive: true });
+copyFileSync(join(ROOT, "../../node_modules/@fontsource-variable/geist/files/geist-latin-wght-normal.woff2"), join(outdir, "fonts", "geist.woff2"));
 
 const sizes = [16, 32, 48, 128];
 for (const s of sizes) writeFileSync(join(outdir, "icons", `icon-${s}.png`), monogramIcon(s));
@@ -96,6 +99,8 @@ const manifest = {
   externally_connectable: { matches: connectOrigins.map((o) => `${o}/*`) },
   action: { default_title: "Elevate", default_popup: "popup.html", default_icon: { 16: icons["16"], 32: icons["32"] } },
   side_panel: { default_path: "sidepanel.html" },
+  // Keyboard shortcut to open Elevate on the current tab (also grants activeTab, like a click).
+  commands: { _execute_action: { suggested_key: { default: "Alt+Shift+E", mac: "Alt+Shift+E" }, description: "Open Elevate on this job" } },
   background: { service_worker: "background.js", type: "module" },
   icons,
   content_security_policy: { extension_pages: "script-src 'self'; object-src 'self'" },

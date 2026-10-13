@@ -89,7 +89,7 @@ if (release) {
 }
 
 // ---------------------------------------------------------------- files
-const allowedExt = new Set([".js", ".html", ".css", ".png", ".json", ...(release ? [] : [".map"])]);
+const allowedExt = new Set([".js", ".html", ".css", ".png", ".json", ".woff2", ...(release ? [] : [".map"])]);
 for (const f of files) {
   const e = extname(f).toLowerCase();
   if (!allowedExt.has(e)) fail(`unexpected file type in bundle: ${rel(f)}`);

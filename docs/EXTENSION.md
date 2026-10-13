@@ -8,12 +8,16 @@ The full guide lives next to the code: [apps/extension/README.md](../apps/extens
 * Capture runs only when you click it, and only in the active tab. It prefers JSON-LD `JobPosting`, then site adapters, then readable text. Listing pages with several jobs ask you to select one or paste text. Password, hidden and form-field values are never read.
 * Builds: `npm run build -w apps/extension` → `apps/extension/dist` (load unpacked). `npm run build:release` + `npm run package` → `apps/extension/release/elevate-extension-<version>.zip`. For release, set `ELEVATE_EXT_API_URL` / `ELEVATE_EXT_WEB_URL` to https origins.
 
+## Using it
+* **One click:** on a job page press **Analyze this job** (or **Alt+Shift+E** to open Elevate). A clean single-job page is sent straight for analysis; pages that need attention (several jobs, too little text, a text selection) open the review screen. **Review text first** always shows it.
+* **Result:** job summary, a **How you fit** card against your default resume (must-have / nice-to-have coverage, gaps to work on), every requirement tagged *On your resume / Partly shown / Not on your resume / Check yourself*, and next steps (full report, interview practice, prep plan, save, application status).
+* **Design:** Geist (SIL OFL 1.1) is bundled in the package as `fonts/geist.woff2`; no remote fonts or scripts are loaded. Visual preview without Chrome: build, serve `apps/extension` over HTTP and open `test/harness/preview.html` (`?screen=main`, `?resume=0`).
+
 ## Verification status
 | Check | Result |
 |---|---|
-| typecheck, 101 unit/flow tests (happy-dom, mocked `chrome.*`), build, manifest/bundle validation, release zip | **passed** (re-run independently) |
-| Load unpacked in Chrome 154 / Edge 155 on this machine | **not run**. Requires enabling Developer Mode in the browser; a manual step for the user |
-| Live connect handshake, executeScript on real pages, badges/alarms after SW restart | not run (depends on the above) |
+| typecheck, 103 unit/flow tests (happy-dom, mocked `chrome.*`; includes one-click and review paths), build, manifest/bundle validation, release zip | **passed** |
+| Edge runtime; badges/alarms after service-worker restart | not yet verified |
 | Load unpacked in Chrome + account connect | **done by the user** (2026-10-13): loaded, connected, popup works |
 | LinkedIn live job page (2026-10-13) | First attempt **failed** (35 chars). Causes: the description sits inside `display: contents` wrappers that `checkVisibility()` reports as invisible, and the page has no `<h1>`. Fixed: visibility now uses each element's own computed style; a description-heading strategy ("About the job") picks the section; LinkedIn title/company come from the tab title. Changed logic verified on the live page (3,384 chars, correct title/company); regression fixture `linkedin-2026-contents.html`. Full re-test through the popup pending reload. Note: LinkedIn renders the description lazily, so it must be visible on screen before capture |
 | Indeed / Naukri / Greenhouse / Lever on live pages | not verified |

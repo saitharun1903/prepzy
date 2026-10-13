@@ -1,11 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Inter_Tight, Newsreader } from "next/font/google";
+import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
 import { cookies, headers } from "next/headers";
 import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
 
-const sans = Inter_Tight({ subsets: ["latin"], variable: "--font-inter-tight", display: "swap" });
-const serif = Newsreader({ subsets: ["latin"], variable: "--font-newsreader", display: "swap", style: ["normal", "italic"] });
 
 export const metadata: Metadata = {
   title: { default: "Elevate", template: "%s · Elevate" },
@@ -17,8 +16,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f7f6f3" },
-    { media: "(prefers-color-scheme: dark)", color: "#121311" },
+    { media: "(prefers-color-scheme: light)", color: "#f6f7f9" },
+    { media: "(prefers-color-scheme: dark)", color: "#0b0d12" },
   ],
 };
 
@@ -33,7 +32,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const pref = (await cookies()).get("el_theme")?.value;
   const initial = pref === "light" || pref === "dark" ? pref : undefined;
   return (
-    <html lang="en" className={`${sans.variable} ${serif.variable}`} data-theme={initial} suppressHydrationWarning>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`} data-theme={initial} suppressHydrationWarning>
       <head>
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>

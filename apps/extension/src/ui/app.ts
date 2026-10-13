@@ -336,8 +336,10 @@ function discardDraft(): void {
   v.draft = null;
 }
 
-const readPage = () =>
-  run("Reading the page", async () => {
+/** Read the page. With `quick`, a clean single-job read is sent straight for analysis (one click);
+ * anything that needs attention (multiple jobs, too little text, a selection) opens the review screen. */
+const readPage = (quick = false) =>
+  run(quick ? "Reading the job" : "Reading the page", async () => {
     if (v.tabId === null) throw { code: "no_tab", message: "No active tab.", requestId: null, retryable: false };
     const seq = v.seq;
     announce("Reading the page");
@@ -351,6 +353,10 @@ const readPage = () =>
     if (!v.draft.title && ext.title) v.draft.title = ext.title;
     if (!v.draft.company && ext.company) v.draft.company = ext.company;
     persistDraft();
+    if (quick && verdict.kind === "ok" && !ext.selection && v.draft.source === "page") {
+      await sendDraft(v.draft, seq);
+      return;
+    }
     v.screen = "preview";
     announce(verdict.kind === "multiple" ? `This page lists ${verdict.count} jobs` : "Preview ready");
   });
@@ -365,12 +371,8 @@ function startManual(): void {
   document.getElementById("manual-text")?.focus();
 }
 
-const submit = () =>
-  run("Sending to Elevate", async () => {
-    const d = v.draft;
-    if (!d) return;
-    const seq = v.seq;
-    const rec = await send({
+async function sendDraft(d: Draft, seq: number): Promise<void> {
+  const rec = await send({
       v: 1,
       type: "capture.submit",
       captureId: d.captureId,
@@ -381,9 +383,16 @@ const submit = () =>
       company: d.company.trim() ? d.company.trim().slice(0, 300) : null,
       save: d.save,
     });
-    if (seq !== v.seq) return;
-    v.draft = null;
-    showRecord(rec);
+  if (seq !== v.seq) return;
+  v.draft = null;
+  showRecord(rec);
+}
+
+const submit = () =>
+  run("Sending to Elevate", async () => {
+    const d = v.draft;
+    if (!d) return;
+    await sendDraft(d, v.seq);
   });
 
 const cancelCapture = () =>
@@ -501,6 +510,7 @@ function button(label: string, onClick: () => void, opts: { kind?: "primary" | "
 
 function header(): HTMLElement {
   const signedIn = !!v.state?.signedIn;
+  const email = v.state?.email ?? "";
   return h(
     "header",
     { class: "top" },
@@ -509,9 +519,9 @@ function header(): HTMLElement {
       ? h(
           "div",
           { class: "account" },
-          h("span", { class: "email", text: v.state?.email ?? "", attrs: { title: v.state?.email ?? "" } }),
           !IS_PANEL ? button("Side panel", () => void openSidePanel(), { kind: "quiet", id: "btn-panel" }) : null,
           button("Sign out", () => void signOut(), { kind: "quiet", id: "btn-signout" }),
+          h("span", { class: "me", text: (email.charAt(0) || "?").toUpperCase(), attrs: { title: `Signed in as ${email}`, "aria-label": `Signed in as ${email}`, role: "img" } }),
         )
       : null,
   );
@@ -599,26 +609,50 @@ function pillKind(r: CaptureRecord): string {
   return "warn";
 }
 
+/** "Java Software Engineer | Droisys | LinkedIn" -> "Java Software Engineer · Droisys" */
+function cleanTabTitle(t: string | null): string | null {
+  if (!t) return null;
+  const parts = t.replace(/^\(\d+\)\s*/, "").split(/\s+[|–—-]\s+/).map((x) => x.trim()).filter(Boolean);
+  if (parts.length >= 2 && /^(linkedin|indeed|naukri|glassdoor|wellfound|greenhouse|lever|monster|foundit)/i.test(parts[parts.length - 1]!)) parts.pop();
+  return parts.slice(0, 2).join(" · ") || t;
+}
+
+function benefit(icon: string, title: string, text: string): HTMLElement {
+  return h("li", { class: "benefit" }, h("span", { class: "benefit-icon", attrs: { "aria-hidden": "true" }, text: icon }), h("div", null, h("p", { class: "benefit-t", text: title }), h("p", { class: "benefit-d", text })));
+}
+
 function renderMain(): HTMLElement[] {
-  const out: HTMLElement[] = [heading("This page"), pageCard()];
+  const out: HTMLElement[] = [];
   const a = v.access;
+  const site = hostOf(v.url)?.replace(/^www\./, "") || "This tab";
+  out.push(
+    h(
+      "section",
+      { class: "card page", attrs: { "aria-label": "Current page" } },
+      h("div", { class: "page-row" },
+        h("span", { class: "site-dot", attrs: { "aria-hidden": "true" }, text: site.charAt(0).toUpperCase() }),
+        h("div", { class: "page-text" },
+          h("p", { class: "eyebrow", text: site }),
+          h("h1", { class: "page-title", id: "screen-title", attrs: { tabindex: "-1" }, text: cleanTabTitle(v.tabTitle) || v.url || "Untitled page" }),
+        ),
+      ),
+    ),
+  );
   if (a.kind !== "ok") {
     out.push(h("div", { class: "banner banner-note" }, h("p", { text: a.reason })));
-    out.push(h("div", { class: "actions" }, button("Paste job text", startManual, { kind: "primary", id: "btn-manual" })));
+    out.push(button("Paste job text", startManual, { kind: "primary", id: "btn-manual" }));
   } else {
-    if (v.lookup === undefined) out.push(h("p", { class: "meta", text: "Checking your jobs…" }));
-    else if (v.lookup) {
+    if (v.lookup) {
       const l = v.lookup;
       out.push(
         h(
           "div",
           { class: "card existing" },
-          h("p", { class: "eyebrow", text: l.saved ? "Already in your jobs · saved" : "Already in your jobs" }),
-          h("p", { class: "page-title", text: [l.title, l.company].filter(Boolean).join(" · ") || "Untitled job" }),
+          h("p", { class: "existing-t", text: l.saved ? "★ Already saved in your jobs" : "Already in your jobs" }),
           h(
             "div",
             { class: "row" },
-            l.latestAnalysisId ? button("View analysis", () => viewExisting(l.id), { id: "btn-view-existing" }) : null,
+            l.latestAnalysisId ? button("View your fit", () => viewExisting(l.id), { kind: "primary", id: "btn-view-existing" }) : null,
             button("Open in dashboard", () => openTab(dashboardUrl(l.id)), { kind: "quiet" }),
           ),
         ),
@@ -627,12 +661,33 @@ function renderMain(): HTMLElement[] {
     out.push(
       h(
         "div",
-        { class: "actions" },
-        button(v.lookup ? "Analyze again" : "Analyze this page", () => void readPage(), { kind: "primary", id: "btn-analyze" }),
-        button("Paste text instead", startManual, { kind: "quiet", id: "btn-manual" }),
+        { class: "cta" },
+        button(v.lookup ? "Analyze again" : "Analyze this job", () => void readPage(true), { kind: v.lookup?.latestAnalysisId ? "secondary" : "primary", id: "btn-analyze" }),
+        h("p", { class: "cta-hint", text: "Takes about a minute on your computer. Compares the posting with your resume." }),
+        h("div", { class: "cta-alt" },
+          button("Review text first", () => void readPage(false), { kind: "quiet", id: "btn-review" }),
+          h("span", { class: "dotsep", attrs: { "aria-hidden": "true" }, text: "·" }),
+          button("Paste text", startManual, { kind: "quiet", id: "btn-manual" }),
+        ),
       ),
     );
-    out.push(h("p", { class: "fine", text: "Elevate reads only this tab's visible text and job metadata, never form fields, passwords or cookies." }));
+    if (!v.lookup) {
+      out.push(
+        h(
+          "section",
+          { class: "benefits", attrs: { "aria-labelledby": "benefits-h" } },
+          h("h2", { class: "section-h", id: "benefits-h", text: "What you'll get" }),
+          h(
+            "ul",
+            { class: "plain" },
+            benefit("◎", "Your fit, requirement by requirement", "See which must-haves your resume already shows and which it doesn't."),
+            benefit("↗", "What to work on next", "Your gaps become a prep plan sized to your weekly hours."),
+            benefit("❝", "Interview practice for this role", "Questions matched to the job, with feedback on your answers."),
+          ),
+        ),
+      );
+    }
+    out.push(h("p", { class: "fine", text: "Elevate reads only this tab, only when you click. It never reads form fields, passwords or cookies." }));
   }
   const recent = recentList();
   if (recent) out.push(recent);

@@ -55,7 +55,8 @@
       startedAt: now - 60000, updatedAt: now, appliedAt: now, seq: 3 };
     const reply = (m) => {
       switch (m.type) {
-        case "state.get": return { signedIn: true, email: "koppulasaitharunreddy7@gmail.com", record, recent: [], extraction: null, webBase: "http://localhost:3000" };
+        case "state.get": return { signedIn: true, email: "koppulasaitharunreddy7@gmail.com", record: qp.get("screen") === "main" ? null : record, recent: [], extraction: null, webBase: "http://localhost:3000" };
+        case "page.lookup": return { job: null };
         case "job.get": return job;
         case "job.applications": return { current: null };
         case "job.match": return { match };

@@ -16,10 +16,10 @@ export function cx(...c: Array<string | false | null | undefined>): string {
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "link";
 type Size = "sm" | "md";
 const variants: Record<Variant, string> = {
-  primary: "bg-accent text-accent-ink hover:opacity-90 border border-transparent",
-  secondary: "bg-surface text-ink border border-line-strong hover:bg-surface-2",
+  primary: "bg-accent text-accent-ink border border-transparent shadow-sm hover:brightness-110 active:brightness-95",
+  secondary: "bg-surface text-ink border border-line-strong shadow-sm hover:bg-surface-2 hover:border-muted/40",
   ghost: "bg-transparent text-ink-2 border border-transparent hover:bg-surface-2 hover:text-ink",
-  danger: "bg-danger text-surface border border-transparent hover:opacity-90",
+  danger: "bg-danger text-white border border-transparent shadow-sm hover:brightness-110",
   link: "bg-transparent text-accent underline underline-offset-4 border-0 px-0 hover:opacity-80",
 };
 const sizes: Record<Size, string> = { sm: "h-8 px-3 text-[13px] gap-1.5", md: "h-10 px-4 text-sm gap-2" };
@@ -91,7 +91,7 @@ export function Field({ label, hint, error, children, id, required, className }:
 }
 
 const control =
-  "w-full rounded-md border border-line-strong bg-surface text-ink px-3 text-sm placeholder:text-muted " +
+  "w-full rounded-md border border-line-strong bg-surface text-ink px-3 text-sm shadow-sm placeholder:text-muted transition-colors focus:border-accent " +
   "aria-[invalid=true]:border-danger disabled:opacity-60";
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input({ className, ...rest }, ref) {
@@ -148,7 +148,7 @@ export function Badge({ tone = "neutral", children, className, icon }: { tone?: 
 
 // ---------------------------------------------------------------- Layout bits
 export function Card({ children, className, as: As = "section" }: { children: ReactNode; className?: string; as?: "section" | "div" | "article" | "li" }) {
-  return <As className={cx("rounded-lg border border-line bg-surface", className)}>{children}</As>;
+  return <As className={cx("rounded-lg border border-line bg-surface shadow-sm", className)}>{children}</As>;
 }
 
 export function PageHeader({ title, description, actions, eyebrow }: { title: ReactNode; description?: ReactNode; actions?: ReactNode; eyebrow?: ReactNode }) {

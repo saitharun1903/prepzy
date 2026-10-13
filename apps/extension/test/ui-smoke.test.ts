@@ -157,10 +157,11 @@ describe("popup UI flow", () => {
     // simulate the tab being re-activated to reload the context
     for (const fn of registered["tabs.onActivated"] ?? []) fn();
     await flush();
-    expect(app().textContent).toContain("This page");
+    expect(app().textContent).toContain("Analyze this job");
+    expect(app().textContent).toContain("What you'll get");
     expect(app().textContent).toContain("careers.example.test");
 
-    click("btn-analyze");
+    click("btn-review");
     await flush();
     expect(app().textContent).toContain("Review before analysing");
     expect((document.getElementById("f-title") as HTMLInputElement).value).toBe("Backend Engineer");
@@ -203,5 +204,18 @@ describe("popup UI flow", () => {
     expect(document.getElementById("btn-applied")?.getAttribute("aria-pressed")).toBe("false");
     // no HTML from data is ever interpreted
     expect(app().querySelectorAll("script").length).toBe(0);
+  });
+
+  it("one-click analyze sends a clean single-job page straight to the server", async () => {
+    vi.useRealTimers();
+    pollState = "running";
+    for (const fn of registered["tabs.onActivated"] ?? []) fn();
+    await flush();
+    const before = sent.filter((m) => m.type === "capture.submit").length;
+    click("btn-analyze");
+    await flush();
+    expect(sent.filter((m) => m.type === "capture.submit").length).toBe(before + 1);
+    expect(app().textContent).not.toContain("Review before analysing");
+    expect(app().textContent).toContain("Server stage");
   });
 });

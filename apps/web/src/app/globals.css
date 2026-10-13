@@ -1,32 +1,35 @@
 @import "tailwindcss";
 
 /* ------------------------------------------------------------------ design tokens
-   Neutral, editorial palette with a single accent (deep green). Light is default;
-   dark applies via [data-theme="dark"] (set before paint by an inline script). */
+   "Cobalt": cool neutrals, one confident accent, semantic colour only where it carries
+   meaning (on your resume / partly / missing). Geist for UI, Geist Mono for numbers.
+   Light is default; dark applies via [data-theme="dark"] (set before paint). */
 :root {
-  --bg: #f7f6f3;
+  --bg: #f6f7f9;
   --surface: #ffffff;
-  --surface-2: #f1efea;
-  --ink: #1b1a17;
-  --ink-2: #4a4740;
-  --muted: #6b675e;
-  --border: #e3e0d8;
-  --border-strong: #cfcbc1;
-  --accent: #2d6a55;
+  --surface-2: #f0f2f5;
+  --ink: #0d1117;
+  --ink-2: #3a4252;
+  --muted: #667085;
+  --border: #e4e7ec;
+  --border-strong: #d0d5dd;
+  --accent: #2f5bea;
   --accent-ink: #ffffff;
-  --accent-soft: #e4efe9;
-  --ok: #2d6a55;
-  --ok-soft: #e4efe9;
-  --warn: #8a5a00;
-  --warn-soft: #f7ecd6;
-  --danger: #a23b2a;
-  --danger-soft: #f6e3df;
-  --info: #3c5a86;
-  --info-soft: #e5ebf4;
-  --focus: #1f5fbf;
-  --radius-sm: 6px;
+  --accent-soft: #edf1ff;
+  --ok: #067a52;
+  --ok-soft: #e6f6ef;
+  --warn: #b25e09;
+  --warn-soft: #fdf2e3;
+  --danger: #d1372c;
+  --danger-soft: #fdecea;
+  --info: #2f5bea;
+  --info-soft: #edf1ff;
+  --focus: #2f5bea;
+  --radius-sm: 7px;
   --radius: 10px;
   --radius-lg: 14px;
+  --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --shadow-2: 0 1px 3px rgba(16, 24, 40, 0.06), 0 8px 24px -6px rgba(16, 24, 40, 0.08);
   --dur-fast: 120ms;
   --dur: 200ms;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -34,26 +37,28 @@
 }
 
 [data-theme="dark"] {
-  --bg: #121311;
-  --surface: #191a18;
-  --surface-2: #20221f;
-  --ink: #ecebe6;
-  --ink-2: #c9c7c0;
-  --muted: #9a978e;
-  --border: #2c2e2a;
-  --border-strong: #3c3f3a;
-  --accent: #7cc4a6;
-  --accent-ink: #0d1a14;
-  --accent-soft: #1d2c25;
-  --ok: #7cc4a6;
-  --ok-soft: #1d2c25;
-  --warn: #e0b260;
-  --warn-soft: #2e2617;
-  --danger: #ec8b78;
-  --danger-soft: #331d19;
-  --info: #9db8e2;
-  --info-soft: #1c2433;
-  --focus: #8fb8ff;
+  --bg: #0b0d12;
+  --surface: #12151c;
+  --surface-2: #181c25;
+  --ink: #eef1f6;
+  --ink-2: #c3c9d4;
+  --muted: #8b93a7;
+  --border: #232835;
+  --border-strong: #323a4b;
+  --accent: #7d95ff;
+  --accent-ink: #0b0d12;
+  --accent-soft: #1a2142;
+  --ok: #45d39a;
+  --ok-soft: #0f2a20;
+  --warn: #f3b35b;
+  --warn-soft: #2b2112;
+  --danger: #ff7d73;
+  --danger-soft: #2e1618;
+  --info: #7d95ff;
+  --info-soft: #1a2142;
+  --focus: #9aaeff;
+  --shadow-1: none;
+  --shadow-2: 0 0 0 1px rgba(255, 255, 255, 0.02);
   color-scheme: dark;
 }
 
@@ -81,8 +86,10 @@
   --radius-sm: var(--radius-sm);
   --radius-md: var(--radius);
   --radius-lg: var(--radius-lg);
-  --font-sans: var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-newsreader), ui-serif, Georgia, serif;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --shadow-sm: var(--shadow-1);
+  --shadow-md: var(--shadow-2);
 }
 
 html {
@@ -95,14 +102,23 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
-  font-feature-settings: "ss01", "cv11";
-  line-height: 1.5;
+  font-size: 14.5px;
+  letter-spacing: -0.006em;
+  line-height: 1.55;
   min-height: 100dvh;
   overflow-x: hidden;
 }
 
 h1, h2, h3 {
   text-wrap: balance;
+  letter-spacing: -0.022em;
+}
+
+/* Numbers that should line up (scores, counts, dates). */
+.num, .tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
 ::selection {
@@ -117,9 +133,11 @@ h1, h2, h3 {
   border-radius: 4px;
 }
 
+/* Display headings (class kept as .serif for existing markup): Geist, tight and confident. */
 .serif {
-  font-family: var(--font-serif);
-  font-optical-sizing: auto;
+  font-family: var(--font-sans);
+  font-weight: 650;
+  letter-spacing: -0.028em;
 }
 
 .prewrap {
