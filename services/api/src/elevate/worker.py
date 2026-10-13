@@ -159,15 +159,27 @@ def run_operation(op: Operation, worker_id: str) -> None:
 
 
 def main() -> None:
+    setup_logging(get_settings().log_level)
+    stopping = threading.Event()
+    signal.signal(signal.SIGINT, lambda *_: stopping.set())
+    signal.signal(signal.SIGTERM, lambda *_: stopping.set())
+    serve(stopping)
+
+
+def start_embedded() -> threading.Event:
+    """Run the worker loop on a daemon thread inside the API process (ELEVATE_EMBEDDED_WORKER).
+    Returns the event that stops it; in-flight work left behind is re-claimed after its lease expires."""
+    stopping = threading.Event()
+    threading.Thread(target=serve, args=(stopping,), name="elevate-worker", daemon=True).start()
+    return stopping
+
+
+def serve(stopping: threading.Event) -> None:
     s = get_settings()
-    setup_logging(s.log_level)
     from . import handlers, handlers_more  # noqa: F401 - registers handlers
     from .services import scheduler
 
     worker_id = f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:6]}"
-    stopping = threading.Event()
-    signal.signal(signal.SIGINT, lambda *_: stopping.set())
-    signal.signal(signal.SIGTERM, lambda *_: stopping.set())
     log(logger, logging.INFO, "worker started", worker=worker_id, concurrency=s.worker_concurrency,
         kinds=sorted(HANDLERS))
     pool = ThreadPoolExecutor(max_workers=s.worker_concurrency)

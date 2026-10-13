@@ -1,6 +1,7 @@
 # Project status — checkpoint 2026-10-13 (production preparation)
 
 ## Production readiness (latest)
+* **Free deployment prepared** (`render.yaml`): Render free (web + API with embedded worker), Neon free, Groq free AI, resume files in Postgres. Container start path (bootstrap, migrations, embedded worker, db storage) smoke-tested locally; 67 API tests pass. Not verified: a real Groq call (needs your key), the Groq model's quality, a real Render deployment.
 * **Prepared, not deployed.** Target: Render (web, API, worker, private Ollama) + Neon Postgres + S3-compatible storage; `render.yaml`, Dockerfiles, CI, runbook in DEPLOYMENT.md.
 * Done and tested: email verification, password reset by email, lockout (no enumeration), TOTP two-step with recovery codes, PostgreSQL-shared rate limits, verified-email gate for AI, S3 storage backend, production config guard (secrets never echoed), HSTS, `/metrics`, non-root container (built and smoke-tested locally), dashboard screens for all of the above (agent-built; typecheck/build re-verified).
 * Not yet verified: the Ollama image build (CI builds it), a real Render/Neon/R2/SMTP deployment, the production model's quality (qwen2.5:3b unevaluated), Edge runtime, store submission.
@@ -15,7 +16,7 @@
 | Check | Command | Result |
 |---|---|---|
 | API lint | `uv run ruff check src tests --ignore E501` | pass |
-| API tests | `uv run pytest -q` | **49 passed** (34 unit, 15 integration on isolated DB with real RLS) |
+| API tests | `uv run pytest -q` | **67 passed** (unit + integration on isolated DB with real RLS) |
 | Migration drift | `uv run alembic check` | no changes |
 | Real-service E2E | `python scripts/smoke_e2e.py` | **SMOKE OK** (real `qwen2.5-coder:7b`) |
 | AI eval | `run_eval.py` | required F1 0.971, preferred F1 0.919 (baseline 0.0), alternatives 1.0, schema 1.0, median 43.8 s |

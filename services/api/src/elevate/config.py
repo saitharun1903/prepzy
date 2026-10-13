@@ -37,8 +37,11 @@ class Settings(BaseSettings):
     refresh_token_days: int = Field(30, ge=1, le=90)
     admin_emails: str = ""
 
-    llm_provider: Literal["ollama", "disabled"] = "ollama"
+    llm_provider: Literal["ollama", "openai", "disabled"] = "ollama"
     ollama_url: str = "http://127.0.0.1:11434"
+    # OpenAI-compatible API (llm_provider=openai). Default: Groq, whose free tier needs no card.
+    openai_base_url: str = "https://api.groq.com/openai/v1"
+    openai_api_key: str = ""
     llm_model: str = "qwen2.5-coder:7b"
     llm_temperature: float = Field(0.1, ge=0, le=1.5)
     llm_num_ctx: int = Field(8192, ge=2048, le=131072)
@@ -86,7 +89,7 @@ class Settings(BaseSettings):
     smtp_starttls: bool = True
 
     # ---- private file storage
-    storage_backend: Literal["local", "s3"] = "local"
+    storage_backend: Literal["local", "s3", "db"] = "local"
     s3_endpoint_url: str = ""
     s3_bucket: str = ""
     s3_region: str = "auto"
@@ -95,6 +98,9 @@ class Settings(BaseSettings):
 
     # ---- operations
     metrics_token: str = ""
+    # Run the durable worker inside the API process (single-service hosting, e.g. free plans
+    # without background workers). Leases still fence every write, so a separate worker is optional.
+    embedded_worker: bool = False
 
     @field_validator("ollama_url")
     @classmethod
@@ -127,8 +133,12 @@ class Settings(BaseSettings):
             problems.append("ELEVATE_DATA_KEY must be a Fernet key (python -c 'from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())')")
         if self.email_backend != "smtp" or not self.smtp_host:
             problems.append("Production requires ELEVATE_EMAIL_BACKEND=smtp with ELEVATE_SMTP_HOST (verification/reset emails)")
-        if self.storage_backend != "s3" or not (self.s3_bucket and self.s3_access_key_id and self.s3_secret_access_key):
-            problems.append("Production requires ELEVATE_STORAGE_BACKEND=s3 with bucket and credentials (platform disks are ephemeral)")
+        if self.storage_backend == "local":
+            problems.append("Production requires ELEVATE_STORAGE_BACKEND=s3 or db (platform disks are ephemeral)")
+        if self.storage_backend == "s3" and not (self.s3_bucket and self.s3_access_key_id and self.s3_secret_access_key):
+            problems.append("ELEVATE_STORAGE_BACKEND=s3 needs ELEVATE_S3_BUCKET and access key credentials")
+        if self.llm_provider == "openai" and (not self.openai_api_key or not self.openai_base_url.startswith("https://")):
+            problems.append("ELEVATE_LLM_PROVIDER=openai needs ELEVATE_OPENAI_API_KEY and an https ELEVATE_OPENAI_BASE_URL")
         if "sslmode=" not in self.database_url and "127.0.0.1" not in self.database_url:
             problems.append("ELEVATE_DATABASE_URL must set sslmode=require for a remote database")
         if not self.metrics_token or len(self.metrics_token) < 24:

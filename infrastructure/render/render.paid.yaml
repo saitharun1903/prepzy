@@ -1,0 +1,181 @@
+# PAID Render Blueprint for Elevate (self-hosted Ollama, separate worker, S3 storage; ~$46-106/month).
+# The free setup is /render.yaml. To use this one, set the Blueprint path to
+# infrastructure/render/render.paid.yaml. Nothing is created until you open
+#   https://dashboard.render.com/blueprints -> New Blueprint Instance -> this repo
+# and approve it. Values marked `sync: false` are asked for once, in Render's UI. See docs/DEPLOYMENT.md.
+#
+# Topology:  browser ──https──> elevate-web ──private──> elevate-api ──private──> elevate-ollama
+#            extension ─https──────────────────────────> elevate-api            (no public URL)
+#            elevate-worker ──private──> elevate-ollama ; api+worker ──TLS──> Neon Postgres, S3 bucket
+
+services:
+  # ---------------------------------------------------------------- dashboard (Next.js)
+  - type: web
+    name: elevate-web
+    runtime: node
+    region: singapore
+    plan: 0.5c-512mb
+    buildCommand: npm ci --no-audit --no-fund && npm run build -w apps/web
+    startCommand: npm run start -w apps/web
+    healthCheckPath: /login
+    autoDeploy: false
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+      # web -> API over the private network
+      - key: ELEVATE_API_HOSTPORT
+        fromService: { type: web, name: elevate-api, property: hostport }
+      # Public origin(s) of this site, used for the same-origin CSRF check (e.g. https://app.example.com)
+      - key: ELEVATE_APP_ORIGINS
+        sync: false
+      - key: NEXT_PUBLIC_ELEVATE_EXTENSION_ID
+        sync: false
+
+  # ---------------------------------------------------------------- API (FastAPI)
+  - type: web
+    name: elevate-api
+    runtime: docker
+    region: singapore
+    plan: 0.5c-512mb
+    dockerfilePath: ./services/api/Dockerfile
+    dockerContext: .
+    healthCheckPath: /health/live
+    # Creates the least-privilege role (idempotent) and applies Alembic migrations before each release.
+    preDeployCommand: python /app/scripts/db_bootstrap.py
+    autoDeploy: false
+    envVars:
+      - key: ELEVATE_ENV
+        value: production
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - fromGroup: elevate-shared
+      - key: ELEVATE_OLLAMA_URL
+        fromService: { type: pserv, name: elevate-ollama, property: hostport }
+      - key: ELEVATE_DATABASE_URL       # postgresql+psycopg://elevate_app:<pw>@<neon-host>/<db>?sslmode=require
+        sync: false
+      - key: ELEVATE_SMTP_HOST
+        sync: false
+      - key: ELEVATE_SMTP_USERNAME
+        sync: false
+      - key: ELEVATE_SMTP_PASSWORD
+        sync: false
+      - key: ELEVATE_EMAIL_FROM         # e.g. Elevate <no-reply@yourdomain.com>
+        sync: false
+      - key: ELEVATE_S3_ENDPOINT_URL    # e.g. https://<account>.r2.cloudflarestorage.com
+        sync: false
+      - key: ELEVATE_S3_BUCKET
+        sync: false
+      - key: ELEVATE_S3_ACCESS_KEY_ID
+        sync: false
+      - key: ELEVATE_S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: ELEVATE_WEB_URL            # https://<your web domain>
+        sync: false
+      - key: ELEVATE_ALLOWED_ORIGINS    # same as ELEVATE_WEB_URL (comma-separated if several)
+        sync: false
+      - key: ELEVATE_MIGRATION_DATABASE_URL   # same host, owner role, ?sslmode=require (used by preDeploy only)
+        sync: false
+      - key: ELEVATE_DB_APP_PASSWORD    # password for elevate_app (created/updated by db_bootstrap.py)
+        sync: false
+      - key: ELEVATE_DATA_KEY           # Fernet key: python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"
+        sync: false
+      - key: ELEVATE_EXTENSION_IDS      # Chrome Web Store extension id once published (may be empty at first)
+        sync: false
+
+  # ---------------------------------------------------------------- durable worker
+  - type: worker
+    name: elevate-worker
+    runtime: docker
+    region: singapore
+    plan: 0.5c-512mb
+    dockerfilePath: ./services/api/Dockerfile
+    dockerContext: .
+    dockerCommand: python -m elevate.worker
+    autoDeploy: false
+    envVars:
+      - key: ELEVATE_ENV
+        value: production
+      - fromGroup: elevate-shared
+      - key: ELEVATE_OLLAMA_URL
+        fromService: { type: pserv, name: elevate-ollama, property: hostport }
+      - key: ELEVATE_DATABASE_URL       # postgresql+psycopg://elevate_app:<pw>@<neon-host>/<db>?sslmode=require
+        sync: false
+      - key: ELEVATE_SMTP_HOST
+        sync: false
+      - key: ELEVATE_SMTP_USERNAME
+        sync: false
+      - key: ELEVATE_SMTP_PASSWORD
+        sync: false
+      - key: ELEVATE_EMAIL_FROM         # e.g. Elevate <no-reply@yourdomain.com>
+        sync: false
+      - key: ELEVATE_S3_ENDPOINT_URL    # e.g. https://<account>.r2.cloudflarestorage.com
+        sync: false
+      - key: ELEVATE_S3_BUCKET
+        sync: false
+      - key: ELEVATE_S3_ACCESS_KEY_ID
+        sync: false
+      - key: ELEVATE_S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: ELEVATE_WEB_URL            # https://<your web domain>
+        sync: false
+      - key: ELEVATE_ALLOWED_ORIGINS    # same as ELEVATE_WEB_URL (comma-separated if several)
+        sync: false
+      - key: ELEVATE_DATA_KEY           # must equal the API's value
+        sync: false
+
+  # ---------------------------------------------------------------- private inference (Ollama)
+  # CPU only. qwen2.5:3b needs ~3 GB RAM -> 2c-4g. For lower cost use qwen2.5:1.5b on 1c-2g
+  # (measure quality first with ai/evaluation/run_eval.py).
+  - type: pserv
+    name: elevate-ollama
+    runtime: docker
+    region: singapore
+    plan: 2c-4g
+    dockerfilePath: ./infrastructure/ollama/Dockerfile
+    dockerContext: .
+    autoDeploy: false
+    disk:
+      name: ollama-models
+      mountPath: /root/.ollama
+      sizeGB: 10
+    envVars:
+      - key: ELEVATE_LLM_MODEL
+        value: qwen2.5:3b
+      - key: ELEVATE_EMBED_MODEL
+        value: nomic-embed-text
+
+envVarGroups:
+  # Non-secret settings + generated secrets shared by API and worker. (Render does not allow
+  # `sync: false` inside groups, so secrets you type in are declared on each service above.)
+  - name: elevate-shared
+    envVars:
+      - key: ELEVATE_JWT_SECRET
+        generateValue: true
+      - key: ELEVATE_METRICS_TOKEN
+        generateValue: true
+      - key: ELEVATE_JWT_ISSUER
+        value: elevate
+      - key: ELEVATE_REQUIRE_VERIFIED_EMAIL
+        value: "true"
+      - key: ELEVATE_LLM_PROVIDER
+        value: ollama
+      - key: ELEVATE_LLM_MODEL
+        value: qwen2.5:3b
+      - key: ELEVATE_LLM_TIMEOUT_SECONDS
+        value: "600"
+      - key: ELEVATE_OPERATION_DEADLINE_MINUTES
+        value: "30"
+      - key: ELEVATE_EMBED_MODEL
+        value: nomic-embed-text
+      - key: ELEVATE_EMAIL_BACKEND
+        value: smtp
+      - key: ELEVATE_STORAGE_BACKEND
+        value: s3
+      - key: ELEVATE_S3_REGION
+        value: auto
+      - key: ELEVATE_LOG_LEVEL
+        value: INFO

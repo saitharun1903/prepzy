@@ -5,7 +5,8 @@
 |---|---|---|---|---|
 | `local` | single developer machine (verified) | Docker `browserelevate-db` :5433 loopback, DB `elevate` | `./data` | local Ollama |
 | `test` | automated tests | DB `elevate_test` (dropped/recreated per run) | temp dir | fake provider at the interface boundary (integration tests) |
-| `production` | Render + Neon + S3-compatible storage (prepared, **not deployed**) | Neon Postgres + pgvector, TLS | S3 bucket (e.g. Cloudflare R2) | private Ollama service (CPU) |
+| `production` (free) | Render free + Neon free (prepared, **not deployed**) | Neon Postgres + pgvector, TLS | Postgres `stored_files` | Groq API (free tier) |
+| `production` (paid) | Render + Neon + S3-compatible storage (prepared, **not deployed**) | Neon Postgres + pgvector, TLS | S3 bucket (e.g. Cloudflare R2) | private Ollama service (CPU) |
 
 ## Local runbook (Windows, verified)
 ```bash
@@ -36,7 +37,44 @@ Rollback: application versions can be rolled back while the schema is unchanged;
 ## Resource notes (measured, this machine)
 i5-12500H, 16 GB RAM, RTX 3050 4 GB. `qwen2.5-coder:7b` does not fit in 4 GB VRAM and partially runs on CPU: job analysis took ~88 s warm in the smoke test (see AI_EVALUATION.md for the distribution). Concurrency is 1 by design (`ELEVATE_LLM_CONCURRENCY`). Disk: C: had ~32 GB free at setup; images ≈ 0.64 GB (pgvector), models 4.7 GB + 0.27 GB.
 
-## Production deployment (Render + Neon + S3): prepared, not yet deployed
+## Free deployment (Render free + Neon free + Groq free): `render.yaml`
+
+Everything runs on free tiers with no payment card: two Render **free** web services
+(`elevate-web`, `elevate-api`), Neon's free Postgres, Groq's free AI API and a free SMTP sender.
+Prices and limits were checked in October 2026; re-check them when you sign up.
+
+| Piece | Free choice | What the free tier means |
+|---|---|---|
+| Dashboard | Render free web service | sleeps after ~15 min idle; the first visit then takes ~1 minute |
+| API + worker | Render free web service (Docker), worker runs inside the API (`ELEVATE_EMBEDDED_WORKER=true`) | queued work pauses while asleep and resumes when it wakes; reminders are sent late, not lost |
+| Database | Neon Free (0.5 GB) | migrations run at API start (free services have no pre-deploy step) |
+| Resume files | Postgres table `stored_files` (`ELEVATE_STORAGE_BACKEND=db`, owner-scoped RLS) | no bucket needed; counts toward Neon's 0.5 GB |
+| AI | Groq free tier, `openai/gpt-oss-120b` (`ELEVATE_LLM_PROVIDER=openai`) | ~30 requests/min, ~1,000/day, 8K tokens/min; very long postings are rejected as too long |
+| Email | Brevo free SMTP (300/day) or similar | a verified sender address is enough without a domain |
+
+**Privacy change:** with Groq, job text, resumes and interview answers are sent to Groq for processing
+(Groq states API data is not used for training). Self-hosted Ollama keeps them on your own server: use
+`infrastructure/render/render.paid.yaml` for that. Semantic knowledge search is off on Groq (no embeddings).
+The Groq model's answer quality has not been evaluated yet (`ai/evaluation/run_eval.py`).
+
+### Steps (you)
+1. **Neon:** create a project in Singapore. Owner connection string, with `postgresql://` changed to
+   `postgresql+psycopg://`, is `ELEVATE_MIGRATION_DATABASE_URL`. Choose a strong `ELEVATE_DB_APP_PASSWORD`;
+   `ELEVATE_DATABASE_URL` is the same string with user `elevate_app` and that password (keep `?sslmode=require`).
+2. **Groq:** console.groq.com, API Keys, create a key: `ELEVATE_OPENAI_API_KEY`.
+3. **Email:** Brevo (or similar) SMTP key and a verified sender: `ELEVATE_SMTP_HOST`, `ELEVATE_SMTP_USERNAME`,
+   `ELEVATE_SMTP_PASSWORD`, `ELEVATE_EMAIL_FROM`.
+4. **Data key:** `cd services/api && uv run python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"`
+   gives `ELEVATE_DATA_KEY`; keep a copy in a password manager.
+5. **Render:** sign up with GitHub, Blueprints, New Blueprint Instance, this repo (uses `render.yaml`).
+   Enter the values above. For the addresses enter `https://elevate-web.onrender.com` (`ELEVATE_WEB_URL`,
+   `ELEVATE_ALLOWED_ORIGINS`, `ELEVATE_APP_ORIGINS`) and `https://elevate-api.onrender.com` (`ELEVATE_API_URL`).
+   Choose the **Free** instance type if asked.
+6. After creation, compare those with the real service URLs in Render; if Render added a suffix, update
+   the values and redeploy. Check `https://<api>/health/ready`: `database: ok`, `storage.backend: db`,
+   `ai.reachable: true`.
+
+## Paid deployment (Render + Neon + S3 + self-hosted Ollama): `infrastructure/render/render.paid.yaml`
 
 Everything below is in the repo; nothing has been provisioned. Prices were checked in October 2026 from
 [Render pricing](https://render.com/pricing.md) and [Neon pricing](https://neon.com/pricing); re-check them when you sign up.
@@ -59,7 +97,7 @@ Run `ai/evaluation/run_eval.py` against it (set `ELEVATE_LLM_MODEL`) before laun
 2. **Storage:** create a private bucket (R2: no public access) and an access key limited to that bucket, for `ELEVATE_S3_*`.
 3. **Email:** create an SMTP credential with a verified sender domain, for `ELEVATE_SMTP_*` and `ELEVATE_EMAIL_FROM`.
 4. **Data key:** `python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"` gives `ELEVATE_DATA_KEY`. Use the same value on API and worker and keep a copy in a password manager: losing it disables existing two-step enrolments.
-5. **Render:** Dashboard, Blueprints, New Blueprint Instance, choose this repository, enter the prompted values. The blueprint generates `ELEVATE_JWT_SECRET` and `ELEVATE_METRICS_TOKEN`.
+5. **Render:** Dashboard, Blueprints, New Blueprint Instance, choose this repository, set the Blueprint path to `infrastructure/render/render.paid.yaml`, enter the prompted values. The blueprint generates `ELEVATE_JWT_SECRET` and `ELEVATE_METRICS_TOKEN`.
 6. Set `ELEVATE_WEB_URL` / `ELEVATE_ALLOWED_ORIGINS` (API) and `ELEVATE_APP_ORIGINS` (web) to the web service's https URL (or your domain later).
 
 ### Release

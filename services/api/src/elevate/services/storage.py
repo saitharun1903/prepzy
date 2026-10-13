@@ -3,8 +3,10 @@
 Backends:
   * ``local`` — files under ELEVATE_DATA_DIR/users/<user-id>/resumes (single machine / local profile).
   * ``s3``    — any S3-compatible store (Cloudflare R2, AWS S3, Backblaze B2, Tigris ...). Required
-                in production because platform disks are ephemeral and not shared between the API
-                and the worker. Objects are private; downloads stream through the authenticated API.
+                when platform disks are ephemeral and not shared between the API and the worker.
+                Objects are private; downloads stream through the authenticated API.
+  * ``db``    — bytes in the ``stored_files`` table (owner-scoped RLS). For free hosting without an
+                object store; fine for resumes (<= ELEVATE_MAX_UPLOAD_MB each), not for bulk files.
 Object names are generated (``<32 hex>.bin``) and namespaced by owner; user input never forms a path.
 """
 
@@ -117,6 +119,59 @@ class S3Storage:
             return {"backend": "s3", "ok": False}
 
 
+class DbStorage:
+    """Each call uses its own short transaction under the owner's RLS context."""
+
+    def put(self, owner: uuid.UUID, name: str, data: bytes) -> None:
+        from sqlalchemy.dialects.postgresql import insert
+
+        from ..db import user_session
+        from ..models import StoredFile
+        _check(name)
+        with user_session(owner) as db:
+            db.execute(insert(StoredFile).values(owner_id=owner, name=name, data=data)
+                       .on_conflict_do_update(index_elements=["owner_id", "name"], set_={"data": data}))
+            db.commit()
+
+    def get(self, owner: uuid.UUID, name: str) -> bytes:
+        from ..db import user_session
+        from ..models import StoredFile
+        _check(name)
+        with user_session(owner) as db:
+            row = db.get(StoredFile, (owner, name))
+            if row is None:
+                raise NotFound("The stored file is missing")
+            return row.data
+
+    def delete(self, owner: uuid.UUID, name: str) -> None:
+        from sqlalchemy import delete as sql_delete
+
+        from ..db import user_session
+        from ..models import StoredFile
+        _check(name)
+        with user_session(owner) as db:
+            db.execute(sql_delete(StoredFile).where(StoredFile.owner_id == owner, StoredFile.name == name))
+            db.commit()
+
+    def delete_owner(self, owner: uuid.UUID) -> None:
+        # Normally already gone (FK cascade on user deletion); this covers files of a user row that survives.
+        from sqlalchemy import delete as sql_delete
+
+        from ..db import system_session
+        from ..models import StoredFile
+        with system_session() as db:
+            db.execute(sql_delete(StoredFile).where(StoredFile.owner_id == owner))
+            db.commit()
+
+    def health(self) -> dict[str, Any]:
+        return {"backend": "db", "ok": True}
+
+
 @lru_cache
 def get_storage() -> Storage:
-    return S3Storage() if get_settings().storage_backend == "s3" else LocalStorage()
+    backend = get_settings().storage_backend
+    if backend == "s3":
+        return S3Storage()
+    if backend == "db":
+        return DbStorage()
+    return LocalStorage()

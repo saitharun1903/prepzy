@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 import time
 import uuid
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -37,8 +39,19 @@ def _err(status: int, code: str, message: str, *, retryable: bool = False, field
 def create_app() -> FastAPI:
     s = get_settings()
     setup_logging(s.log_level)
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        stop = None
+        if s.embedded_worker:
+            # Same canonical module as `python -m elevate.worker`, so handlers share one registry.
+            from elevate.worker import start_embedded
+            stop = start_embedded()
+        yield
+        if stop is not None:
+            stop.set()
+
     app = FastAPI(title="Elevate API", version="0.1.0", openapi_url="/api/v1/openapi.json",
-                  docs_url="/api/docs" if s.env != "production" else None, redoc_url=None)
+                  docs_url="/api/docs" if s.env != "production" else None, redoc_url=None, lifespan=lifespan)
 
     app.add_middleware(CORSMiddleware, allow_origins=s.cors_origins, allow_credentials=False,
                        allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE"],

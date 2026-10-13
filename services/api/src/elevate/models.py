@@ -21,6 +21,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -101,6 +102,18 @@ class RateLimitBucket(Base):
     key: Mapped[str] = mapped_column(String(200), primary_key=True)
     window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
     count: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+
+
+class StoredFile(Base):
+    """Resume file bytes kept in Postgres (storage backend ``db``): for hosts without a free object
+    store. Owner-scoped by RLS like every other user table; deleted with the user (cascade)."""
+
+    __tablename__ = "stored_files"
+    owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"),
+                                                primary_key=True)
+    name: Mapped[str] = mapped_column(String(40), primary_key=True)
+    data: Mapped[bytes] = mapped_column(LargeBinary)
+    created_at: Mapped[datetime] = created()
 
 
 class RefreshToken(Base):
