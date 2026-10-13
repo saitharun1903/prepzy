@@ -166,3 +166,13 @@ def test_brevo_email_backend(monkeypatch):
     # A rejection (e.g. unverified sender) is reported, never raised into the sign-up request.
     monkeypatch.setattr(email.httpx, "post", lambda *a, **k: httpx.Response(400, json={"message": "sender not valid"}))
     assert email.send_verification("person@example.test", "tok123") is False
+
+
+def test_me_reports_email_delivery_for_brevo(client, user, monkeypatch):
+    """The hosted profile sends mail through Brevo; the UI must not claim delivery isn't set up."""
+    from elevate.config import get_settings
+    s = get_settings()
+    for backend, delivers in (("brevo", True), ("smtp", True), ("console", False)):
+        monkeypatch.setattr(s, "email_backend", backend)
+        me = client.get("/api/v1/me", headers=user["h"]).json()
+        assert me["account_security"]["email_delivery"] is delivers, backend

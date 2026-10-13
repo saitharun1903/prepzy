@@ -40,11 +40,12 @@ def me(ctx: Authed) -> dict[str, Any]:
                  "timezone": u.timezone, "created_at": u.created_at, "email_verified": u.email_verified_at is not None,
                  "mfa_enabled": u.totp_enabled_at is not None},
         "account_security": {"require_verified_email": get_settings().require_verified_email,
-                             "email_delivery": get_settings().email_backend == "smtp"},
+                             "email_delivery": get_settings().email_backend in ("smtp", "brevo")},
         "capabilities": {
             "ai_analysis": ai_ok, "semantic_search": bool(h.get("reachable") and h.get("embed_installed")),
-            "ocr": False, "email_delivery": get_settings().email_backend == "smtp", "calendar_sync": False, "push": False, "code_execution": False,
-            "voice_interviews": False, "external_ai": False,
+            # email_delivery here means reminder emails: reminders are in-app only (account emails are reported above).
+            "ocr": False, "email_delivery": False, "calendar_sync": False, "push": False, "code_execution": False,
+            "voice_interviews": False, "external_ai": get_settings().llm_provider == "openai",
         },
         "limits": {"max_upload_mb": get_settings().max_upload_mb, "max_job_text_chars": get_settings().max_job_text_chars,
                    "supported_resume_formats": ["pdf (text-based)", "docx", "pasted text"],
