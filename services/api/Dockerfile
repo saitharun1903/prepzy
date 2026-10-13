@@ -19,6 +19,7 @@ COPY --from=build --chown=elevate:elevate /app/services/api /app/services/api
 COPY --chown=elevate:elevate database/reference-data /app/database/reference-data
 COPY --chown=elevate:elevate ai/evaluation/results /app/ai/evaluation/results
 COPY --chown=elevate:elevate scripts/db_bootstrap.py /app/scripts/db_bootstrap.py
+COPY --chown=elevate:elevate scripts/start_api.py /app/scripts/start_api.py
 ENV PATH="/app/services/api/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     ELEVATE_ENV=production \

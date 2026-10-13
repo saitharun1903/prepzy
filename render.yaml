@@ -15,7 +15,8 @@ services:
     runtime: node
     region: ohio
     plan: free
-    buildCommand: npm ci --no-audit --no-fund && npm run build -w apps/web
+    # --include=dev: NODE_ENV=production would otherwise skip the build tools (Tailwind, TypeScript).
+    buildCommand: npm ci --include=dev --no-audit --no-fund && npm run build -w apps/web
     startCommand: npm run start -w apps/web
     healthCheckPath: /login
     autoDeploy: false
@@ -43,7 +44,7 @@ services:
     dockerfilePath: ./services/api/Dockerfile
     dockerContext: .
     # Free instances have no pre-deploy step: create the runtime role + apply migrations (idempotent), then serve.
-    dockerCommand: sh -c "python /app/scripts/db_bootstrap.py && exec uvicorn elevate.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*' --workers 1 --no-server-header"
+    dockerCommand: python /app/scripts/start_api.py
     healthCheckPath: /health/live
     autoDeploy: false
     envVars:

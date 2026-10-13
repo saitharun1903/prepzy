@@ -15,7 +15,7 @@ services:
     runtime: node
     region: singapore
     plan: 0.5c-512mb
-    buildCommand: npm ci --no-audit --no-fund && npm run build -w apps/web
+    buildCommand: npm ci --include=dev --no-audit --no-fund && npm run build -w apps/web
     startCommand: npm run start -w apps/web
     healthCheckPath: /login
     autoDeploy: false
