@@ -19,7 +19,17 @@ from elevate.config import get_settings  # noqa: E402
 def main() -> int:
     s = get_settings()
     import os
+
+    from sqlalchemy.engine import make_url
     app_pw = os.environ.get("ELEVATE_DB_APP_PASSWORD") or _read_env("ELEVATE_DB_APP_PASSWORD")
+    # The runtime URL is what the app actually logs in with, so its password is authoritative:
+    # a separately typed copy (or URL percent-encoding) can silently differ.
+    runtime = make_url(s.database_url)
+    if runtime.username == "elevate_app" and runtime.password:
+        if app_pw and app_pw != runtime.password:
+            print("note: ELEVATE_DB_APP_PASSWORD differs from the password in ELEVATE_DATABASE_URL; "
+                  "using the one in ELEVATE_DATABASE_URL", file=sys.stderr)
+        app_pw = runtime.password
     if not app_pw or not s.migration_database_url:
         print("Missing ELEVATE_DB_APP_PASSWORD or ELEVATE_MIGRATION_DATABASE_URL", file=sys.stderr)
         return 2
@@ -46,6 +56,16 @@ def main() -> int:
         c.execute(text("grant usage, select on all sequences in schema public to elevate_app"))
         c.execute(text("revoke all on alembic_version from elevate_app"))
     print("migrations applied; grants refreshed")
+    # Prove the runtime login works now, instead of failing on every request later.
+    try:
+        with create_engine(s.database_url).connect() as c:
+            c.execute(text("select 1"))
+    except Exception as e:  # noqa: BLE001 - report the driver's reason (never contains the password)
+        lines = [ln.strip() for ln in str(getattr(e, "orig", e)).splitlines() if ln.strip()]
+        reason = next((ln for ln in lines if "ERROR:" in ln), lines[0] if lines else type(e).__name__)
+        print("runtime login FAILED with ELEVATE_DATABASE_URL: " + reason[:300], file=sys.stderr)
+        return 3
+    print("runtime login ok")
     return 0
 
 
