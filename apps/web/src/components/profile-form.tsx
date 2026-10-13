@@ -10,6 +10,7 @@ import {
   Button, Checkbox, ChipsInput, ErrorState, Field, Input, LoadingBlock, Notice, Select, ToggleGroup,
 } from "./ui/primitives";
 import { useToast } from "./ui/toast";
+import { HOSTED, AI_PROVIDER } from "@/lib/hosting";
 
 type Draft = {
   career_stage: string; target_roles: string[]; domains: string[]; locations: string[]; work_modes: string[];
@@ -193,8 +194,8 @@ export function ProfileForm({ mode }: { mode: "onboarding" | "profile" }) {
         <Checkbox
           checked={draft.consent}
           onChange={(e) => set("consent", e.target.checked)}
-          label="I agree to Elevate processing my career data on this machine"
-          hint="Job postings, resumes and answers are analysed by a local Ollama model and stored in a local PostgreSQL database. Nothing is sent to external AI services."
+          label={HOSTED ? "I agree to Elevate processing my career data" : "I agree to Elevate processing my career data on this machine"}
+          hint={HOSTED ? `Job postings, resumes and answers are stored in your private account and analysed by ${AI_PROVIDER}, which states it does not train on this data.` : "Job postings, resumes and answers are analysed by a local Ollama model and stored in a local PostgreSQL database. Nothing is sent to external AI services."}
         />
       </section>
 

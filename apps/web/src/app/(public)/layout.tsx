@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { HOSTED, AI_PROVIDER } from "@/lib/hosting";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       </header>
       <main id="main" className="flex-1 px-4 sm:px-8 py-10 sm:py-16">{children}</main>
       <footer className="px-4 sm:px-8 py-6 text-[13px] text-muted border-t border-line">
-        Elevate runs on this machine. AI analysis uses a local model; nothing is sent to external AI services.
+        {HOSTED ? `AI analysis is processed by ${AI_PROVIDER}. You can export or delete your data at any time.` : "Elevate runs on this machine. AI analysis uses a local model; nothing is sent to external AI services."}
       </footer>
     </div>
   );

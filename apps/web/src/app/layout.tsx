@@ -4,11 +4,12 @@ import { GeistSans } from "geist/font/sans";
 import { cookies, headers } from "next/headers";
 import { ToastProvider } from "@/components/ui/toast";
 import "./globals.css";
+import { HOSTED } from "@/lib/hosting";
 
 
 export const metadata: Metadata = {
   title: { default: "Elevate", template: "%s · Elevate" },
-  description: "Evidence-based career preparation. Runs locally.",
+  description: HOSTED ? "Evidence-based career preparation." : "Evidence-based career preparation. Runs locally.",
   robots: { index: false, follow: false },
 };
 

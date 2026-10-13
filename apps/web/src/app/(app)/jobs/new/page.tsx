@@ -8,6 +8,7 @@ import type { CaptureOut } from "@/lib/types";
 import { useSession } from "@/components/shell/session";
 import { OperationStatus } from "@/components/operation-status";
 import { Button, Checkbox, ErrorState, Field, Input, Notice, PageHeader, Textarea } from "@/components/ui/primitives";
+import { MODEL } from "@/lib/hosting";
 
 export default function NewJobPage() {
   const router = useRouter();
@@ -65,7 +66,7 @@ export default function NewJobPage() {
       {captured?.operation_id ? (
         <div className="flex flex-col gap-4 max-w-2xl">
           <Notice tone="ok" title={captured.new_job ? "Job saved" : "Added a new snapshot to an existing job"}>
-            The text is stored. Analysis runs on the local model and can take a minute or more.
+            The text is stored. Analysis runs on {MODEL} and can take a minute or more.
           </Notice>
           <OperationStatus opId={captured.operation_id} label="Job analysis"
             onDone={(op) => {

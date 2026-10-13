@@ -11,6 +11,7 @@ import { ResumeVersionSelect, type VersionPick } from "@/components/resume-versi
 import { OperationStatus } from "@/components/operation-status";
 import { Badge, Button, Checkbox, EmptyState, ErrorState, LoadingBlock, Notice, SectionTitle, Textarea } from "@/components/ui/primitives";
 import { useToast } from "@/components/ui/toast";
+import { MODEL } from "@/lib/hosting";
 
 export function GuidanceTab({ jobId }: { jobId: string }) {
   const [pick, setPick] = useState<VersionPick>(null);
@@ -119,7 +120,7 @@ function Guidance({ jobId, pick }: { jobId: string; pick: NonNullable<VersionPic
 
       <section aria-labelledby="sugg-h">
         <SectionTitle id="sugg-h">Wording suggestions</SectionTitle>
-        <p className="text-[13px] text-muted mb-3">The local model rewrites selected lines using only facts already in that line. Suggestions that add numbers, tools or names are rejected automatically.</p>
+        <p className="text-[13px] text-muted mb-3">{MODEL === "the AI model" ? "The AI model" : "The local model"} rewrites selected lines using only facts already in that line. Suggestions that add numbers, tools or names are rejected automatically.</p>
         <Button variant="primary" loading={busy && !opId} disabled={Boolean(opId) && !result} onClick={suggest}>Suggest improvements</Button>
         {opId ? (
           <div className="mt-3">

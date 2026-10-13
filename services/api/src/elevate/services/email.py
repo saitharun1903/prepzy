@@ -1,9 +1,10 @@
 """Transactional email (verification, password reset).
 
 Backends: ``console`` (local profile: the message, including its link, is written to the API log —
-nothing is delivered, and the UI must not claim delivery) and ``smtp`` (any provider: Resend,
-Brevo, SES, Postmark ... via SMTP with STARTTLS). Sending is best-effort and never reveals to the
-caller whether an address exists.
+nothing is delivered, and the UI must not claim delivery), ``smtp`` (any provider via SMTP with
+STARTTLS) and ``brevo`` (Brevo's HTTPS API: for hosts that block outbound SMTP ports, such as
+Render's free instances). Sending is best-effort and never reveals to the caller whether an
+address exists.
 """
 
 from __future__ import annotations
@@ -12,6 +13,9 @@ import logging
 import smtplib
 import ssl
 from email.message import EmailMessage
+from email.utils import parseaddr
+
+import httpx
 
 from ..config import get_settings
 from ..logs import log
@@ -25,6 +29,8 @@ def _send(to: str, subject: str, text_body: str) -> bool:
         log(logger, logging.WARNING, "email (console backend; NOT delivered)", to_domain=to.split("@")[-1],
             subject=subject, preview=text_body)
         return False
+    if s.email_backend == "brevo":
+        return _send_brevo(to, subject, text_body)
     msg = EmailMessage()
     msg["From"], msg["To"], msg["Subject"] = s.email_from, to, subject
     msg.set_content(text_body)
@@ -40,6 +46,25 @@ def _send(to: str, subject: str, text_body: str) -> bool:
     except (smtplib.SMTPException, OSError):
         logger.exception("email send failed")
         return False
+
+
+def _send_brevo(to: str, subject: str, text_body: str) -> bool:
+    s = get_settings()
+    name, sender = parseaddr(s.email_from)
+    body = {"sender": {"name": name or "Elevate", "email": sender}, "to": [{"email": to}],
+            "subject": subject, "textContent": text_body}
+    try:
+        r = httpx.post("https://api.brevo.com/v3/smtp/email", json=body, timeout=15,
+                       headers={"api-key": s.brevo_api_key, "accept": "application/json"})
+    except httpx.HTTPError:
+        logger.exception("email send failed")
+        return False
+    if r.status_code >= 300:
+        # Brevo's error body names the problem (e.g. unverified sender); it never contains the key.
+        log(logger, logging.ERROR, "email rejected by Brevo", status=r.status_code, detail=r.text[:300])
+        return False
+    log(logger, logging.INFO, "email accepted by Brevo", subject=subject, to_domain=to.split("@")[-1])
+    return True
 
 
 def send_verification(to: str, token: str) -> bool:

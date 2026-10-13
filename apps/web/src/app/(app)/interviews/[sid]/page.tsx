@@ -12,6 +12,7 @@ import {
   Badge, Button, EmptyState, ErrorState, LoadingBlock, Notice, PageHeader, SectionTitle, Textarea, cx,
 } from "@/components/ui/primitives";
 import { useToast } from "@/components/ui/toast";
+import { MODEL } from "@/lib/hosting";
 
 const RATING = {
   met: { label: "Met", icon: CheckCircle2, tone: "text-ok" },
@@ -78,7 +79,7 @@ function EvaluationView({ ev }: { ev: Evaluation }) {
           </div>
         ))}
       </div>
-      <p className="text-[12px] text-muted">Feedback {ev.method === "rule" ? "from a rule (answer too short)" : `from the local model${ev.model ? ` (${ev.model})` : ""}`}. It is practice feedback, not a hiring judgement.</p>
+      <p className="text-[12px] text-muted">Feedback {ev.method === "rule" ? "from a rule (answer too short)" : `from ${MODEL}${ev.model ? ` (${ev.model})` : ""}`}. It is practice feedback, not a hiring judgement.</p>
     </div>
   );
 }
@@ -264,7 +265,7 @@ export default function InterviewSessionPage({ params }: { params: Promise<{ sid
       {d.status === "preparing" && !d.config.operation_id ? <Notice tone="info">Questions are being prepared.</Notice> : null}
       {d.status === "failed" ? (
         <div className="flex flex-col gap-3">
-          <Notice tone="danger" title="Question generation failed">The local model could not produce questions for this session.</Notice>
+          <Notice tone="danger" title="Question generation failed">{MODEL === "the AI model" ? "The AI model" : "The local model"} could not produce questions for this session.</Notice>
           {d.config.operation_id ? <OperationStatus opId={d.config.operation_id} label="Question generation" onDone={() => s.reload()} /> : null}
         </div>
       ) : null}

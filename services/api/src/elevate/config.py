@@ -80,7 +80,8 @@ class Settings(BaseSettings):
     lockout_minutes: int = Field(15, ge=1, le=1440)
 
     # ---- email (verification + password reset)
-    email_backend: Literal["console", "smtp"] = "console"
+    email_backend: Literal["console", "smtp", "brevo"] = "console"
+    brevo_api_key: str = ""
     email_from: str = "Elevate <no-reply@localhost>"
     smtp_host: str = ""
     smtp_port: int = 587
@@ -131,8 +132,9 @@ class Settings(BaseSettings):
             problems.append("ELEVATE_JWT_SECRET must be >= 32 random bytes (43+ chars urlsafe)")
         if len(self.data_key) != 44:
             problems.append("ELEVATE_DATA_KEY must be a Fernet key (python -c 'from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())')")
-        if self.email_backend != "smtp" or not self.smtp_host:
-            problems.append("Production requires ELEVATE_EMAIL_BACKEND=smtp with ELEVATE_SMTP_HOST (verification/reset emails)")
+        if not ((self.email_backend == "smtp" and self.smtp_host) or (self.email_backend == "brevo" and self.brevo_api_key)):
+            problems.append("Production requires ELEVATE_EMAIL_BACKEND=smtp with ELEVATE_SMTP_HOST, or brevo with "
+                            "ELEVATE_BREVO_API_KEY (verification/reset emails)")
         if self.storage_backend == "local":
             problems.append("Production requires ELEVATE_STORAGE_BACKEND=s3 or db (platform disks are ephemeral)")
         if self.storage_backend == "s3" and not (self.s3_bucket and self.s3_access_key_id and self.s3_secret_access_key):

@@ -14,9 +14,10 @@ import {
 import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import { SecuritySection } from "./security-section";
+import { HOSTED, AI_PROVIDER, AI_NOTICE } from "@/lib/hosting";
 
 const OPTIONAL_FEATURES: { key: keyof NonNullable<ReturnType<typeof useSession>["me"]>["capabilities"]; label: string }[] = [
-  { key: "ai_analysis", label: "Local AI analysis (Ollama model)" },
+  { key: "ai_analysis", label: HOSTED ? `AI analysis (${AI_PROVIDER})` : "Local AI analysis (Ollama model)" },
   { key: "semantic_search", label: "Semantic search in the knowledge library" },
   { key: "ocr", label: "OCR for scanned PDFs" },
   { key: "email_delivery", label: "Email delivery of reminders" },
@@ -222,14 +223,14 @@ export default function SettingsPage() {
                     {on ? <CheckCircle2 aria-hidden className="size-4 text-ok" /> : <CircleSlash aria-hidden className="size-4 text-muted" />}
                     <span className="flex-1">{f.label}</span>
                     <span className={on ? "text-ok" : "text-muted"}>
-                      {on ? "Available" : f.key === "ai_analysis" || f.key === "semantic_search" ? "Unavailable right now (local model not reachable or not installed)" : "Not available in this version"}
+                      {on ? "Available" : f.key === "ai_analysis" || f.key === "semantic_search" ? (HOSTED ? "Unavailable right now (AI service not reachable)" : "Unavailable right now (local model not reachable or not installed)") : "Not available in this version"}
                     </span>
                   </li>
                 );
               })}
             </ul>
           )}
-          <p className="mt-2 text-[13px] text-muted">Nothing is sent to external AI services. Supported language: English.</p>
+          <p className="mt-2 text-[13px] text-muted">{AI_NOTICE} Supported language: English.</p>
         </section>
 
         <SecuritySection />

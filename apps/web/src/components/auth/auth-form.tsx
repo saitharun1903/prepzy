@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiError, sessionPost } from "@/lib/api";
 import { Button, ErrorState, Field, Input, Notice } from "@/components/ui/primitives";
+import { DATA_PROMISE } from "@/lib/hosting";
 
 function safeNext(n: string | undefined): string {
   return n && n.startsWith("/") && !n.startsWith("//") && !n.startsWith("/\\") ? n : "/";
@@ -87,7 +88,7 @@ export function AuthForm({ mode, next }: { mode: "login" | "register"; next?: st
     <div className="mx-auto w-full max-w-sm">
       <h1 ref={headingRef} tabIndex={-1} className="serif text-4xl leading-tight focus:outline-none">{reg ? "Create your account" : "Sign in"}</h1>
       <p className="mt-2 text-ink-2 text-[15px]">
-        {reg ? "Your data stays on this machine. You can export or delete it at any time." : "Welcome back to Elevate."}
+        {reg ? DATA_PROMISE : "Welcome back to Elevate."}
       </p>
       <div aria-live="polite">
         {restartNote ? (

@@ -27,6 +27,11 @@ services:
         value: production
       - key: NEXT_TELEMETRY_DISABLED
         value: "1"
+      # Privacy wording for the hosted setup (data in Neon/Render, AI by Groq). Read at build time.
+      - key: NEXT_PUBLIC_ELEVATE_HOSTED
+        value: "1"
+      - key: NEXT_PUBLIC_ELEVATE_AI_PROVIDER
+        value: Groq
       # Free services cannot receive private-network traffic, so the web app calls the API's public URL.
       - key: ELEVATE_API_URL            # https://elevate-api.onrender.com (check the real URL after creation)
         sync: false
@@ -77,8 +82,9 @@ services:
         value: elevate
       - key: ELEVATE_REQUIRE_VERIFIED_EMAIL
         value: "true"
+      # Render free blocks outbound SMTP ports, so email goes through Brevo's HTTPS API.
       - key: ELEVATE_EMAIL_BACKEND
-        value: smtp
+        value: brevo
       - key: ELEVATE_LOG_LEVEL
         value: INFO
       - key: ELEVATE_OPENAI_API_KEY     # Groq API key (console.groq.com -> API Keys; free, no card)
@@ -91,11 +97,7 @@ services:
         sync: false
       - key: ELEVATE_DATA_KEY           # Fernet key (see docs/DEPLOYMENT.md); keep a copy
         sync: false
-      - key: ELEVATE_SMTP_HOST          # e.g. smtp-relay.brevo.com
-        sync: false
-      - key: ELEVATE_SMTP_USERNAME
-        sync: false
-      - key: ELEVATE_SMTP_PASSWORD
+      - key: ELEVATE_BREVO_API_KEY      # Brevo -> SMTP & API -> API keys (free)
         sync: false
       - key: ELEVATE_EMAIL_FROM         # e.g. Elevate <you@example.com> (a sender verified with your SMTP provider)
         sync: false

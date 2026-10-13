@@ -143,3 +143,26 @@ def test_production_guard_free_profile(monkeypatch):
     with pytest.raises(ValueError) as e:
         Settings()
     assert "OPENAI_API_KEY" in str(e.value) and "GROQ-KEY-CANARY" not in str(e.value)
+
+
+def test_brevo_email_backend(monkeypatch):
+    from elevate.config import get_settings
+    from elevate.services import email
+    sent: dict = {}
+
+    def fake_post(url, json, timeout, headers):  # noqa: A002 - mirrors httpx.post's signature
+        sent.update(url=url, body=json, key=headers["api-key"])
+        return httpx.Response(201, json={"messageId": "<x@brevo>"})
+
+    s = get_settings()
+    monkeypatch.setattr(s, "email_backend", "brevo")
+    monkeypatch.setattr(s, "brevo_api_key", "test-brevo-key")
+    monkeypatch.setattr(s, "email_from", "Elevate <sender@example.test>")
+    monkeypatch.setattr(email.httpx, "post", fake_post)
+    assert email.send_verification("person@example.test", "tok123") is True
+    assert sent["url"] == "https://api.brevo.com/v3/smtp/email" and sent["key"] == "test-brevo-key"
+    assert sent["body"]["sender"] == {"name": "Elevate", "email": "sender@example.test"}
+    assert sent["body"]["to"] == [{"email": "person@example.test"}] and "tok123" in sent["body"]["textContent"]
+    # A rejection (e.g. unverified sender) is reported, never raised into the sign-up request.
+    monkeypatch.setattr(email.httpx, "post", lambda *a, **k: httpx.Response(400, json={"message": "sender not valid"}))
+    assert email.send_verification("person@example.test", "tok123") is False

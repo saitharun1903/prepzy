@@ -50,7 +50,7 @@ Prices and limits were checked in October 2026; re-check them when you sign up.
 | Database | Neon Free (0.5 GB) | migrations run at API start (free services have no pre-deploy step) |
 | Resume files | Postgres table `stored_files` (`ELEVATE_STORAGE_BACKEND=db`, owner-scoped RLS) | no bucket needed; counts toward Neon's 0.5 GB |
 | AI | Groq free tier, `openai/gpt-oss-120b` (`ELEVATE_LLM_PROVIDER=openai`) | ~30 requests/min, ~1,000/day, 8K tokens/min; very long postings are rejected as too long |
-| Email | Brevo free SMTP (300/day) or similar | a verified sender address is enough without a domain |
+| Email | Brevo free, via its HTTPS API (`ELEVATE_EMAIL_BACKEND=brevo`, 300/day) | Render free blocks outbound SMTP ports (25/465/587), so SMTP cannot be used there; a verified sender address is enough |
 
 **Privacy change:** with Groq, job text, resumes and interview answers are sent to Groq for processing
 (Groq states API data is not used for training). Self-hosted Ollama keeps them on your own server: use
@@ -62,8 +62,8 @@ The Groq model's answer quality has not been evaluated yet (`ai/evaluation/run_e
    `postgresql+psycopg://`, is `ELEVATE_MIGRATION_DATABASE_URL`. Choose a strong `ELEVATE_DB_APP_PASSWORD`;
    `ELEVATE_DATABASE_URL` is the same string with user `elevate_app` and that password (keep `?sslmode=require`).
 2. **Groq:** console.groq.com, API Keys, create a key: `ELEVATE_OPENAI_API_KEY`.
-3. **Email:** Brevo (or similar) SMTP key and a verified sender: `ELEVATE_SMTP_HOST`, `ELEVATE_SMTP_USERNAME`,
-   `ELEVATE_SMTP_PASSWORD`, `ELEVATE_EMAIL_FROM`.
+3. **Email:** Brevo, SMTP & API, **API keys**: create a key for `ELEVATE_BREVO_API_KEY`; verify a sender for
+   `ELEVATE_EMAIL_FROM`. (SMTP does not work from Render free: outbound SMTP ports are blocked.)
 4. **Data key:** `cd services/api && uv run python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"`
    gives `ELEVATE_DATA_KEY`; keep a copy in a password manager.
 5. **Render:** sign up with GitHub, Blueprints, New Blueprint Instance, this repo (uses `render.yaml`).
