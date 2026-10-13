@@ -123,8 +123,12 @@ def create_app() -> FastAPI:
             with engine().connect() as c:
                 c.execute(text("select 1"))
             checks["database"] = "ok"
-        except OperationalError:
+        except OperationalError as e:
             checks["database"] = "unavailable"
+            # Server log only (never in the response): the driver's reason, e.g. "password authentication
+            # failed for user ...". libpq messages name host and user but never include the password.
+            reason = str(getattr(e, "orig", e)).strip().splitlines()
+            log(logger, logging.ERROR, "database check failed", reason=reason[0][:300] if reason else type(e).__name__)
         try:
             with system_session() as db:
                 row = db.execute(text("select count(*) filter (where state='queued'), "
