@@ -3,7 +3,7 @@
 
 import type { CaptureRecord } from "./state";
 import type { ExtractResult } from "./extract";
-import type { ApplicationView, JobView, LookupView } from "./jobview";
+import type { ApplicationView, JobView, LookupView, MatchView } from "./jobview";
 import { isUuid } from "./url";
 
 export const PROTOCOL = 1 as const;
@@ -32,6 +32,7 @@ export type UiRequest =
   | { v: 1; type: "capture.retry"; captureId: string }
   | { v: 1; type: "capture.dismiss"; captureId: string }
   | { v: 1; type: "job.get"; jobId: string }
+  | { v: 1; type: "job.match"; jobId: string }
   | { v: 1; type: "job.save"; jobId: string; saved: boolean }
   | { v: 1; type: "job.note"; jobId: string; body: string }
   | { v: 1; type: "job.reminder"; jobId: string; title: string; dueDate: string; remindTime: string }
@@ -69,6 +70,7 @@ export interface ReplyMap {
   "capture.retry": CaptureRecord;
   "capture.dismiss": { dismissed: true };
   "job.get": JobView;
+  "job.match": { match: MatchView | null };
   "job.save": { saved: boolean };
   "job.note": { created: true };
   "job.reminder": { note: string | null };
@@ -118,6 +120,7 @@ export function validateUiRequest(m: unknown): UiRequest | null {
     case "capture.dismiss":
       return k("captureId") && isUuid(m.captureId) ? (m as UiRequest) : null;
     case "job.get":
+    case "job.match":
     case "job.applications":
       return k("jobId") && isUuid(m.jobId) ? (m as UiRequest) : null;
     case "job.save":

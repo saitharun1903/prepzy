@@ -4,8 +4,27 @@
     {
       "name": "web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "start", "-w", "apps/web"],
+      "runtimeArgs": [
+        "run",
+        "start",
+        "-w",
+        "apps/web"
+      ],
       "port": 3000
+    },
+    {
+      "name": "ext-preview",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5179",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "apps/extension"
+      ],
+      "port": 5179
     }
   ]
 }

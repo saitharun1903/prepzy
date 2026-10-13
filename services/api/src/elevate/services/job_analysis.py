@@ -176,8 +176,8 @@ def deterministic_requirements(text: str) -> list[dict[str, Any]]:
         start = text.find(line, offset)
         offset = start + len(line)
         stripped = line.strip(" -•*\t")
-        if not stripped or len(stripped) > 400:
-            continue
+        if not stripped or len(stripped) > 250 or re.match(r"(?i)^(keywords?|tags)\s*:", stripped):
+            continue  # prose paragraphs and SEO keyword dumps are not requirements
         found = load_taxonomy().find_in_text(stripped)
         if not found:
             continue
@@ -215,7 +215,9 @@ def section_requirement_lines(text: str) -> list[tuple[str, tuple[int, int], str
             importance = None  # a different section starts
         elif importance and line:
             body = line.lstrip("-•*· \t")
-            if len(body) >= 3:
+            if re.match(r"(?i)^(keywords?|tags)\s*:", body):
+                importance = None  # an SEO keyword dump ends the requirement section
+            elif 3 <= len(body) <= 250:
                 start = text.find(body, pos)
                 out.append((body, (start, start + len(body)), importance))
         pos += len(raw)
@@ -244,8 +246,15 @@ def fill_section_gaps(text: str, requirements: list[dict[str, Any]]) -> int:
 
 
 def analyze(text: str, structured: dict[str, Any] | None, page_title: str | None,
-            cancel_check: Any = None) -> dict[str, Any]:
-    """Returns {status, result, issues, model, duration_ms}. Raises CapabilityUnavailable only via caller choice."""
+            cancel_check: Any = None, *, allow_partial: bool = True,
+            page_hints: dict[str, str | None] | None = None) -> dict[str, Any]:
+    """Returns {status, result, issues, model, duration_ms}.
+
+    allow_partial=False re-raises *retryable* model failures (e.g. Ollama restarting, HTTP 500,
+    timeout) so the durable operation retries with backoff instead of saving a degraded result;
+    the worker passes True only on the final attempt. page_hints (title/company read from the
+    page by the capture client) fill fields the model could not provide, labelled source "page".
+    """
     tax = load_taxonomy()
     issues: list[dict[str, Any]] = []
     base = scan(text, structured, page_title)
@@ -278,10 +287,12 @@ def analyze(text: str, structured: dict[str, Any] | None, page_title: str | None
                                                     cancel_check=cancel_check)
                 llm = LLMOutput.model_validate(comp.data)
         except (CapabilityUnavailable, ModelOutputInvalid, ValidationError) as e:
-            msg = e.message if isinstance(e, (CapabilityUnavailable, ModelOutputInvalid)) else "Model output invalid."
+            if not allow_partial and isinstance(e, (CapabilityUnavailable, ModelOutputInvalid)) and e.retryable:
+                raise
             code = e.code if isinstance(e, (CapabilityUnavailable, ModelOutputInvalid)) else "model_output_invalid"
             issues.append({"code": code, "section": "requirements",
-                           "message": f"{msg} Requirements below come from a keyword scan only; importance is unclear."})
+                           "message": "The AI model was unavailable, so requirements were read from the posting's sections "
+                                      "without AI; importance may be unclear. Use \"Analyze again\" once the model is running."})
             status = "partial"
 
     fields: dict[str, Any] = {}
@@ -295,9 +306,15 @@ def analyze(text: str, structured: dict[str, Any] | None, page_title: str | None
             q = Quoted()
         f = _field(q.value, q.quote, "job_text", text, issues, n)
         claim = claims.get(claim_map.get(n, ""))
+        hint = (page_hints or {}).get(n)
         if f["value"] is None and isinstance(claim, str):
             f = {"value": claim, "source": "structured_data", "evidence": None,
                  "note": "From the page's structured data (unverified claim)."}
+        elif f["value"] is None and isinstance(hint, str) and hint.strip():
+            span = jt.locate_quote(text, hint) if len(hint) >= 3 else None
+            f = {"value": hint.strip()[:300], "source": "page", "evidence": (
+                {"quote": text[span[0]:span[1]], "start": span[0], "end": span[1]} if span else None),
+                 "note": "Read from the page layout by the capture tool."}
         elif claim and isinstance(claim, str) and f["value"] and n in ("title", "company") and \
                 claim.lower() not in f["value"].lower() and f["value"].lower() not in claim.lower():
             f["conflict"] = {"structured_data": claim}
@@ -340,7 +357,10 @@ def analyze(text: str, structured: dict[str, Any] | None, page_title: str | None
             issues.append({"code": "multiple_jobs", "section": "all",
                            "message": "This text may contain more than one job. Select a single posting for accurate results."})
     else:
-        requirements = deterministic_requirements(text)
+        requirements = []
+        fill_section_gaps(text, requirements)  # requirement sections only (importance from headings)
+        if not requirements:
+            requirements = deterministic_requirements(text)
 
     responsibilities = []
     for resp in (llm.responsibilities if llm else [])[:15]:

@@ -28,8 +28,14 @@ def handle_job_analysis(ctx: OpContext) -> None:
         if snap is None:
             raise NotFound("Job snapshot no longer exists", retryable=False)
         text, structured, page_title = snap.text, snap.structured, snap.page_title
+        job_row = db.execute(select(Job).where(Job.id == job_id)).scalar_one_or_none()
+        hints = {"title": job_row.title, "company": job_row.company} if job_row else {}
     ctx.stage("analyzing")
-    out = job_analysis.analyze(text, structured, page_title, cancel_check=ctx.cancelled)
+    # Transient model failures are retried by the operation (backoff); only the final attempt
+    # may fall back to a rules-only partial analysis.
+    final_attempt = ctx.attempt >= ctx.op.max_attempts
+    out = job_analysis.analyze(text, structured, page_title, cancel_check=ctx.cancelled,
+                               allow_partial=final_attempt, page_hints=hints)
     ctx.stage("validating")
     if ctx.cancelled():
         raise Cancelled()

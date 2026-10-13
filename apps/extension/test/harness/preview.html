@@ -1,0 +1,75 @@
+<!doctype html>
+<!-- Dev-only visual preview of the popup result screen with stubbed chrome.* APIs.
+     Serve apps/extension over HTTP and open /test/harness/preview.html (after `npm run build`).
+     ?scheme=dark previews dark mode; ?resume=0 previews the "no resume" state. Not shipped in dist. -->
+<html lang="en" data-context="popup">
+<head>
+  <meta charset="utf-8" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Elevate popup preview</title>
+  <link rel="stylesheet" href="../../dist/ui.css" />
+  <style>
+    html.preview-frame { background: #888; }
+    html.preview-frame body { margin: 24px auto; box-shadow: 0 8px 30px rgba(0,0,0,.25); }
+  </style>
+</head>
+<body>
+  <div id="live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+  <div id="app" aria-busy="true"><p class="meta">Loading…</p></div>
+  <script>
+    const qp = new URLSearchParams(location.search);
+    const hasResume = qp.get("resume") !== "0";
+    const JOB = "11111111-1111-4111-8111-111111111111";
+    const URL_ = "https://www.linkedin.com/jobs/view/4475160467/";
+    const now = Date.now();
+    const req = (key, text, importance, concepts, group, years) => ({ key, text, importance, concepts, alternatives: group === "any" ? concepts : null, negated: false, notes: [], years });
+    const fields = { title: "Java Software Engineer", company: "Droisys", location: "India", work_mode: "remote", employment_type: "Full-time" };
+    const job = {
+      job: { id: JOB, title: "Java Software Engineer", company: "Droisys", sourceUrl: URL_, saved: false },
+      analysis: {
+        id: "an-1", status: "complete", model: "qwen2.5-coder:7b", promptVersion: "job-extract-4", schemaVersion: "job-analysis-1",
+        createdAt: null, isLatest: true, stale: false,
+        fields: Object.fromEntries(["title","company","location","work_mode","employment_type","seniority","experience","education","salary","deadline","posted"].map(k => [k, { value: fields[k] ?? null, source: "job_text", note: null, conflict: null }])),
+        requirements: [
+          req("r1", "Strong experience in Java, Spring ecosystem, Microservices, REST APIs, and cloud-based application development.", "required", ["Java", "Spring Boot", "Microservices"], "all", null),
+          req("r2", "Experience with Spring Boot, Spring MVC, Spring Security, and Hibernate/JPA.", "required", ["Spring Boot", "Hibernate / JPA"], "all", null),
+          req("r3", "Hands-on experience with Microservices Architecture.", "required", ["Microservices"], "single", null),
+          req("r4", "Experience with relational databases such as Oracle, MySQL, PostgreSQL, or SQL Server.", "required", ["PostgreSQL", "MySQL", "SQL"], "any", null),
+          req("r5", "Familiarity with Git, Maven, Gradle, and CI/CD pipelines.", "required", ["Git", "CI/CD"], "all", null),
+          req("r6", "Experience working in AWS, Azure, or Google Cloud environments.", "preferred", ["AWS", "Microsoft Azure", "Google Cloud"], "any", null),
+          req("r7", "Knowledge of Docker and Kubernetes.", "preferred", ["Docker", "Kubernetes"], "all", null),
+          req("r8", "Exposure to React, Angular, or other front-end technologies.", "preferred", ["React", "Angular"], "any", null),
+        ],
+        issues: [{ code: "rules_gap_fill", section: "requirements", message: "x" }],
+      },
+      historyCount: 1, activeOperations: 0,
+    };
+    const match = hasResume ? {
+      reportId: "rep-1", scoreStatus: "available", withheldReason: null,
+      required: { coverage: 70, total: 5, met: 3 }, preferred: { coverage: 33, total: 3, met: 1 },
+      status: { r1: "partial", r2: "supported", r3: "not_evidenced", r4: "supported", r5: "supported", r6: "not_evidenced", r7: "supported", r8: "not_evidenced" },
+      missing: ["Microservices", "AWS", "React"], hasResume: true, stale: false,
+    } : null;
+    const record = { captureId: "c1", operationId: "o1", jobId: JOB, analysisId: "an-1", tabId: 7, url: "https://www.linkedin.com/jobs/view/4475160467",
+      accountId: "u1", state: "completed", stage: "succeeded", attempt: 1, maxAttempts: 3, error: null, connection: "ok", title: "Java Software Engineer",
+      startedAt: now - 60000, updatedAt: now, appliedAt: now, seq: 3 };
+    const reply = (m) => {
+      switch (m.type) {
+        case "state.get": return { signedIn: true, email: "koppulasaitharunreddy7@gmail.com", record, recent: [], extraction: null, webBase: "http://localhost:3000" };
+        case "job.get": return job;
+        case "job.applications": return { current: null };
+        case "job.match": return { match };
+        default: return {};
+      }
+    };
+    const ev = { addListener() {} };
+    window.chrome = {
+      runtime: { sendMessage: async (m) => ({ ok: true, data: reply(m) }), id: "preview" },
+      tabs: { query: async () => [{ id: 7, windowId: 1, url: URL_, title: "Java Software Engineer | Droisys | LinkedIn" }], create: async () => ({}), onActivated: ev, onUpdated: ev },
+      storage: { session: { get: async () => ({}), set: async () => {}, remove: async () => {} }, onChanged: ev },
+      sidePanel: { open: async () => {} },
+    };
+  </script>
+  <script type="module" src="../../dist/ui.js"></script>
+</body>
+</html>

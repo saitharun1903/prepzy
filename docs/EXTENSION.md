@@ -14,4 +14,6 @@ The full guide lives next to the code: [apps/extension/README.md](../apps/extens
 | typecheck, 101 unit/flow tests (happy-dom, mocked `chrome.*`), build, manifest/bundle validation, release zip | **passed** (re-run independently) |
 | Load unpacked in Chrome 154 / Edge 155 on this machine | **not run**. Requires enabling Developer Mode in the browser; a manual step for the user |
 | Live connect handshake, executeScript on real pages, badges/alarms after SW restart | not run (depends on the above) |
-| LinkedIn / Indeed / Naukri / Greenhouse / Lever adapters on live pages | not verified; LinkedIn only on synthetic markup |
+| Load unpacked in Chrome + account connect | **done by the user** (2026-10-13): loaded, connected, popup works |
+| LinkedIn live job page (2026-10-13) | First attempt **failed** (35 chars). Causes: the description sits inside `display: contents` wrappers that `checkVisibility()` reports as invisible, and the page has no `<h1>`. Fixed: visibility now uses each element's own computed style; a description-heading strategy ("About the job") picks the section; LinkedIn title/company come from the tab title. Changed logic verified on the live page (3,384 chars, correct title/company); regression fixture `linkedin-2026-contents.html`. Full re-test through the popup pending reload. Note: LinkedIn renders the description lazily, so it must be visible on screen before capture |
+| Indeed / Naukri / Greenhouse / Lever on live pages | not verified |

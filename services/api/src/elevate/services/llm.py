@@ -60,15 +60,22 @@ class OllamaProvider:
         self.max_tokens = s.llm_max_output_tokens
 
     def _post(self, path: str, body: dict[str, Any], timeout: float) -> dict[str, Any]:
-        try:
-            with httpx.Client(timeout=httpx.Timeout(timeout, connect=5.0)) as c:
-                r = c.post(f"{self.base}{path}", json=body)
-        except httpx.ConnectError as e:
-            raise CapabilityUnavailable("The local AI model service is not running.", code="model_unavailable") from e
-        except httpx.TimeoutException as e:
-            raise CapabilityUnavailable("The local AI model did not respond in time.", code="model_timeout") from e
+        r = None
+        for attempt in range(2):  # one quick retry: Ollama returns 5xx while its runner (re)starts
+            try:
+                with httpx.Client(timeout=httpx.Timeout(timeout, connect=5.0)) as c:
+                    r = c.post(f"{self.base}{path}", json=body)
+            except httpx.ConnectError as e:
+                raise CapabilityUnavailable("The local AI model service is not running.", code="model_unavailable") from e
+            except httpx.TimeoutException as e:
+                raise CapabilityUnavailable("The local AI model did not respond in time.", code="model_timeout") from e
+            if r.status_code < 500 or attempt == 1:
+                break
+            time.sleep(5)
+        assert r is not None
         if r.status_code == 404:
-            raise CapabilityUnavailable(f"Model '{body.get('model')}' is not installed in Ollama.", code="model_missing")
+            raise CapabilityUnavailable(f"Model '{body.get('model')}' is not installed in Ollama.", code="model_missing",
+                                        retryable=False)
         if r.status_code >= 400:
             raise CapabilityUnavailable(f"Model service error ({r.status_code}).", code="model_error")
         return r.json()

@@ -85,13 +85,12 @@ export async function extractJobPage(opts: ExtractOptions): Promise<ExtractResul
     const idc = (el.id || "") + " " + (typeof el.className === "string" ? el.className : "");
     if (idc.length > 1 && BANNER.test(idc)) return true;
     if (layout) {
-      const anyEl = el as Element & { checkVisibility?: (o?: Record<string, boolean>) => boolean };
-      if (typeof anyEl.checkVisibility === "function") {
-        if (!anyEl.checkVisibility({ visibilityProperty: true, contentVisibilityAuto: false })) return true;
-      } else {
-        const cs = getComputedStyle(el);
-        if (cs.display === "none" || cs.visibility === "hidden") return true;
-      }
+      // Only the element's OWN computed style: the walker goes top-down, so hidden ancestors are
+      // already pruned. Element.checkVisibility() must not be used here: it reports
+      // `display: contents` wrappers (no box of their own, e.g. LinkedIn's job page) as invisible
+      // even though their children render normally.
+      const cs = getComputedStyle(el);
+      if (cs.display === "none" || cs.visibility === "hidden" || cs.visibility === "collapse") return true;
     }
     return false;
   };
@@ -329,6 +328,35 @@ export async function extractJobPage(opts: ExtractOptions): Promise<ExtractResul
     return null;
   };
 
+  // ---- description heading ("About the job", "Job description", ...) ----
+  // Many boards use generated class names, so a visible heading is a more stable anchor than CSS
+  // selectors. Climb from the heading until the container holds a real description, but stop
+  // before swallowing the whole page.
+  const HEADING_RE = /^(about the job|job description|job details|about the role|role description|description|the role|position summary|job summary)\s*:?$/i;
+  const headingSection = (): Element | null => {
+    const cands = Array.from(document.querySelectorAll("h1, h2, h3, h4, strong, span, p, div")).slice(0, 6000);
+    for (const h of cands) {
+      if (h.childElementCount > 2) continue;
+      const label = (h.textContent || "").replace(/\s+/g, " ").trim();
+      if (label.length > 40 || !HEADING_RE.test(label)) continue;
+      let hidden = false;
+      for (let a: Element | null = h; a; a = a.parentElement) {
+        if (SKIP.has(a.tagName.toUpperCase()) || isHidden(a)) {
+          hidden = true;
+          break;
+        }
+      }
+      if (hidden) continue;
+      let el: Element | null = h.parentElement;
+      for (let depth = 0; el && depth < 8; depth++, el = el.parentElement) {
+        if (el === document.body || el === document.documentElement) break;
+        const len = textOf(el).length;
+        if (len >= MIN) return len <= MAX ? el : null;
+      }
+    }
+    return null;
+  };
+
   // ---- generic readable-text fallback ----
   const genericRoot = (): Element | null => {
     for (const sel of ["main", "article", '[role="main"]']) {
@@ -405,6 +433,13 @@ export async function extractJobPage(opts: ExtractOptions): Promise<ExtractResul
       }
     }
     if (!text) {
+      const t = textOf(headingSection());
+      if (t.length >= MIN) {
+        text = t;
+        adapter = site ? `${site.id}-heading` : "heading";
+      }
+    }
+    if (!text) {
       const t = textOf(genericRoot());
       if (t.length >= MIN) {
         text = t;
@@ -417,11 +452,15 @@ export async function extractJobPage(opts: ExtractOptions): Promise<ExtractResul
     if (i < attempts - 1) await sleep(delayMs);
   }
 
-  title = (structured && one(structured.title, 300)) || (site && firstText(site.title, 300)) || firstText(["h1"], 300);
+  // LinkedIn's tab title is "<Job title> | <Company> | LinkedIn" (its job page has no <h1>).
+  const titleParts = String(document.title || "").replace(/^\(\d+\)\s*/, "").split(" | ").map((s) => s.trim());
+  const fromTabTitle = site && site.id === "linkedin" && titleParts.length >= 3 && titleParts[titleParts.length - 1] === "LinkedIn";
+  title = (structured && one(structured.title, 300)) || (site && firstText(site.title, 300))
+    || (fromTabTitle ? one(titleParts[0], 300) : null) || firstText(["h1"], 300);
   const org = structured && structured.hiringOrganization && typeof structured.hiringOrganization === "object"
     ? one((structured.hiringOrganization as Record<string, unknown>).name, 300)
     : null;
-  company = org || (site && firstText(site.company, 300)) || null;
+  company = org || (site && firstText(site.company, 300)) || (fromTabTitle ? one(titleParts[1], 300) : null) || null;
   loc = locationOf(structured) || (site && firstText(site.location, 200)) || null;
 
   // ---- user selection (lets the user pick one job on a listing page) ----
@@ -488,7 +527,7 @@ export function validateExtraction(x: unknown): ExtractResult | null {
   if (typeof r.pageTitle !== "string" || r.pageTitle.length > 500) return null;
   if (typeof r.readyState !== "string" || r.readyState.length > 20) return null;
   if (typeof r.capturedAt !== "string" || r.capturedAt.length > 40 || Number.isNaN(Date.parse(r.capturedAt))) return null;
-  if (typeof r.adapter !== "string" || !/^[a-z]{2,20}$/.test(r.adapter)) return null;
+  if (typeof r.adapter !== "string" || !/^[a-z][a-z-]{1,24}$/.test(r.adapter)) return null;
   const jl = r.jsonLd as Record<string, unknown> | null;
   if (!jl || typeof jl !== "object" || typeof jl.found !== "boolean" || typeof jl.count !== "number" || jl.count < 0 || jl.count > 1000) return null;
   if (r.structured !== null) {

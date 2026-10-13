@@ -39,6 +39,8 @@ export interface RequirementView {
   concepts: string[];
   negated: boolean;
   notes: string[];
+  /** "3+ yrs", "2–4 yrs" when the posting states an experience threshold */
+  years: string | null;
 }
 
 export interface IssueView {
@@ -101,8 +103,15 @@ export function requirementView(v: unknown): RequirementView | null {
     alternatives,
     concepts,
     negated: r.negated === true,
+    years: yearsText(r.years),
     notes: arr(r.notes, 5).map((n) => str(n, 300)).filter((x): x is string => x !== null),
   };
+}
+
+function yearsText(v: unknown): string | null {
+  const y = obj(v);
+  if (!y || typeof y.min !== "number") return null;
+  return typeof y.max === "number" && y.max > y.min ? `${y.min}–${y.max} yrs` : `${y.min}+ yrs`;
 }
 
 /** "A or B or C" for either/or requirement groups. */
@@ -191,4 +200,79 @@ export function toApplicationView(json: unknown): ApplicationView | null {
   const status = str(o?.status, 40);
   if (!o || !id || !status || typeof o.version !== "number") return null;
   return { id, status, version: o.version };
+}
+
+// ---------------------------------------------------------------- match report (fit summary)
+
+export type FitStatus = "supported" | "user_confirmed" | "partial" | "adjacent" | "not_evidenced" | "not_met_confirmed" | "unassessable";
+const FIT = new Set<FitStatus>(["supported", "user_confirmed", "partial", "adjacent", "not_evidenced", "not_met_confirmed", "unassessable"]);
+
+export interface FitGroup {
+  coverage: number | null;
+  total: number;
+  met: number;
+}
+
+export interface MatchView {
+  reportId: string;
+  scoreStatus: "available" | "withheld";
+  withheldReason: string | null;
+  required: FitGroup;
+  preferred: FitGroup;
+  /** requirement key -> fit status */
+  status: Record<string, FitStatus>;
+  /** concept labels the job asks for that your evidence does not show (required first) */
+  missing: string[];
+  hasResume: boolean;
+  stale: boolean;
+}
+
+function fitGroup(v: unknown): FitGroup {
+  const g = obj(v) ?? {};
+  const counts = obj(g.counts) ?? {};
+  const n = (k: string) => (typeof counts[k] === "number" ? (counts[k] as number) : 0);
+  return {
+    coverage: typeof g.coverage === "number" && isFinite(g.coverage) ? Math.max(0, Math.min(100, g.coverage)) : null,
+    total: typeof g.total === "number" ? g.total : 0,
+    met: n("supported") + n("user_confirmed"),
+  };
+}
+
+export function toMatchView(json: unknown): MatchView | null {
+  const root = obj(json);
+  const result = obj(root?.result);
+  const id = str(root?.id, 64);
+  if (!root || !result || !id) return null;
+  const summary = obj(result.summary) ?? {};
+  const status: Record<string, FitStatus> = {};
+  for (const u of arr(result.requirements, 120)) {
+    const o = obj(u);
+    const key = str(o?.key, 120);
+    const s = o?.status;
+    if (key && typeof s === "string" && FIT.has(s as FitStatus)) status[key] = s as FitStatus;
+  }
+  const missing = arr(result.priorities, 40)
+    .map((p) => str(obj(p)?.label, 80))
+    .filter((x): x is string => x !== null);
+  return {
+    reportId: id,
+    scoreStatus: summary.score_status === "available" ? "available" : "withheld",
+    withheldReason: str(summary.withheld_reason, 300),
+    required: fitGroup(summary.required),
+    preferred: fitGroup(summary.preferred),
+    status,
+    missing: Array.from(new Set(missing)).slice(0, 12),
+    hasResume: obj(result.resume) !== null,
+    stale: arr(root.stale_reasons, 10).length > 0,
+  };
+}
+
+/** Short, scannable label for a requirement: "Java or Kotlin · 3+ yrs", "Spring Boot + REST APIs". */
+export function shortLabel(r: RequirementView): string {
+  const years = r.years;
+  let base: string;
+  if (r.alternatives) base = r.alternatives.join(" or ");
+  else if (r.concepts.length) base = r.concepts.slice(0, 3).join(" + ") + (r.concepts.length > 3 ? " …" : "");
+  else base = r.text.length > 70 ? `${r.text.slice(0, 67).trimEnd()}…` : r.text;
+  return years ? `${base} · ${years}` : base;
 }

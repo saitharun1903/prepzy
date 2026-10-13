@@ -272,3 +272,25 @@ def test_section_gap_fill_adds_missed_preferred_items():
     assert by[("python", "r_lang")]["importance"] == "required" and by[("python", "r_lang")]["group"] == "any"
     assert ("java",) not in by  # "About us" section is not a requirement section
     assert added == 2
+
+
+def test_transient_model_failure_raises_unless_final_attempt(monkeypatch):
+    from elevate.errors import CapabilityUnavailable
+    from elevate.services import job_analysis as ja
+
+    class Down:
+        def generate_json(self, *a, **k):
+            raise CapabilityUnavailable("Model service error (500).", code="model_error")
+    monkeypatch.setattr(ja, "get_provider", lambda: Down())
+    text = ("Backend Engineer at Example Co. We are hiring and you will work with the team.\n\nAbout us\n"
+            "We build great Java and Python products for our customers.\n\nRequirements\n- Strong SQL skills.\n"
+            "- Experience with Python or R.\n\nKeywords: Java, Python, SQL, Docker\n")
+    with pytest.raises(CapabilityUnavailable):
+        ja.analyze(text, None, None, allow_partial=False)
+    out = ja.analyze(text, None, None, allow_partial=True, page_hints={"title": "Backend Engineer", "company": "Example Co"})
+    assert out["status"] == "partial"
+    texts = [r["text"] for r in out["result"]["requirements"]]
+    assert texts == ["Strong SQL skills.", "Experience with Python or R."]  # no "About us" prose, no keyword dump
+    assert all(r["importance"] == "required" for r in out["result"]["requirements"])
+    assert out["result"]["fields"]["title"]["value"] == "Backend Engineer"
+    assert out["result"]["fields"]["title"]["source"] == "page"

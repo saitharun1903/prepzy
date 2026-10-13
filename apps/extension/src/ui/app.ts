@@ -4,14 +4,14 @@
 import { CONNECT_PAGE, WEB_BASE } from "../config";
 import { MIN_TEXT, verdictFor, type ExtractResult } from "../shared/extract";
 import {
-  FIELD_LABEL,
-  FIELD_ORDER,
-  alternativesText,
+  shortLabel,
   splitRequirements,
   type ApplicationView,
-  type FieldName,
+  type FitGroup,
+  type FitStatus,
   type JobView,
   type LookupView,
+  type MatchView,
   type RequirementView,
 } from "../shared/jobview";
 import type { ErrorInfo, Reply, ReplyMap, StateData, TextSource, UiRequest } from "../shared/messages";
@@ -74,6 +74,7 @@ interface View {
   record: CaptureRecord | null;
   resultJobId: string | null;
   job: JobView | null;
+  match: MatchView | null | undefined;
   application: ApplicationView | null | undefined;
   busy: string | null;
   error: ErrorInfo | null;
@@ -97,6 +98,7 @@ const v: View = {
   record: null,
   resultJobId: null,
   job: null,
+  match: undefined,
   application: undefined,
   busy: null,
   error: null,
@@ -149,6 +151,7 @@ async function load(): Promise<void> {
   v.draft = null;
   v.record = null;
   v.job = null;
+  v.match = undefined;
   v.application = undefined;
   v.resultJobId = null;
   v.connectionLost = false;
@@ -279,6 +282,18 @@ async function loadJob(jobId: string, seq: number): Promise<void> {
     v.error = asError(e);
   }
   render();
+  if (v.job?.analysis) {
+    // Fit summary: compare with the default resume (separate request so the analysis shows first).
+    try {
+      const m = await send({ v: 1, type: "job.match", jobId });
+      if (seq !== v.seq || v.resultJobId !== jobId) return;
+      v.match = m.match;
+    } catch (e) {
+      if (seq !== v.seq || handleAuthError(e)) return;
+      v.match = null;
+    }
+    render();
+  }
 }
 
 // ------------------------------------------------------------------ actions
@@ -805,6 +820,7 @@ function adapterLabel(a: string): string {
     generic: "General page text",
     none: "Nothing usable found",
   };
+  if (a.endsWith("heading")) return "Job description section";
   return map[a] ?? a;
 }
 
@@ -857,99 +873,242 @@ function renderProgress(): HTMLElement[] {
   return out;
 }
 
-function fieldRow(name: FieldName, job: JobView): HTMLElement[] {
-  const f = job.analysis?.fields[name];
-  const value = f?.value ?? null;
-  const notes: string[] = [];
-  if (f?.source === "structured_data") notes.push("From page metadata (unverified)");
-  if (f?.conflict) notes.push(`Page metadata says: ${f.conflict}`);
-  return [
-    h("dt", { text: FIELD_LABEL[name] }),
-    h("dd", { class: value ? "" : "unknown" }, value ?? "Not stated", notes.length ? h("span", { class: "note", text: ` — ${notes.join("; ")}` }) : null),
-  ];
-}
-
-function reqList(title: string, id: string, reqs: RequirementView[]): HTMLElement | null {
-  if (!reqs.length) return null;
-  return h(
-    "section",
-    { class: "reqs", attrs: { "aria-labelledby": id } },
-    h("h2", { class: "section-h", id, text: `${title} (${reqs.length})` }),
-    h(
-      "ul",
-      { class: "req-list" },
-      reqs.map((r) => {
-        const alt = alternativesText(r.alternatives);
-        return h(
-          "li",
-          null,
-          h("span", { class: "req-text", text: r.text }),
-          alt ? h("span", { class: "req-alt", text: `Any of: ${alt}` }) : null,
-          r.negated ? h("span", { class: "req-note", text: "Stated as not required" }) : null,
-          r.notes.map((n) => h("span", { class: "req-note", text: n })),
-        );
-      }),
-    ),
-  );
-}
-
 function todayIso(): string {
   const d = new Date();
   const p = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-function renderActions(job: JobView): HTMLElement {
-  const jobId = job.job.id;
+// ------------------------------------------------------------------ result screen (fit summary)
+
+const FIT_ICON: Record<FitStatus, { glyph: string; label: string; cls: string }> = {
+  supported: { glyph: "✓", label: "On your resume", cls: "ok" },
+  user_confirmed: { glyph: "✓", label: "Confirmed by you", cls: "ok" },
+  partial: { glyph: "◐", label: "Partly shown", cls: "part" },
+  adjacent: { glyph: "◐", label: "Related skill only", cls: "part" },
+  not_evidenced: { glyph: "✕", label: "Not on your resume", cls: "gap" },
+  not_met_confirmed: { glyph: "✕", label: "You said not met", cls: "gap" },
+  unassessable: { glyph: "?", label: "Check yourself", cls: "unknown" },
+};
+
+function chip(text: string, cls = ""): HTMLElement {
+  return h("span", { class: `chip ${cls}`.trim(), text });
+}
+
+function jobHero(job: JobView): HTMLElement {
+  const f = job.analysis?.fields;
+  const title = f?.title.value ?? job.job.title ?? "Untitled job";
+  const company = f?.company.value ?? job.job.company;
+  const location = f?.location.value;
+  const chips: HTMLElement[] = [];
+  const add = (val: string | null | undefined, cls = "") => {
+    if (val) chips.push(chip(val.length > 40 ? `${val.slice(0, 38)}…` : val, cls));
+  };
+  const mode = f?.work_mode.value;
+  add(mode ? mode.charAt(0).toUpperCase() + mode.slice(1) : null);
+  add(f?.employment_type.value);
+  add(f?.experience.value);
+  add(f?.salary.value, "chip-money");
+  if (f?.deadline.value) add(`Apply by ${f.deadline.value}`);
+  const initial = (company || title).trim().charAt(0).toUpperCase() || "J";
+  return h(
+    "section",
+    { class: "hero", attrs: { "aria-label": "Job" } },
+    h(
+      "div",
+      { class: "hero-row" },
+      h("span", { class: "avatar", attrs: { "aria-hidden": "true" }, text: initial }),
+      h(
+        "div",
+        { class: "hero-text" },
+        h("h1", { class: "hero-title", id: "screen-title", text: title, attrs: { tabindex: "-1" } }),
+        h("p", { class: "hero-sub", text: [company, location].filter(Boolean).join(" · ") || "Company not stated" }),
+      ),
+    ),
+    chips.length ? h("div", { class: "chips" }, chips) : null,
+  );
+}
+
+function meter(label: string, g: FitGroup): HTMLElement {
+  const pct = g.coverage ?? 0;
+  return h(
+    "div",
+    { class: "meter" },
+    h("div", { class: "meter-top" }, h("span", { text: label }), h("span", { class: "meter-val", text: g.total ? `${g.met} of ${g.total} shown` : "—" })),
+    h(
+      "div",
+      { class: "bar", attrs: { role: "img", "aria-label": `${label}: ${g.met} of ${g.total} shown on your resume` } },
+      h("span", { class: "bar-fill", attrs: { style: `width:${Math.round(pct)}%` } }),
+    ),
+  );
+}
+
+function fitCard(job: JobView): HTMLElement {
+  const m = v.match;
+  if (m === undefined) {
+    return h("section", { class: "fit card" }, h("p", { class: "eyebrow", text: "How you fit" }), h("p", { class: "meta", text: "Comparing with your resume…" }));
+  }
+  if (m === null || !m.hasResume) {
+    return h(
+      "section",
+      { class: "fit card fit-empty" },
+      h("p", { class: "eyebrow", text: "How you fit" }),
+      h("p", { class: "fit-headline", text: "Add your resume to see how you fit" }),
+      h("p", { class: "meta", text: "Elevate checks each requirement against the evidence in your resume. Nothing is guessed." }),
+      button("Add a resume", () => openTab(`${v.state?.webBase ?? WEB_BASE}/resumes`), { kind: "primary", disabled: false }),
+    );
+  }
+  const req = m.required;
+  let headline: string;
+  let tone: string;
+  if (m.scoreStatus === "withheld" || req.coverage === null) {
+    headline = "Not enough information to estimate yet";
+    tone = "neutral";
+  } else if (req.coverage >= 75) {
+    headline = "Strong match on the must-haves";
+    tone = "good";
+  } else if (req.coverage >= 45) {
+    headline = "Partial match: a few gaps to close";
+    tone = "mid";
+  } else {
+    headline = "Several must-haves aren't on your resume yet";
+    tone = "low";
+  }
+  const showScore = req.coverage !== null && m.scoreStatus === "available";
+  return h(
+    "section",
+    { class: `fit card fit-${tone}`, attrs: { "aria-labelledby": "fit-h" } },
+    h(
+      "div",
+      { class: "fit-top" },
+      h("div", null, h("p", { class: "eyebrow", id: "fit-h", text: "How you fit" }), h("p", { class: "fit-headline", text: headline })),
+      showScore
+        ? h(
+            "div",
+            { class: "score", attrs: { "aria-label": `${Math.round(req.coverage!)} percent of must-haves covered` } },
+            h("span", { class: "score-num", text: String(Math.round(req.coverage!)) }),
+            h("span", { class: "score-pct", text: "%" }),
+          )
+        : null,
+    ),
+    meter("Must-haves", req),
+    m.preferred.total ? meter("Nice-to-haves", m.preferred) : null,
+    m.scoreStatus === "withheld" && m.withheldReason ? h("p", { class: "meta", text: m.withheldReason }) : null,
+    m.missing.length
+      ? h("div", { class: "gaps" }, h("p", { class: "gaps-h", text: "To work on" }), h("div", { class: "chips" }, m.missing.slice(0, 6).map((x) => chip(x, "chip-gap"))))
+      : null,
+    h("p", { class: "fine", text: m.stale ? "Your resume or this job changed since this comparison. Open the full report to refresh it." : "Elevate evidence estimate. Not a hiring prediction." }),
+    m.stale ? button("Open full report", () => openTab(`${dashboardUrl(job.job.id)}?tab=match`), { kind: "quiet", disabled: false }) : null,
+  );
+}
+
+function reqRow(r: RequirementView): HTMLElement {
+  const st = v.match?.hasResume ? v.match.status[r.key] : undefined;
+  const icon = st ? FIT_ICON[st] : null;
+  return h(
+    "li",
+    { class: `req${icon ? ` req-${icon.cls}` : ""}` },
+    h("span", { class: "req-icon", attrs: { "aria-hidden": "true" }, text: icon?.glyph ?? "•" }),
+    h(
+      "div",
+      { class: "req-body" },
+      h("span", { class: "req-label", text: shortLabel(r) }),
+      icon ? h("span", { class: "sr-only", text: ` (${icon.label})` }) : null,
+      shortLabel(r) !== r.text ? h("span", { class: "req-src", text: r.text }) : null,
+    ),
+    icon ? h("span", { class: `req-tag tag-${icon.cls}`, attrs: { "aria-hidden": "true" }, text: icon.label }) : null,
+  );
+}
+
+function reqSection(title: string, id: string, reqs: RequirementView[], open = true): HTMLElement | null {
+  if (!reqs.length) return null;
+  const list = h("ul", { class: "reqs-list" }, reqs.map(reqRow));
+  if (open) {
+    return h("section", { class: "reqs", attrs: { "aria-labelledby": id } }, h("h2", { class: "section-h", id, text: `${title} · ${reqs.length}` }), list);
+  }
+  return h("details", { class: "reqs disclosure plain-d" }, h("summary", { text: `${title} · ${reqs.length}` }), list);
+}
+
+function nextSteps(job: JobView): HTMLElement {
+  const base = dashboardUrl(job.job.id) ?? "";
+  const web = v.state?.webBase ?? WEB_BASE;
   const status = v.application?.status ?? null;
-  const noteArea = h("textarea", { id: "note-body", attrs: { rows: 3, maxlength: 20000 } });
+  return h(
+    "section",
+    { class: "next", attrs: { "aria-labelledby": "next-h" } },
+    h("h2", { class: "section-h", id: "next-h", text: "Next steps" }),
+    button("Open full report", () => openTab(base), { kind: "primary", id: "btn-dashboard", disabled: false }),
+    h(
+      "div",
+      { class: "grid2" },
+      button("Practice interview", () => openTab(`${web}/interviews/new?job_id=${job.job.id}`), { id: "btn-practice", disabled: false }),
+      button("Build a prep plan", () => openTab(`${web}/preparation?job_id=${job.job.id}`), { id: "btn-plan", disabled: false }),
+    ),
+    h(
+      "div",
+      { class: "track" },
+      button(job.job.saved ? "★ Saved" : "☆ Save job", () => void toggleSave(), { pressed: job.job.saved, id: "btn-save" }),
+      h(
+        "div",
+        { class: "seg", attrs: { role: "group", "aria-label": "Application status" } },
+        button("Planning", () => void setStatus("planned"), { pressed: status === "planned", id: "btn-planned" }),
+        button("Applied", () => void setStatus("applied"), { pressed: status === "applied", id: "btn-applied" }),
+      ),
+    ),
+    status && status !== "planned" && status !== "applied" ? h("p", { class: "meta", text: `Application status: ${status}` }) : null,
+  );
+}
+
+function trackDetails(job: JobView): HTMLElement {
+  const noteArea = h("textarea", { id: "note-body", attrs: { rows: 3, maxlength: 20000, placeholder: "Anything to remember about this job" } });
   const remTitle = h("input", { id: "rem-title", type: "text", value: `Follow up: ${job.job.title ?? "job"}`.slice(0, 300), attrs: { maxlength: 300 } });
   const remDate = h("input", { id: "rem-date", type: "date", value: todayIso(), attrs: { min: todayIso(), required: true } });
   const remTime = h("input", { id: "rem-time", type: "time", value: "09:00", attrs: { required: true } });
   return h(
-    "section",
-    { class: "job-actions", attrs: { "aria-labelledby": "actions-h" } },
-    h("h2", { class: "section-h", id: "actions-h", text: "Actions" }),
-    h(
-      "div",
-      { class: "row wrap" },
-      button(job.job.saved ? "Saved — remove" : "Save to my jobs", () => void toggleSave(), { pressed: job.job.saved, id: "btn-save" }),
-      button("Open in dashboard", () => openTab(dashboardUrl(jobId)), { kind: "quiet", id: "btn-dashboard" }),
-    ),
-    h(
-      "div",
-      { class: "status-group", attrs: { role: "group", "aria-labelledby": "status-l" } },
-      h("span", { id: "status-l", class: "meta", text: status && status !== "planned" && status !== "applied" ? `Application: ${status}` : "Application" }),
-      button("Planned", () => void setStatus("planned"), { pressed: status === "planned", id: "btn-planned" }),
-      button("Applied", () => void setStatus("applied"), { pressed: status === "applied", id: "btn-applied" }),
-    ),
-    h(
-      "details",
-      { class: "disclosure" },
-      h("summary", { text: "Add a note" }),
-      h("label", { for: "note-body", class: "sr-only", text: "Note" }),
-      noteArea,
-      button("Add note", () => {
-        const body = noteArea.value.trim();
-        if (!body) return;
-        void addNote(body, () => (noteArea.value = ""));
-      }),
-    ),
-    h(
-      "details",
-      { class: "disclosure" },
-      h("summary", { text: "Add a reminder" }),
-      h("div", { class: "field" }, h("label", { for: "rem-title", text: "Reminder" }), remTitle),
-      h("div", { class: "row" }, h("div", { class: "field" }, h("label", { for: "rem-date", text: "Date" }), remDate), h("div", { class: "field" }, h("label", { for: "rem-time", text: "Time" }), remTime)),
-      button("Add reminder", () => {
-        if (!remTitle.value.trim() || !remDate.value || !remTime.value) {
-          v.error = { code: "invalid", message: "Enter a reminder title, date and time.", requestId: null, retryable: false };
-          render();
-          return;
-        }
-        void addReminder(remTitle.value.trim(), remDate.value, remTime.value.slice(0, 5));
-      }),
-    ),
+    "details",
+    { class: "disclosure" },
+    h("summary", { text: "Add a note or reminder" }),
+    h("div", { class: "field" }, h("label", { for: "note-body", text: "Note" }), noteArea),
+    button("Save note", () => {
+      const body = noteArea.value.trim();
+      if (!body) return;
+      void addNote(body, () => (noteArea.value = ""));
+    }),
+    h("div", { class: "field" }, h("label", { for: "rem-title", text: "Reminder" }), remTitle),
+    h("div", { class: "row" }, h("div", { class: "field" }, h("label", { for: "rem-date", text: "Date" }), remDate), h("div", { class: "field" }, h("label", { for: "rem-time", text: "Time" }), remTime)),
+    button("Set reminder", () => {
+      if (!remTitle.value.trim() || !remDate.value || !remTime.value) {
+        v.error = { code: "invalid", message: "Enter a reminder title, date and time.", requestId: null, retryable: false };
+        render();
+        return;
+      }
+      void addReminder(remTitle.value.trim(), remDate.value, remTime.value.slice(0, 5));
+    }),
+  );
+}
+
+function plainIssue(i: { code: string; message: string }): string {
+  const map: Record<string, string> = {
+    rules_gap_fill: "Some requirements were picked up from the posting's sections because the AI skipped them.",
+    unsupported_field: "A detail the AI suggested wasn't in the posting, so it was left out.",
+    unsupported_requirement: "Some AI-suggested requirements weren't in the posting and were removed.",
+    truncated: "The posting was very long, so only the first part was analysed.",
+    multiple_jobs: "This text may contain more than one job.",
+    conflict: "The page's metadata and visible text disagree on a detail.",
+  };
+  return map[i.code] ?? i.message;
+}
+
+function aboutDetails(job: JobView): HTMLElement {
+  const a = job.analysis!;
+  const bits = [a.model && a.model !== "none" ? `Model ${a.model}` : "No AI model used", a.promptVersion, a.schemaVersion].filter(Boolean).join(" · ");
+  return h(
+    "details",
+    { class: "disclosure plain-d" },
+    h("summary", { text: "About this analysis" }),
+    a.issues.length ? h("ul", { class: "plain notes" }, a.issues.map((i) => h("li", { text: plainIssue(i) }))) : h("p", { class: "meta", text: "No issues were found while analysing." }),
+    h("p", { class: "fine", text: `Every requirement above is quoted from the posting. ${bits}. ${job.historyCount} ${job.historyCount === 1 ? "analysis" : "analyses"} of this job.` }),
+    button("Analyze this page again", () => void startOver(), { kind: "quiet" }),
   );
 }
 
@@ -957,14 +1116,14 @@ function renderResult(): HTMLElement[] {
   const r = v.record;
   const out: HTMLElement[] = [];
   if (r && (r.state === "failed" || r.state === "timed-out")) {
-    out.push(heading(stateLabel(r.state)));
+    out.push(heading(r.state === "timed-out" ? "The analysis took too long" : "The analysis didn't finish"));
     out.push(
       h(
         "div",
         { class: "banner banner-error", attrs: { role: "alert" } },
         h("p", { text: r.error?.message ?? "The analysis did not finish." }),
+        r.error?.code?.startsWith("model") ? h("p", { text: "Make sure Ollama is running, then retry. Your job text is already saved." }) : null,
         r.error?.requestId ? h("p", { class: "meta" }, "Request ID: ", h("code", { text: r.error.requestId })) : null,
-        r.error?.code ? h("p", { class: "meta", text: `Code: ${r.error.code}` }) : null,
       ),
     );
     out.push(
@@ -973,7 +1132,6 @@ function renderResult(): HTMLElement[] {
         { class: "actions" },
         isRetryable(r.state) ? button("Retry", () => void retryCapture(), { kind: "primary", id: "btn-retry" }) : null,
         button("Start over", () => void startOver(), { kind: "quiet" }),
-        button("Open in dashboard", () => openTab(dashboardUrl(r.jobId)), { kind: "quiet" }),
       ),
     );
     return out;
@@ -981,62 +1139,48 @@ function renderResult(): HTMLElement[] {
   if (r && r.state === "cancelled") {
     out.push(heading("Cancelled"));
     out.push(h("p", { class: "prose", text: "The analysis was cancelled. The captured text is kept in your jobs." }));
-    out.push(h("div", { class: "actions" }, button("Analyze again", () => void startOver(), { kind: "primary" }), button("Open in dashboard", () => openTab(dashboardUrl(r.jobId)), { kind: "quiet" })));
+    out.push(h("div", { class: "actions" }, button("Analyze again", () => void startOver(), { kind: "primary" })));
     return out;
   }
 
   const job = v.job;
-  out.push(heading(r?.state === "partial-result" ? "Partial result" : "Analysis"));
   if (!job) {
+    out.push(heading("Analysis"));
     out.push(h("p", { class: "meta", text: v.error ? "The analysis could not be loaded." : "Loading the analysis…" }));
     if (v.error && v.resultJobId) out.push(button("Try again", () => void loadJob(v.resultJobId!, v.seq)));
     return out;
   }
   const a = job.analysis;
-  if (r?.state === "partial-result" || a?.status === "partial") {
-    out.push(h("div", { class: "banner banner-warn", attrs: { role: "status" } }, h("p", { text: "Only part of the analysis could be completed. Check the issues below and verify against the posting." })));
+  out.push(jobHero(job));
+  if (!a) {
+    out.push(h("p", { class: "meta", text: "This job has no analysis yet." }));
+    out.push(nextSteps(job));
+    return out;
   }
-  if (a?.stale) out.push(h("div", { class: "banner banner-note" }, h("p", { text: "A newer capture of this job exists; this analysis was made from an earlier version." })));
-
-  out.push(h("dl", { class: "facts summary" }, ...fieldRow("title", job), ...fieldRow("company", job), ...fieldRow("location", job)));
-  if (a) {
-    const extra = FIELD_ORDER.filter((n) => !["title", "company", "location"].includes(n) && a.fields[n].value);
-    if (extra.length) out.push(h("dl", { class: "facts" }, ...extra.flatMap((n) => fieldRow(n, job))));
-    const groups = splitRequirements(a.requirements);
-    const lists = [reqList("Required", "req-required", groups.required), reqList("Preferred", "req-preferred", groups.preferred), reqList("Importance not stated", "req-unclear", groups.unclear)].filter(
-      (x): x is HTMLElement => x !== null,
-    );
-    if (lists.length) out.push(...lists);
-    else out.push(h("p", { class: "meta", text: "No requirements were identified." }));
-    if (a.issues.length) {
-      out.push(
-        h(
-          "section",
-          { class: "issues", attrs: { "aria-labelledby": "issues-h" } },
-          h("h2", { class: "section-h", id: "issues-h", text: "Warnings" }),
-          h(
-            "ul",
-            { class: "plain" },
-            a.issues.map((i) => h("li", { text: i.message })),
-          ),
-        ),
-      );
-    }
-    const modelBits = [a.model ? `Model ${a.model}` : null, a.promptVersion ? `prompt ${a.promptVersion}` : null, a.schemaVersion ? `schema ${a.schemaVersion}` : null].filter(Boolean);
-    out.push(h("p", { class: "fine", text: modelBits.length ? modelBits.join(" · ") : "Model information unavailable" }));
+  if (a.status === "partial") {
     out.push(
       h(
-        "p",
-        { class: "fine" },
-        `${job.historyCount} ${job.historyCount === 1 ? "analysis" : "analyses"} of this job. `,
-        h("button", { type: "button", class: "link", text: "View history in the dashboard", on: { click: () => openTab(dashboardUrl(job.job.id)) } }),
+        "div",
+        { class: "banner banner-warn", attrs: { role: "status" } },
+        h("p", { text: "The AI model wasn't available, so this is a basic reading of the posting." }),
+        button("Analyze again", () => void startOver(), { disabled: false }),
       ),
     );
-  } else {
-    out.push(h("p", { class: "meta", text: "This job has no analysis yet." }));
   }
-  out.push(renderActions(job));
-  out.push(h("div", { class: "actions" }, button("Analyze this page again", () => void startOver(), { kind: "quiet" })));
+  if (a.stale) out.push(h("div", { class: "banner banner-note" }, h("p", { text: "This page has changed since this analysis." })));
+  out.push(fitCard(job));
+  const groups = splitRequirements(a.requirements.filter((x) => !x.negated));
+  const ranked = groups.required.length || groups.preferred.length;
+  const sections = [
+    reqSection("Must-haves", "req-required", groups.required),
+    reqSection("Nice-to-haves", "req-preferred", groups.preferred),
+    reqSection(ranked ? "Other requirements" : "Requirements", "req-unclear", groups.unclear, !ranked),
+  ].filter((x): x is HTMLElement => x !== null);
+  if (sections.length) out.push(...sections);
+  else out.push(h("p", { class: "meta", text: "No requirements were found in this posting." }));
+  out.push(nextSteps(job));
+  out.push(trackDetails(job));
+  out.push(aboutDetails(job));
   return out;
 }
 

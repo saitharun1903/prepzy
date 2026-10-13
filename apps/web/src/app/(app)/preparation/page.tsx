@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
 import { useApi } from "@/lib/hooks";
 import { formatDate, humanize, jobTitle, todayISO } from "@/lib/format";
@@ -22,6 +22,12 @@ export default function PreparationPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
   const [created, setCreated] = useState<Roadmap | null>(null);
+
+  // Deep link from the extension: /preparation?job_id=<id> preselects that job.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("job_id");
+    if (q && /^[0-9a-f-]{36}$/i.test(q)) setJobId(q);
+  }, []);
 
   const create = async (e: FormEvent) => {
     e.preventDefault();

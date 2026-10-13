@@ -96,6 +96,18 @@ function reply(m: { type: string; [k: string]: unknown }): unknown {
       };
     case "job.applications":
       return { ok: true, data: { current: null } };
+    case "job.match":
+      return {
+        ok: true,
+        data: {
+          match: {
+            reportId: "rep-1", scoreStatus: "available", withheldReason: null,
+            required: { coverage: 50, total: 2, met: 1 }, preferred: { coverage: 0, total: 1, met: 0 },
+            status: { r1: "unassessable", r2: "supported", r3: "not_evidenced" },
+            missing: ["Kafka"], hasResume: true, stale: false,
+          },
+        },
+      };
     default:
       return { ok: false, error: { code: "unexpected", message: m.type, requestId: null, retryable: false } };
   }
@@ -174,11 +186,20 @@ describe("popup UI flow", () => {
     vi.useRealTimers();
     await flush(5);
     const text = app().textContent ?? "";
-    expect(text).toContain("Analysis");
-    expect(text).toContain("Required (2)");
-    expect(text).toContain("Any of: Java or Kotlin");
-    expect(text).toContain("Preferred (1)");
-    expect(text).toContain("Model test-model");
+    await flush();
+    const fit = app().textContent ?? "";
+    expect(fit).toContain("Backend Engineer");
+    expect(fit).toContain("How you fit");
+    expect(fit).toContain("Partial match");
+    expect(fit).toContain("1 of 2 shown");
+    expect(fit).toContain("Must-haves · 2");
+    expect(fit).toContain("Java or Kotlin");
+    expect(fit).toContain("On your resume");
+    expect(fit).toContain("Nice-to-haves · 1");
+    expect(fit).toContain("Not on your resume");
+    expect(fit).toContain("To work on");
+    expect(fit).toContain("Model test-model");
+    expect(fit).not.toContain("Not a hiring prediction.Not"); // sanity: rendered once
     expect(document.getElementById("btn-applied")?.getAttribute("aria-pressed")).toBe("false");
     // no HTML from data is ever interpreted
     expect(app().querySelectorAll("script").length).toBe(0);

@@ -28,6 +28,21 @@ beforeEach(() => {
 });
 
 describe("extractJobPage", () => {
+  it("LinkedIn 2026 layout: keeps display:contents wrappers, finds the description section, title from tab", async () => {
+    load("linkedin-2026-contents.html");
+    const r = await serialised()({ attempts: 1, delayMs: 0, layout: true, host: "www.linkedin.com" });
+    expect(validateExtraction(r)).not.toBeNull();
+    expect(r.adapter).toBe("linkedin-heading");
+    expect(r.text).toContain("3+ years of experience with Go or Python.");
+    expect(r.text).toContain("Prometheus and Grafana");
+    expect(r.text).not.toContain("HIDDEN-MARKER");      // display:none is still excluded
+    expect(r.text).not.toContain("Try Premium");        // unrelated widgets outside the section
+    expect(r.text).not.toContain("Set alert for similar jobs");
+    expect(r.title).toBe("Fixture Platform Engineer");
+    expect(r.company).toBe("Example Fixture Co");
+    expect(verdictFor(r).kind).not.toBe("insufficient");
+  });
+
   it("is self-contained (works when rebuilt from its source text)", async () => {
     load("article-posting.html");
     const r = await serialised()(OPTS);

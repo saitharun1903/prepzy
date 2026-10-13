@@ -170,7 +170,7 @@ def finish(db: Session, op: Operation, worker_id: str, attempt: int, state: str,
 
 
 def retry_later(db: Session, op: Operation, worker_id: str, attempt: int, error: dict[str, Any]) -> bool:
-    delay = min(300, 10 * (2 ** (attempt - 1)))
+    delay = min(120, 15 * (2 ** (attempt - 1)))  # 15 s, 30 s, ... (model restarts take ~10-30 s)
     n = db.execute(update(Operation).where(_fence(op.id, worker_id, attempt)).values(
         state="queued", stage="retry_scheduled", error=error, lease_owner=None, lease_expires_at=None,
         run_after=func.now() + timedelta(seconds=delay))).rowcount

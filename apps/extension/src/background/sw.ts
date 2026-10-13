@@ -4,7 +4,7 @@
 import type { components } from "@elevate/api-client";
 import { CONNECT_ORIGINS, WEB_BASE } from "../config";
 import { extractJobPage, validateExtraction, verdictFor, MIN_TEXT, type ExtractResult } from "../shared/extract";
-import { toApplicationView, toJobView, toLookupView, type ApplicationView, type LookupView } from "../shared/jobview";
+import { toApplicationView, toJobView, toLookupView, toMatchView, type ApplicationView, type LookupView } from "../shared/jobview";
 import {
   isAllowedConnectSender,
   isTrustedUiSender,
@@ -168,6 +168,17 @@ async function handle(req: UiRequest): Promise<ReplyMap[keyof ReplyMap]> {
         body: { title: req.title.trim(), job_id: req.jobId, due_date: req.dueDate, remind_time: req.remindTime } satisfies components["schemas"]["ReminderIn"],
       });
       return { note: typeof data?.note === "string" ? data.note.slice(0, 300) : null };
+    }
+    case "job.match": {
+      // Deterministic server-side comparison with the default resume; identical inputs reuse the
+      // existing report, so calling this on every result view is cheap.
+      try {
+        const { data } = await api("POST", `/api/v1/jobs/${req.jobId}/match`, { body: {} });
+        return { match: toMatchView(data) };
+      } catch (e) {
+        if (e instanceof AppError && (e.code === "no_analysis" || e.code === "not_parsed")) return { match: null };
+        throw e;
+      }
     }
     case "job.applications":
       return { current: await currentApplication(req.jobId) };
