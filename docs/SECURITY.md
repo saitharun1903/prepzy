@@ -25,9 +25,21 @@
 | Secret leakage | `.env` gitignored, generated per machine, never printed; logs redact token/text/body keys | `scripts/init_env.py` |
 | Admin escalation | admin only via server `ELEVATE_ADMIN_EMAILS`; not user-editable | non-admin 403 test |
 
+## Account security (added for production)
+| Control | Implementation | Evidence |
+|---|---|---|
+| Email verification | single-use, hashed, 48 h tokens; AI features gated when `ELEVATE_REQUIRE_VERIFIED_EMAIL=true` | `test_email_verification_single_use`, `test_verified_email_gate_for_ai` |
+| Password reset by email | single-use 30 min tokens; identical response for unknown emails; a reset revokes every session | `test_password_reset_no_enumeration_and_revokes_sessions` |
+| Lockout | 5 failures lock for 15 min (configurable); unknown emails are counted identically (no enumeration) | `test_lockout_after_repeated_failures` |
+| Two-step verification | TOTP (pyotp, +/-1 step, replay-protected); secrets encrypted at rest (Fernet); 10 single-use hashed recovery codes; separate short-lived MFA token audience | `test_totp_two_step_login_replay_and_recovery` |
+| Rate limiting | PostgreSQL fixed windows shared by all instances: per IP on auth, per account on login/MFA/reset, per user on all API calls | integration tests |
+| Config safety | production guard refuses unsafe settings; config values are never echoed in errors | `test_production_guard_refuses_unsafe_config`, CI image check |
+| Transport | HSTS in production; database `sslmode=require`; Ollama reachable only on the private network | blueprint + guard |
+| Files | private S3 bucket, server-side authorization, generated names, no public URLs | `test_storage_rejects_path_tricks` |
+| Container | non-root user (uid 10001), slim base, no dev dependencies, secrets only via environment | image smoke test |
+
 ## Known limitations / release risks (must be resolved before a public beta)
-* **First-party auth** is adequate for the local single-machine profile but has no email verification, MFA, or self-service recovery (operator CLI only). Replace with a maintained OIDC provider (authorization code + PKCE) before public release.
-* Rate limiter is **in-process** (single API instance only).
+* **First-party auth** now has email verification, reset by email, lockout and optional TOTP two-step, built only from maintained libraries. It has no social login or passkeys and has not had an external security review.
 * Extension refresh token in `chrome.storage.local` is readable by any code running in the extension's trusted contexts; it is not a vault.
 * HS256 shared secret: rotate by changing `ELEVATE_JWT_SECRET` (logs everyone out).
 * No malware scanning of uploads; files are never executed or served inline.

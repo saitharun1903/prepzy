@@ -17,7 +17,13 @@ ROOT = Path(__file__).resolve().parents[3]
 
 
 def _env(key: str) -> str | None:
-    for line in (ROOT / ".env").read_text(encoding="utf-8").splitlines():
+    """Process environment first (CI), then the repo's .env (local)."""
+    if os.environ.get(key):
+        return os.environ[key]
+    env = ROOT / ".env"
+    if not env.exists():
+        return None
+    for line in env.read_text(encoding="utf-8").splitlines():
         if line.startswith(key + "="):
             return line.split("=", 1)[1]
     return None
@@ -40,6 +46,8 @@ os.environ.update({
     "ELEVATE_AUTH_RATE_PER_MINUTE": "1000",
     "ELEVATE_WORKER_LEASE_SECONDS": "15",
     "ELEVATE_ADMIN_EMAILS": "admin@example.test",
+    "ELEVATE_DATA_KEY": __import__("cryptography.fernet", fromlist=["Fernet"]).Fernet.generate_key().decode(),
+    "ELEVATE_METRICS_TOKEN": "test-metrics-token-0123456789abcdef",
 })
 
 

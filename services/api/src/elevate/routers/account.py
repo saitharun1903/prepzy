@@ -40,7 +40,6 @@ from ..models import (
     User,
 )
 from ..security import verify_password
-from ..services.resumes import user_dir
 
 router = APIRouter(prefix="/api/v1/account", tags=["account"])
 
@@ -115,7 +114,7 @@ def delete_account(body: DeleteIn, ctx: Authed) -> None:
                                        "cancellation_requested"))).values(cancel_requested=True, state="cancelled",
                                                                           finished_at=now))
     subject = hashlib.sha256(str(u.id).encode()).hexdigest()
-    path = str(user_dir(u.id))
+    path = f"owner:{u.id}"  # cleanup target for the worker (files in local or S3 storage)
     db.commit()
     # 2) delete rows (FK cascades) + durable file-cleanup job, in system context (user row is going away)
     db.info["system"] = True

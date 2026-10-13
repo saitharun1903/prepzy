@@ -61,7 +61,46 @@ class User(Base):
     token_version: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     created_at: Mapped[datetime] = created()
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    failed_logins: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # TOTP secret encrypted with ELEVATE_DATA_KEY (Fernet); never stored in plaintext.
+    totp_secret_enc: Mapped[str | None] = mapped_column(Text)
+    totp_enabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    totp_last_step: Mapped[int | None] = mapped_column(BigInteger)
     __table_args__ = (Index("uq_users_email_lower", func.lower(email), unique=True),)
+
+
+class AuthToken(Base):
+    """Single-use, expiring tokens for email verification and password reset (stored hashed)."""
+
+    __tablename__ = "auth_tokens"
+    id: Mapped[uuid.UUID] = pk()
+    user_id: Mapped[uuid.UUID] = owner_fk()
+    kind: Mapped[str] = mapped_column(String(24))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = created()
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (CheckConstraint("kind in ('verify_email','reset_password')", name="ck_auth_token_kind"),)
+
+
+class MfaRecoveryCode(Base):
+    __tablename__ = "mfa_recovery_codes"
+    id: Mapped[uuid.UUID] = pk()
+    user_id: Mapped[uuid.UUID] = owner_fk()
+    code_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = created()
+
+
+class RateLimitBucket(Base):
+    """Fixed-window counters shared by every API instance (replaces the in-process limiter)."""
+
+    __tablename__ = "rate_limit_buckets"
+    key: Mapped[str] = mapped_column(String(200), primary_key=True)
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), primary_key=True)
+    count: Mapped[int] = mapped_column(Integer, server_default=text("0"))
 
 
 class RefreshToken(Base):

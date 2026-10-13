@@ -5,7 +5,7 @@
 |---|---|---|---|---|
 | `local` | single developer machine (verified) | Docker `browserelevate-db` :5433 loopback, DB `elevate` | `./data` | local Ollama |
 | `test` | automated tests | DB `elevate_test` (dropped/recreated per run) | temp dir | fake provider at the interface boundary (integration tests) |
-| `production` | **not deployed; not approved** | managed PG + pgvector | private object storage | an inference host with capacity |
+| `production` | Render + Neon + S3-compatible storage (prepared, **not deployed**) | Neon Postgres + pgvector, TLS | S3 bucket (e.g. Cloudflare R2) | private Ollama service (CPU) |
 
 ## Local runbook (Windows, verified)
 ```bash
@@ -36,5 +36,51 @@ Rollback: application versions can be rolled back while the schema is unchanged;
 ## Resource notes (measured, this machine)
 i5-12500H, 16 GB RAM, RTX 3050 4 GB. `qwen2.5-coder:7b` does not fit in 4 GB VRAM and partially runs on CPU: job analysis took ~88 s warm in the smoke test (see AI_EVALUATION.md for the distribution). Concurrency is 1 by design (`ELEVATE_LLM_CONCURRENCY`). Disk: C: had ~32 GB free at setup; images ≈ 0.64 GB (pgvector), models 4.7 GB + 0.27 GB.
 
-## Public beta prerequisites (not met)
-A laptop model is not a public service. A beta needs: TLS-terminated hosting for web+API, managed PostgreSQL with pgvector and backups, private object storage, an inference host sized for concurrent users (or an explicitly disclosed external provider), a maintained OIDC auth provider, a distributed rate limiter, monitoring/alerting with an owner, reviewed privacy/permission disclosures, and extension-store listing review. Do not expose ports 5433/11434 or use tunnels as a substitute. No hosting has been provisioned or priced; free-tier claims would need current terms verified at decision time.
+## Production deployment (Render + Neon + S3): prepared, not yet deployed
+
+Everything below is in the repo; nothing has been provisioned. Prices were checked in October 2026 from
+[Render pricing](https://render.com/pricing.md) and [Neon pricing](https://neon.com/pricing); re-check them when you sign up.
+
+| Component | Where | Plan (blueprint default) | Approx. cost |
+|---|---|---|---|
+| `elevate-web` (Next.js) | Render web service | `0.5c-512mb` | ~$7/mo |
+| `elevate-api` (FastAPI, Docker) | Render web service, public HTTPS | `0.5c-512mb` | ~$7/mo |
+| `elevate-worker` | Render background worker | `0.5c-512mb` | ~$7/mo |
+| `elevate-ollama` | Render **private** service + 10 GB disk | `2c-4g` (qwen2.5:3b) | ~$85/mo + disk; `1c-2g` with qwen2.5:1.5b ~$25/mo |
+| Postgres + pgvector | Neon | Free (0.5 GB, 100 CU-h) to start | $0, then paid as you grow |
+| Resume files | Cloudflare R2 or any S3 | free tier to start | ~$0 |
+| Email (verification, reset) | any SMTP provider (Resend, Brevo, SES...) | free tier to start | ~$0 |
+
+Inference runs on CPU: expect ~30 s to 2 min per analysis with qwen2.5:3b. **The production model has not been evaluated yet.**
+Run `ai/evaluation/run_eval.py` against it (set `ELEVATE_LLM_MODEL`) before launch and record the result in AI_EVALUATION.md.
+
+### One-time setup (you)
+1. **Neon:** create a project in a region near Render's (e.g. Singapore). Copy the owner connection string into `ELEVATE_MIGRATION_DATABASE_URL` (`postgresql+psycopg://...?sslmode=require`). Choose a strong password for the runtime role as `ELEVATE_DB_APP_PASSWORD`, and set `ELEVATE_DATABASE_URL=postgresql+psycopg://elevate_app:<that password>@<neon host>/<db>?sslmode=require`. `db_bootstrap.py` creates the role and the `vector` extension.
+2. **Storage:** create a private bucket (R2: no public access) and an access key limited to that bucket, for `ELEVATE_S3_*`.
+3. **Email:** create an SMTP credential with a verified sender domain, for `ELEVATE_SMTP_*` and `ELEVATE_EMAIL_FROM`.
+4. **Data key:** `python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())"` gives `ELEVATE_DATA_KEY`. Use the same value on API and worker and keep a copy in a password manager: losing it disables existing two-step enrolments.
+5. **Render:** Dashboard, Blueprints, New Blueprint Instance, choose this repository, enter the prompted values. The blueprint generates `ELEVATE_JWT_SECRET` and `ELEVATE_METRICS_TOKEN`.
+6. Set `ELEVATE_WEB_URL` / `ELEVATE_ALLOWED_ORIGINS` (API) and `ELEVATE_APP_ORIGINS` (web) to the web service's https URL (or your domain later).
+
+### Release
+* `autoDeploy` is off: deploy from Render once CI (`.github/workflows/ci.yml`) is green on `main`.
+* The API's `preDeployCommand` runs `scripts/db_bootstrap.py`: idempotent role creation plus `alembic upgrade head`. Migrations are additive so far (0001 baseline, 0002 auth hardening); a failed migration stops the release before traffic moves.
+* The API refuses to start in production with unsafe settings (http origins, localhost, missing SMTP/S3/metrics token/data key, non-TLS database) and never echoes config values into logs.
+* Ollama pulls its models into the persistent disk on first start (several minutes). Until then `/health/ready` reports `ai.reachable=false` and AI requests are retried.
+
+### Operate
+* Health: `GET /health/live` (liveness), `GET /health/ready` (database, queue, worker heartbeat, AI, storage).
+* Metrics: `GET /metrics` with `Authorization: Bearer $ELEVATE_METRICS_TOKEN` (Prometheus text; counts only). Suggested alerts: `elevate_queue_oldest_seconds > 900`, `elevate_operations_failed_last_hour > 10`, `elevate_worker_last_heartbeat_seconds > 600` while work is queued, `elevate_reminders_overdue > 0`.
+* Logs: Render log stream (JSON with request/operation ids; no bodies or tokens).
+* Account recovery: users reset passwords by email; operators can still run `python -m elevate.cli reset-password <email>` in a Render shell.
+* Backups: Neon point-in-time restore (window depends on plan; Free is 6 h) plus a scheduled `pg_dump`; enable bucket versioning on R2/S3. After any restore, re-apply `deletion_jobs` created after the backup point.
+* Rollback: redeploy the previous image in Render. Schema changes are additive; a destructive migration needs a forward fix or a data restore.
+
+### Browser extension for production
+`ELEVATE_EXT_API_URL=https://<api host> ELEVATE_EXT_WEB_URL=https://<web host> npm run build:release -w apps/extension && npm run package -w apps/extension`
+produces `apps/extension/release/elevate-extension-<version>.zip` for the Chrome Web Store (and Edge Add-ons). After the store assigns the extension id, set `ELEVATE_EXTENSION_IDS` (API) and `NEXT_PUBLIC_ELEVATE_EXTENSION_ID` (web, then rebuild). Store submission needs your developer account and a privacy-policy URL (the dashboard's `/privacy`).
+
+### Still your decision / not done
+* No domain yet: Render's `*.onrender.com` URLs work; a custom domain needs DNS changes by you.
+* The production model's quality is unmeasured (see above). More than a handful of concurrent analyses needs a bigger inference plan or a GPU host.
+* No monitoring service is wired; `/metrics` is ready for one (e.g. Grafana Cloud's free tier).

@@ -74,6 +74,31 @@ def decode_access_token(token: str) -> AccessClaims:
         raise Unauthorized("Invalid credentials", code="invalid_token") from e
 
 
+MFA_TOKEN_SECONDS = 300
+
+
+def issue_mfa_token(user: User, client: str) -> tuple[str, int]:
+    """Short-lived proof that the password step passed; only accepted by /auth/login/mfa
+    (distinct audience, so it can never be used as an access token)."""
+    s = get_settings()
+    now = datetime.now(UTC)
+    token = jwt.encode({"sub": str(user.id), "iss": s.jwt_issuer, "aud": f"{s.jwt_audience}:mfa", "iat": now,
+                        "exp": now + timedelta(seconds=MFA_TOKEN_SECONDS), "cl": client, "tv": user.token_version},
+                       s.jwt_secret, algorithm="HS256")
+    return token, MFA_TOKEN_SECONDS
+
+
+def decode_mfa_token(token: str) -> tuple[uuid.UUID, str]:
+    s = get_settings()
+    try:
+        data = jwt.decode(token, s.jwt_secret, algorithms=["HS256"], audience=f"{s.jwt_audience}:mfa", issuer=s.jwt_issuer,
+                          options={"require": ["exp", "sub", "aud"]})
+        client = str(data.get("cl", "web"))
+        return uuid.UUID(data["sub"]), client if client in ("web", "extension") else "web"
+    except (jwt.InvalidTokenError, ValueError, KeyError) as e:
+        raise Unauthorized("Sign-in expired. Start again.", code="mfa_expired") from e
+
+
 def issue_refresh_token(db: Session, user_id: uuid.UUID, client: str, family_id: uuid.UUID | None = None) -> str:
     raw = secrets.token_urlsafe(32)
     db.add(RefreshToken(user_id=user_id, family_id=family_id or uuid.uuid4(), token_hash=_sha(raw), client=client,

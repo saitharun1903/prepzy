@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -18,6 +18,7 @@ class Settings(BaseSettings):
         env_file=(REPO_ROOT / ".env",),
         env_file_encoding="utf-8",
         extra="ignore",
+        hide_input_in_errors=True,  # never echo secrets from env/.env into startup errors or logs
     )
 
     env: Literal["local", "test", "production"] = "local"
@@ -66,12 +67,75 @@ class Settings(BaseSettings):
     max_queued_operations_per_user: int = Field(10, ge=1, le=1000)
 
     auth_rate_per_minute: int = Field(10, ge=1, le=1000)
+    api_rate_per_minute: int = Field(240, ge=10, le=100000)
     log_level: str = "INFO"
+
+    # ---- account security
+    data_key: str = Field(default="", description="Fernet key encrypting TOTP secrets")
+    require_verified_email: bool = False
+    lockout_threshold: int = Field(5, ge=3, le=20)
+    lockout_minutes: int = Field(15, ge=1, le=1440)
+
+    # ---- email (verification + password reset)
+    email_backend: Literal["console", "smtp"] = "console"
+    email_from: str = "Elevate <no-reply@localhost>"
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_starttls: bool = True
+
+    # ---- private file storage
+    storage_backend: Literal["local", "s3"] = "local"
+    s3_endpoint_url: str = ""
+    s3_bucket: str = ""
+    s3_region: str = "auto"
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+
+    # ---- operations
+    metrics_token: str = ""
+
+    @field_validator("ollama_url")
+    @classmethod
+    def _ollama_scheme(cls, v: str) -> str:
+        """Platforms inject private addresses as "host:port"; inference stays on the private network."""
+        v = v.strip().rstrip("/")
+        return v if "://" in v else f"http://{v}"
 
     @field_validator("data_dir")
     @classmethod
     def _resolve_data_dir(cls, v: Path) -> Path:
         return v if v.is_absolute() else (REPO_ROOT / v).resolve()
+
+    @model_validator(mode="after")
+    def _production_guard(self) -> Settings:
+        """Refuse to start in production with development defaults or unsafe settings."""
+        if self.env != "production":
+            return self
+        problems: list[str] = []
+        if not self.web_url.startswith("https://"):
+            problems.append("ELEVATE_WEB_URL must be https")
+        for o in self.allowed_origins.split(","):
+            if o.strip() and not o.strip().startswith("https://"):
+                problems.append(f"ELEVATE_ALLOWED_ORIGINS contains a non-https origin: {o.strip()}")
+        if "localhost" in self.allowed_origins or "127.0.0.1" in self.allowed_origins:
+            problems.append("ELEVATE_ALLOWED_ORIGINS must not contain localhost")
+        if len(self.jwt_secret) < 43:
+            problems.append("ELEVATE_JWT_SECRET must be >= 32 random bytes (43+ chars urlsafe)")
+        if len(self.data_key) != 44:
+            problems.append("ELEVATE_DATA_KEY must be a Fernet key (python -c 'from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())')")
+        if self.email_backend != "smtp" or not self.smtp_host:
+            problems.append("Production requires ELEVATE_EMAIL_BACKEND=smtp with ELEVATE_SMTP_HOST (verification/reset emails)")
+        if self.storage_backend != "s3" or not (self.s3_bucket and self.s3_access_key_id and self.s3_secret_access_key):
+            problems.append("Production requires ELEVATE_STORAGE_BACKEND=s3 with bucket and credentials (platform disks are ephemeral)")
+        if "sslmode=" not in self.database_url and "127.0.0.1" not in self.database_url:
+            problems.append("ELEVATE_DATABASE_URL must set sslmode=require for a remote database")
+        if not self.metrics_token or len(self.metrics_token) < 24:
+            problems.append("ELEVATE_METRICS_TOKEN must be set (>= 24 chars)")
+        if problems:
+            raise ValueError("Unsafe production configuration:\n- " + "\n- ".join(problems))
+        return self
 
     @property
     def cors_origins(self) -> list[str]:

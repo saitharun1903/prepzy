@@ -263,17 +263,21 @@ def effective_skills(extracted: dict[str, Any] | None, reviewed: dict[str, Any] 
 
 
 def store_file(owner_id: uuid.UUID, data: bytes) -> tuple[str, str]:
+    """Save to private storage (local disk or S3, per configuration). Returns (name, sha256)."""
+    from .storage import get_storage
     name = f"{uuid.uuid4().hex}.bin"
-    d = user_dir(owner_id) / "resumes"
-    d.mkdir(parents=True, exist_ok=True)
-    (d / name).write_bytes(data)
+    get_storage().put(owner_id, name, data)
     return name, hashlib.sha256(data).hexdigest()
 
 
-def file_path(owner_id: uuid.UUID, storage_name: str) -> Path:
-    if not re.fullmatch(r"[0-9a-f]{32}\.bin", storage_name):
-        raise ValidationFailed("Invalid storage reference")
-    return user_dir(owner_id) / "resumes" / storage_name
+def read_file(owner_id: uuid.UUID, storage_name: str) -> bytes:
+    from .storage import get_storage
+    return get_storage().get(owner_id, storage_name)
+
+
+def delete_file(owner_id: uuid.UUID, storage_name: str) -> None:
+    from .storage import get_storage
+    get_storage().delete(owner_id, storage_name)
 
 
 # ------------------------------------------------------------------ ATS-related guidance

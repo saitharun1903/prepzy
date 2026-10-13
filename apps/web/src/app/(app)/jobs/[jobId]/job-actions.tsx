@@ -15,6 +15,7 @@ export function JobActions({ detail, onChanged }: { detail: JobDetail; onChanged
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteError, setDeleteError] = useState<ApiError | null>(null);
+  const [unverified, setUnverified] = useState<ApiError | null>(null);
   const job = detail.job;
   const analysing = detail.active_operations.length > 0;
 
@@ -26,7 +27,8 @@ export function JobActions({ detail, onChanged }: { detail: JobDetail; onChanged
       onChanged();
     } catch (e) {
       const err = e as ApiError;
-      notify("error", err.message, err.requestId ? `Request ID ${err.requestId}` : undefined);
+      if (err?.code === "email_unverified") setUnverified(err);
+      else notify("error", err.message, err.requestId ? `Request ID ${err.requestId}` : undefined);
     } finally {
       setBusy(null);
     }
@@ -47,6 +49,11 @@ export function JobActions({ detail, onChanged }: { detail: JobDetail; onChanged
       <Button size="sm" variant="ghost" onClick={() => { setDeleteError(null); setConfirmDelete(true); }}>
         <Trash2 aria-hidden className="size-4" />Delete
       </Button>
+
+      <Dialog open={Boolean(unverified)} onClose={() => setUnverified(null)} title="Confirm your email first"
+        footer={<Button onClick={() => setUnverified(null)}>Close</Button>}>
+        <ErrorState error={unverified} />
+      </Dialog>
 
       <Dialog open={confirmDelete} onClose={() => setConfirmDelete(false)} title="Delete this job permanently?"
         description="This cannot be undone."

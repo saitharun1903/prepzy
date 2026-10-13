@@ -57,16 +57,27 @@ def process_deletion_jobs() -> None:
                           .limit(10)).scalars().all()
         root = get_settings().data_dir.resolve()
         for j in jobs:
-            p = Path(j.storage_path).resolve()
             j.attempts += 1
-            if root not in p.parents:
-                j.status = "failed"
-                continue
             try:
-                if p.exists():
-                    shutil.rmtree(p)
+                if j.storage_path.startswith("owner:"):
+                    # Current format: remove every stored object of that owner (local disk or S3).
+                    import uuid as _uuid
+
+                    from .storage import get_storage
+                    owner = _uuid.UUID(j.storage_path.split(":", 1)[1])
+                    get_storage().delete_owner(owner)
+                    (get_settings().data_dir / "users" / str(owner)).exists() and shutil.rmtree(
+                        get_settings().data_dir / "users" / str(owner), ignore_errors=True)
+                else:  # legacy rows: an absolute local directory under the data dir
+                    p = Path(j.storage_path).resolve()
+                    if root not in p.parents:
+                        j.status = "failed"
+                        continue
+                    if p.exists():
+                        shutil.rmtree(p)
                 j.status, j.finished_at = "done", datetime.now(UTC)
-            except OSError:
+            except Exception:  # noqa: BLE001 - storage outage: retry on the next tick, give up after 5
+                logger.warning("deletion job failed; will retry", exc_info=True)
                 if j.attempts >= 5:
                     j.status = "failed"
         db.commit()
@@ -88,7 +99,16 @@ def cleanup_exports() -> None:
                 f.unlink(missing_ok=True)
 
 
+def prune_security_tables() -> None:
+    """Drop expired rate-limit windows and used/expired auth tokens (bounded table growth)."""
+    with system_session() as db:
+        db.execute(text("delete from rate_limit_buckets where window_start < now() - interval '2 days'"))
+        db.execute(text("delete from auth_tokens where expires_at < now() - interval '7 days'"))
+        db.commit()
+
+
 def tick() -> None:
     process_due_reminders()
     process_deletion_jobs()
     cleanup_exports()
+    prune_security_tables()

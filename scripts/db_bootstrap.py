@@ -35,7 +35,8 @@ def main() -> int:
         c.execute(text("create extension if not exists vector"))
     print("runtime role ready; running migrations")
     api_dir = Path(__file__).resolve().parents[1] / "services" / "api"
-    r = subprocess.run(["uv", "run", "alembic", "upgrade", "head"], cwd=api_dir)
+    # Same interpreter as this script: works under `uv run` locally and inside the production image.
+    r = subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], cwd=api_dir)
     if r.returncode:
         return r.returncode
     # Re-apply grants for tables created by migrations (idempotent).

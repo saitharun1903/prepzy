@@ -60,6 +60,8 @@ def create_app() -> FastAPI:
             response.headers["X-Content-Type-Options"] = "nosniff"
             response.headers["Referrer-Policy"] = "no-referrer"
             response.headers["Cache-Control"] = "no-store"
+            if s.env == "production":
+                response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
             if not request.url.path.startswith("/api/docs"):
                 response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none'"
             log(logger, logging.INFO, "request", method=request.method, path=request.url.path,
@@ -120,8 +122,45 @@ def create_app() -> FastAPI:
         except OperationalError:
             checks["queue"] = "unavailable"
         checks["ai"] = get_provider().health()
+        from .services.storage import get_storage
+        checks["storage"] = get_storage().health()
         ok = checks["database"] == "ok"
         return JSONResponse({"status": "ready" if ok else "not_ready", "checks": checks}, status_code=200 if ok else 503)
+
+    @app.get("/metrics", tags=["health"], include_in_schema=False)
+    def metrics(request: Request) -> Any:
+        """Prometheus text metrics (counts only, no personal data). Requires ELEVATE_METRICS_TOKEN."""
+        import secrets as _secrets
+
+        from fastapi.responses import PlainTextResponse
+        token = s.metrics_token
+        auth = request.headers.get("authorization", "")
+        if not token or not _secrets.compare_digest(auth, f"Bearer {token}"):
+            return _err(404, "not_found", "Not found.")
+        lines: list[str] = []
+        with system_session() as db:
+            for state, n in db.execute(text("select state, count(*) from operations group by state")).all():
+                lines.append(f'elevate_operations{{state="{state}"}} {n}')
+            oldest = db.execute(text("select coalesce(extract(epoch from now() - min(created_at)), 0) from operations "
+                                     "where state = 'queued'")).scalar()
+            lines.append(f"elevate_queue_oldest_seconds {int(oldest or 0)}")
+            failed = db.execute(text("select count(*) from operations where state in ('failed','timed_out') "
+                                     "and finished_at > now() - interval '1 hour'")).scalar()
+            lines.append(f"elevate_operations_failed_last_hour {failed}")
+            overdue = db.execute(text("select count(*) from reminders where status = 'scheduled' "
+                                      "and due_at < now() - interval '5 minutes'")).scalar()
+            lines.append(f"elevate_reminders_overdue {overdue}")
+            hb = db.execute(text("select coalesce(extract(epoch from now() - max(heartbeat_at)), -1) from operations")).scalar()
+            lines.append(f"elevate_worker_last_heartbeat_seconds {int(hb)}")
+            users = db.execute(text("select count(*) from users where deleted_at is null")).scalar()
+            lines.append(f"elevate_users_total {users}")
+        lines.append(f'elevate_ai_reachable {1 if get_provider_health_ok() else 0}')
+        return PlainTextResponse("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")
+
+    def get_provider_health_ok() -> bool:
+        from .services.llm import get_provider
+        h = get_provider().health()
+        return bool(h.get("reachable") and h.get("llm_installed"))
 
     from .routers import (
         account,

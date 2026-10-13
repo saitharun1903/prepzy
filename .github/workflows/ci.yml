@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API (lint, migrations, tests)
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: elevate_owner
+          POSTGRES_PASSWORD: ci-owner-password
+          POSTGRES_DB: elevate
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U elevate_owner -d elevate" --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      # CI-only throwaway credentials for the disposable database above.
+      ELEVATE_ENV: test
+      ELEVATE_DB_APP_PASSWORD: ci-app-password
+      ELEVATE_DATABASE_URL: postgresql+psycopg://elevate_app:ci-app-password@127.0.0.1:5432/elevate
+      ELEVATE_MIGRATION_DATABASE_URL: postgresql+psycopg://elevate_owner:ci-owner-password@127.0.0.1:5432/elevate
+      ELEVATE_JWT_SECRET: ci-only-jwt-secret-not-used-anywhere-else-0123456789
+      ELEVATE_LLM_PROVIDER: disabled
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.7"
+      - run: uv sync --frozen
+      - run: uv run ruff check src tests --ignore E501
+      - name: Bootstrap role + migrations (clean install)
+        run: uv run python ../../scripts/db_bootstrap.py
+      - name: Models match migrations
+        run: uv run alembic check
+      - name: Unit + integration tests (isolated elevate_test database)
+        run: uv run pytest -q -p no:logging
+      - name: Dependency audit
+        run: |
+          uv export --frozen --no-dev --no-hashes --no-emit-project > /tmp/req.txt
+          uvx pip-audit -r /tmp/req.txt --disable-pip --no-deps
+
+  web-and-extension:
+    name: Web + extension (typecheck, tests, build)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck -w apps/web
+      - run: npm run build -w apps/web
+      - run: npm run typecheck -w apps/extension
+      - run: npm run test -w apps/extension
+      - run: npm run build -w apps/extension
+      - run: npm run build:release -w apps/extension
+      - run: npm run validate -w apps/extension
+      - run: npm audit --omit=dev --audit-level=high
+
+  images:
+    name: Container images build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f services/api/Dockerfile -t elevate-api:ci .
+      - run: docker build -f infrastructure/ollama/Dockerfile -t elevate-ollama:ci .
+      - name: Production config guard refuses dev settings
+        run: |
+          if docker run --rm -e ELEVATE_DATABASE_URL=postgresql+psycopg://x:y@db/z -e ELEVATE_JWT_SECRET=ci-dummy-secret-long-enough-for-field-validation-000 elevate-api:ci \
+               python -c "import elevate.main" 2>err.txt; then echo "guard did not trigger" && exit 1; fi
+          grep -q "Unsafe production configuration" err.txt

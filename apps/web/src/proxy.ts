@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 /** Next 16 "proxy" (formerly middleware): per-request CSP nonce + optimistic auth redirects.
  * Real authorization happens at the API; this only decides which page to show. */
 
-const PUBLIC_PATHS = ["/login", "/register", "/privacy"];
+const PUBLIC_PATHS = ["/login", "/register", "/privacy", "/forgot-password", "/reset-password", "/verify-email"];
 
 function csp(nonce: string): string {
   const dev = process.env.NODE_ENV !== "production";

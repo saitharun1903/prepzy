@@ -42,8 +42,8 @@ def handle_resume_parse(ctx: OpContext) -> None:
                        ).scalar_one_or_none()
         if v is None or not v.storage_name:
             raise NotFound("Resume version no longer exists", retryable=False)
-        path = rs.file_path(ctx.owner_id, v.storage_name)  # type: ignore[arg-type]
-    data = path.read_bytes()
+        storage_name = v.storage_name
+    data = rs.read_file(ctx.owner_id, storage_name)  # type: ignore[arg-type]
     ctx.stage("extracting_text")
     try:
         text_, warnings = rs.extract_text(data, ctx.payload["kind"])

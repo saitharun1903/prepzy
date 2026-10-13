@@ -58,6 +58,13 @@ export function setUnauthenticatedHandler(fn: (() => void) | null) {
   onUnauthenticated = fn;
 }
 
+/** Temporarily suppress the redirect to /login on 401 (e.g. while one-time recovery codes are on screen
+ * after the session was deliberately ended). Requests still fail normally. */
+let holdUnauthenticated = false;
+export function holdUnauthenticatedRedirect(on: boolean) {
+  holdUnauthenticated = on;
+}
+
 async function toError(res: Response): Promise<ApiError> {
   let body: unknown = null;
   try {
@@ -107,7 +114,7 @@ export async function apiFetch<T = unknown>(path: string, opts: ApiOptions = {})
   if (!res.ok) {
     const err = await toError(res);
     // The proxy only returns 401 when the session is unusable (it refreshes and retries first).
-    if (res.status === 401) onUnauthenticated?.();
+    if (res.status === 401 && !holdUnauthenticated) onUnauthenticated?.();
     throw err;
   }
   if (opts.raw) return res as unknown as T;

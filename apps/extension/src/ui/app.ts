@@ -4,16 +4,12 @@
 import { CONNECT_PAGE, WEB_BASE } from "../config";
 import { MIN_TEXT, verdictFor, type ExtractResult } from "../shared/extract";
 import {
-  shortLabel,
-  splitRequirements,
   type ApplicationView,
-  type FitGroup,
-  type FitStatus,
   type JobView,
   type LookupView,
   type MatchView,
-  type RequirementView,
 } from "../shared/jobview";
+import { avatar, buildChecklist, coach, type Bucket, type ChecklistItem } from "./coach";
 import type { ErrorInfo, Reply, ReplyMap, StateData, TextSource, UiRequest } from "../shared/messages";
 import { isActive, isRetryable, isTerminal, pollDelayMs, stageLabel, stateLabel, type CaptureRecord } from "../shared/state";
 import { classifyUrl, dashboardJobUrl, hostOf, normalizeUrl, type PageAccess } from "../shared/url";
@@ -514,7 +510,7 @@ function header(): HTMLElement {
   return h(
     "header",
     { class: "top" },
-    h("div", { class: "brand" }, h("span", { class: "mark", attrs: { "aria-hidden": "true" }, text: "E" }), h("span", { class: "wordmark", text: "Elevate" })),
+    IS_PANEL ? h("span", { class: "brand" }) : h("div", { class: "brand" }, h("span", { class: "mark", attrs: { "aria-hidden": "true" }, text: "E" }), h("span", { class: "wordmark", text: "Elevate" })),
     signedIn
       ? h(
           "div",
@@ -654,6 +650,25 @@ function renderMain(): HTMLElement[] {
             { class: "row" },
             l.latestAnalysisId ? button("View your fit", () => viewExisting(l.id), { kind: "primary", id: "btn-view-existing" }) : null,
             button("Open in dashboard", () => openTab(dashboardUrl(l.id)), { kind: "quiet" }),
+          ),
+        ),
+      );
+    }
+    if (!v.lookup) {
+      out.push(
+        h(
+          "section",
+          { class: "coachcard mood-wave", attrs: { "aria-label": "Eli, your coach" } },
+          h(
+            "div",
+            { class: "coach-row" },
+            h("div", { class: "coach-avatar" }, avatar("wave", 60)),
+            h(
+              "div",
+              { class: "bubble" },
+              h("p", { class: "bubble-hi", text: "Hi, I'm Eli." }),
+              h("p", { class: "bubble-verdict", text: "Tap Analyze and I'll check this job against your resume: what you have, what's missing, and what to do next." }),
+            ),
           ),
         ),
       );
@@ -934,183 +949,155 @@ function todayIso(): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-// ------------------------------------------------------------------ result screen (fit summary)
+// ------------------------------------------------------------------ result screen (coach + checklist)
 
-const FIT_ICON: Record<FitStatus, { glyph: string; label: string; cls: string }> = {
-  supported: { glyph: "✓", label: "On your resume", cls: "ok" },
-  user_confirmed: { glyph: "✓", label: "Confirmed by you", cls: "ok" },
-  partial: { glyph: "◐", label: "Partly shown", cls: "part" },
-  adjacent: { glyph: "◐", label: "Related skill only", cls: "part" },
-  not_evidenced: { glyph: "✕", label: "Not on your resume", cls: "gap" },
-  not_met_confirmed: { glyph: "✕", label: "You said not met", cls: "gap" },
-  unassessable: { glyph: "?", label: "Check yourself", cls: "unknown" },
+const BUCKET_UI: Record<Bucket, { title: string; glyph: string }> = {
+  have: { title: "You have", glyph: "✓" },
+  partly: { title: "Partly shown", glyph: "◐" },
+  missing: { title: "Missing from your resume", glyph: "✕" },
+  check: { title: "Check yourself", glyph: "?" },
 };
 
-function chip(text: string, cls = ""): HTMLElement {
-  return h("span", { class: `chip ${cls}`.trim(), text });
-}
-
-function jobHero(job: JobView): HTMLElement {
+function jobLine(job: JobView): HTMLElement {
   const f = job.analysis?.fields;
   const title = f?.title.value ?? job.job.title ?? "Untitled job";
   const company = f?.company.value ?? job.job.company;
-  const location = f?.location.value;
-  const chips: HTMLElement[] = [];
-  const add = (val: string | null | undefined, cls = "") => {
-    if (val) chips.push(chip(val.length > 40 ? `${val.slice(0, 38)}…` : val, cls));
-  };
-  const mode = f?.work_mode.value;
-  add(mode ? mode.charAt(0).toUpperCase() + mode.slice(1) : null);
-  add(f?.employment_type.value);
-  add(f?.experience.value);
-  add(f?.salary.value, "chip-money");
-  if (f?.deadline.value) add(`Apply by ${f.deadline.value}`);
-  const initial = (company || title).trim().charAt(0).toUpperCase() || "J";
+  const meta = [company, f?.location.value, f?.work_mode.value ? cap(f.work_mode.value) : null, f?.experience.value]
+    .filter((x): x is string => !!x)
+    .join(" · ");
   return h(
     "section",
-    { class: "hero", attrs: { "aria-label": "Job" } },
+    { class: "jobline", attrs: { "aria-label": "Job" } },
+    h("h1", { class: "jobline-title", id: "screen-title", text: title, attrs: { tabindex: "-1" } }),
+    meta ? h("p", { class: "jobline-meta", text: meta }) : null,
+    f?.salary.value ? h("p", { class: "jobline-pay", text: f.salary.value }) : null,
+  );
+}
+
+function cap(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+function runCoachAction(action: string, job: JobView): void {
+  const web = v.state?.webBase ?? WEB_BASE;
+  const report = dashboardUrl(job.job.id) ?? web;
+  if (action === "practice") openTab(`${web}/interviews/new?job_id=${job.job.id}`);
+  else if (action === "plan") openTab(`${web}/preparation?job_id=${job.job.id}`);
+  else if (action === "resume") openTab(`${web}/resumes`);
+  else if (action === "analyze") void startOver();
+  else openTab(report);
+}
+
+function coachCard(job: JobView, items: ChecklistItem[]): HTMLElement {
+  const a = job.analysis!;
+  const line = coach({
+    name: null,
+    company: a.fields.company.value ?? job.job.company,
+    items,
+    match: v.match,
+    partial: a.status === "partial",
+  });
+  return h(
+    "section",
+    { class: `coachcard mood-${line.mood}`, attrs: { "aria-labelledby": "coach-say" } },
     h(
       "div",
-      { class: "hero-row" },
-      h("span", { class: "avatar", attrs: { "aria-hidden": "true" }, text: initial }),
+      { class: "coach-row" },
+      h("div", { class: "coach-avatar" }, avatar(line.mood, 60)),
       h(
         "div",
-        { class: "hero-text" },
-        h("h1", { class: "hero-title", id: "screen-title", text: title, attrs: { tabindex: "-1" } }),
-        h("p", { class: "hero-sub", text: [company, location].filter(Boolean).join(" · ") || "Company not stated" }),
+        { class: "bubble", id: "coach-say", attrs: { role: "status" } },
+        h("p", { class: "bubble-hi", text: line.greeting }),
+        h("p", { class: "bubble-verdict", text: line.verdict }),
+        line.advice ? h("p", { class: "bubble-advice", text: line.advice }) : null,
       ),
     ),
-    chips.length ? h("div", { class: "chips" }, chips) : null,
+    line.primary || line.secondary
+      ? h(
+          "div",
+          { class: "coach-actions" },
+          line.primary ? button(line.primary.label, () => runCoachAction(line.primary!.action, job), { kind: "primary", id: "btn-coach-primary", disabled: false }) : null,
+          line.secondary ? button(line.secondary.label, () => runCoachAction(line.secondary!.action, job), { kind: "secondary", id: "btn-coach-secondary", disabled: false }) : null,
+        )
+      : null,
   );
 }
 
-function meter(label: string, g: FitGroup): HTMLElement {
-  const pct = g.coverage ?? 0;
+function progressStrip(items: ChecklistItem[]): HTMLElement | null {
+  const must = items.filter((i) => i.importance === "required");
+  const pool = must.length ? must : items;
+  const assessed = pool.filter((i) => i.bucket !== "check");
+  if (!v.match?.hasResume || !assessed.length) return null;
+  const have = assessed.filter((i) => i.bucket === "have").length;
+  const order: Bucket[] = ["have", "partly", "missing"];
+  const segs = [...assessed].sort((x, y) => order.indexOf(x.bucket) - order.indexOf(y.bucket));
   return h(
     "div",
-    { class: "meter" },
-    h("div", { class: "meter-top" }, h("span", { text: label }), h("span", { class: "meter-val", text: g.total ? `${g.met} of ${g.total} shown` : "—" })),
+    { class: "strip" },
+    h("p", { class: "strip-text" }, h("strong", { text: `${have} of ${assessed.length}` }), ` ${must.length ? "must-haves" : "requirements"} on your resume`),
     h(
       "div",
-      { class: "bar", attrs: { role: "img", "aria-label": `${label}: ${g.met} of ${g.total} shown on your resume` } },
-      h("span", { class: "bar-fill", attrs: { style: `width:${Math.round(pct)}%` } }),
+      { class: "segs", attrs: { role: "img", "aria-label": `${have} of ${assessed.length} shown on your resume` } },
+      segs.map((i) => h("span", { class: `seg seg-${i.bucket}`, attrs: { title: `${i.label}: ${BUCKET_UI[i.bucket].title}` } })),
     ),
   );
 }
 
-function fitCard(job: JobView): HTMLElement {
-  const m = v.match;
-  if (m === undefined) {
-    return h("section", { class: "fit card" }, h("p", { class: "eyebrow", text: "How you fit" }), h("p", { class: "meta", text: "Comparing with your resume…" }));
-  }
-  if (m === null || !m.hasResume) {
-    return h(
-      "section",
-      { class: "fit card fit-empty" },
-      h("p", { class: "eyebrow", text: "How you fit" }),
-      h("p", { class: "fit-headline", text: "Add your resume to see how you fit" }),
-      h("p", { class: "meta", text: "Elevate checks each requirement against the evidence in your resume. Nothing is guessed." }),
-      button("Add a resume", () => openTab(`${v.state?.webBase ?? WEB_BASE}/resumes`), { kind: "primary", disabled: false }),
+function checklist(items: ChecklistItem[]): HTMLElement[] {
+  const out: HTMLElement[] = [];
+  const order: Bucket[] = v.match?.hasResume ? ["missing", "partly", "have", "check"] : ["check"];
+  for (const b of order) {
+    const group = items.filter((i) => (v.match?.hasResume ? i.bucket === b : true));
+    if (!group.length) continue;
+    group.sort((x, y) => (x.importance === "required" ? 0 : 1) - (y.importance === "required" ? 0 : 1));
+    const title = v.match?.hasResume ? BUCKET_UI[b].title : "What this job asks for";
+    out.push(
+      h(
+        "section",
+        { class: `checks checks-${b}`, attrs: { "aria-labelledby": `chk-${b}` } },
+        h("h2", { class: "checks-h", id: `chk-${b}` }, h("span", { text: title }), h("span", { class: "checks-n", text: String(group.length) })),
+        h(
+          "ul",
+          { class: "checks-list" },
+          group.map((i) =>
+            h(
+              "li",
+              { class: "check-row" },
+              h("span", { class: `check-dot dot-${v.match?.hasResume ? i.bucket : "check"}`, attrs: { "aria-hidden": "true" }, text: v.match?.hasResume ? BUCKET_UI[i.bucket].glyph : "•" }),
+              h(
+                "div",
+                { class: "check-body" },
+                h(
+                  "p",
+                  { class: "check-label" },
+                  i.label,
+                  i.importance === "preferred" ? h("span", { class: "check-tag", text: "nice to have" }) : null,
+                  i.note ? h("span", { class: "check-note", text: i.note }) : null,
+                ),
+                i.detail ? h("p", { class: "check-detail", text: i.detail }) : null,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
-  const req = m.required;
-  let headline: string;
-  let tone: string;
-  if (m.scoreStatus === "withheld" || req.coverage === null) {
-    headline = "Not enough information to estimate yet";
-    tone = "neutral";
-  } else if (req.coverage >= 75) {
-    headline = "Strong match on the must-haves";
-    tone = "good";
-  } else if (req.coverage >= 45) {
-    headline = "Partial match: a few gaps to close";
-    tone = "mid";
-  } else {
-    headline = "Several must-haves aren't on your resume yet";
-    tone = "low";
-  }
-  const showScore = req.coverage !== null && m.scoreStatus === "available";
-  return h(
-    "section",
-    { class: `fit card fit-${tone}`, attrs: { "aria-labelledby": "fit-h" } },
-    h(
-      "div",
-      { class: "fit-top" },
-      h("div", null, h("p", { class: "eyebrow", id: "fit-h", text: "How you fit" }), h("p", { class: "fit-headline", text: headline })),
-      showScore
-        ? h(
-            "div",
-            { class: "score", attrs: { "aria-label": `${Math.round(req.coverage!)} percent of must-haves covered` } },
-            h("span", { class: "score-num", text: String(Math.round(req.coverage!)) }),
-            h("span", { class: "score-pct", text: "%" }),
-          )
-        : null,
-    ),
-    meter("Must-haves", req),
-    m.preferred.total ? meter("Nice-to-haves", m.preferred) : null,
-    m.scoreStatus === "withheld" && m.withheldReason ? h("p", { class: "meta", text: m.withheldReason }) : null,
-    m.missing.length
-      ? h("div", { class: "gaps" }, h("p", { class: "gaps-h", text: "To work on" }), h("div", { class: "chips" }, m.missing.slice(0, 6).map((x) => chip(x, "chip-gap"))))
-      : null,
-    h("p", { class: "fine", text: m.stale ? "Your resume or this job changed since this comparison. Open the full report to refresh it." : "Elevate evidence estimate. Not a hiring prediction." }),
-    m.stale ? button("Open full report", () => openTab(`${dashboardUrl(job.job.id)}?tab=match`), { kind: "quiet", disabled: false }) : null,
-  );
+  return out;
 }
 
-function reqRow(r: RequirementView): HTMLElement {
-  const st = v.match?.hasResume ? v.match.status[r.key] : undefined;
-  const icon = st ? FIT_ICON[st] : null;
-  return h(
-    "li",
-    { class: `req${icon ? ` req-${icon.cls}` : ""}` },
-    h("span", { class: "req-icon", attrs: { "aria-hidden": "true" }, text: icon?.glyph ?? "•" }),
-    h(
-      "div",
-      { class: "req-body" },
-      h("span", { class: "req-label", text: shortLabel(r) }),
-      icon ? h("span", { class: "sr-only", text: ` (${icon.label})` }) : null,
-      shortLabel(r) !== r.text ? h("span", { class: "req-src", text: r.text }) : null,
-    ),
-    icon ? h("span", { class: `req-tag tag-${icon.cls}`, attrs: { "aria-hidden": "true" }, text: icon.label }) : null,
-  );
-}
-
-function reqSection(title: string, id: string, reqs: RequirementView[], open = true): HTMLElement | null {
-  if (!reqs.length) return null;
-  const list = h("ul", { class: "reqs-list" }, reqs.map(reqRow));
-  if (open) {
-    return h("section", { class: "reqs", attrs: { "aria-labelledby": id } }, h("h2", { class: "section-h", id, text: `${title} · ${reqs.length}` }), list);
-  }
-  return h("details", { class: "reqs disclosure plain-d" }, h("summary", { text: `${title} · ${reqs.length}` }), list);
-}
-
-function nextSteps(job: JobView): HTMLElement {
-  const base = dashboardUrl(job.job.id) ?? "";
-  const web = v.state?.webBase ?? WEB_BASE;
+function trackRow(job: JobView): HTMLElement {
   const status = v.application?.status ?? null;
   return h(
     "section",
-    { class: "next", attrs: { "aria-labelledby": "next-h" } },
-    h("h2", { class: "section-h", id: "next-h", text: "Next steps" }),
-    button("Open full report", () => openTab(base), { kind: "primary", id: "btn-dashboard", disabled: false }),
+    { class: "trackrow", attrs: { "aria-label": "Track this job" } },
+    button(job.job.saved ? "★ Saved" : "☆ Save", () => void toggleSave(), { pressed: job.job.saved, id: "btn-save" }),
     h(
       "div",
-      { class: "grid2" },
-      button("Practice interview", () => openTab(`${web}/interviews/new?job_id=${job.job.id}`), { id: "btn-practice", disabled: false }),
-      button("Build a prep plan", () => openTab(`${web}/preparation?job_id=${job.job.id}`), { id: "btn-plan", disabled: false }),
+      { class: "seg-ctl", attrs: { role: "group", "aria-label": "Application status" } },
+      button("Planning", () => void setStatus("planned"), { pressed: status === "planned", id: "btn-planned" }),
+      button("Applied", () => void setStatus("applied"), { pressed: status === "applied", id: "btn-applied" }),
     ),
-    h(
-      "div",
-      { class: "track" },
-      button(job.job.saved ? "★ Saved" : "☆ Save job", () => void toggleSave(), { pressed: job.job.saved, id: "btn-save" }),
-      h(
-        "div",
-        { class: "seg", attrs: { role: "group", "aria-label": "Application status" } },
-        button("Planning", () => void setStatus("planned"), { pressed: status === "planned", id: "btn-planned" }),
-        button("Applied", () => void setStatus("applied"), { pressed: status === "applied", id: "btn-applied" }),
-      ),
-    ),
-    status && status !== "planned" && status !== "applied" ? h("p", { class: "meta", text: `Application status: ${status}` }) : null,
+    button("Full report", () => openTab(dashboardUrl(job.job.id)), { kind: "quiet", id: "btn-dashboard", disabled: false }),
   );
 }
 
@@ -1121,7 +1108,7 @@ function trackDetails(job: JobView): HTMLElement {
   const remTime = h("input", { id: "rem-time", type: "time", value: "09:00", attrs: { required: true } });
   return h(
     "details",
-    { class: "disclosure" },
+    { class: "fold" },
     h("summary", { text: "Add a note or reminder" }),
     h("div", { class: "field" }, h("label", { for: "note-body", text: "Note" }), noteArea),
     button("Save note", () => {
@@ -1159,10 +1146,11 @@ function aboutDetails(job: JobView): HTMLElement {
   const bits = [a.model && a.model !== "none" ? `Model ${a.model}` : "No AI model used", a.promptVersion, a.schemaVersion].filter(Boolean).join(" · ");
   return h(
     "details",
-    { class: "disclosure plain-d" },
-    h("summary", { text: "About this analysis" }),
-    a.issues.length ? h("ul", { class: "plain notes" }, a.issues.map((i) => h("li", { text: plainIssue(i) }))) : h("p", { class: "meta", text: "No issues were found while analysing." }),
-    h("p", { class: "fine", text: `Every requirement above is quoted from the posting. ${bits}. ${job.historyCount} ${job.historyCount === 1 ? "analysis" : "analyses"} of this job.` }),
+    { class: "fold" },
+    h("summary", { text: "How Eli worked this out" }),
+    h("p", { class: "meta", text: "Every requirement is quoted from the posting and checked against the evidence in your resume. It's an estimate, not a hiring prediction." }),
+    a.issues.length ? h("ul", { class: "plain notes" }, a.issues.map((i) => h("li", { text: plainIssue(i) }))) : null,
+    h("p", { class: "fine", text: `${bits}. ${job.historyCount} ${job.historyCount === 1 ? "analysis" : "analyses"} of this job.` }),
     button("Analyze this page again", () => void startOver(), { kind: "quiet" }),
   );
 }
@@ -1171,22 +1159,29 @@ function renderResult(): HTMLElement[] {
   const r = v.record;
   const out: HTMLElement[] = [];
   if (r && (r.state === "failed" || r.state === "timed-out")) {
-    out.push(heading(r.state === "timed-out" ? "The analysis took too long" : "The analysis didn't finish"));
     out.push(
       h(
-        "div",
-        { class: "banner banner-error", attrs: { role: "alert" } },
-        h("p", { text: r.error?.message ?? "The analysis did not finish." }),
-        r.error?.code?.startsWith("model") ? h("p", { text: "Make sure Ollama is running, then retry. Your job text is already saved." }) : null,
-        r.error?.requestId ? h("p", { class: "meta" }, "Request ID: ", h("code", { text: r.error.requestId })) : null,
-      ),
-    );
-    out.push(
-      h(
-        "div",
-        { class: "actions" },
-        isRetryable(r.state) ? button("Retry", () => void retryCapture(), { kind: "primary", id: "btn-retry" }) : null,
-        button("Start over", () => void startOver(), { kind: "quiet" }),
+        "section",
+        { class: "coachcard mood-think" },
+        h(
+          "div",
+          { class: "coach-row" },
+          h("div", { class: "coach-avatar" }, avatar("think", 52)),
+          h(
+            "div",
+            { class: "bubble", attrs: { role: "alert" } },
+            h("p", { class: "bubble-hi", id: "screen-title", text: r.state === "timed-out" ? "That took too long." : "I couldn't finish that one.", attrs: { tabindex: "-1" } }),
+            h("p", { class: "bubble-verdict", text: r.error?.message ?? "The analysis did not finish." }),
+            r.error?.code?.startsWith("model") ? h("p", { class: "bubble-advice", text: "The AI model may still be starting. Your job text is saved; retry in a minute." }) : null,
+            r.error?.requestId ? h("p", { class: "fine" }, "Request ID: ", h("code", { text: r.error.requestId })) : null,
+          ),
+        ),
+        h(
+          "div",
+          { class: "coach-actions" },
+          isRetryable(r.state) ? button("Try again", () => void retryCapture(), { kind: "primary", id: "btn-retry" }) : null,
+          button("Start over", () => void startOver(), { kind: "secondary" }),
+        ),
       ),
     );
     return out;
@@ -1197,7 +1192,6 @@ function renderResult(): HTMLElement[] {
     out.push(h("div", { class: "actions" }, button("Analyze again", () => void startOver(), { kind: "primary" })));
     return out;
   }
-
   const job = v.job;
   if (!job) {
     out.push(heading("Analysis"));
@@ -1205,35 +1199,22 @@ function renderResult(): HTMLElement[] {
     if (v.error && v.resultJobId) out.push(button("Try again", () => void loadJob(v.resultJobId!, v.seq)));
     return out;
   }
+  out.push(jobLine(job));
   const a = job.analysis;
-  out.push(jobHero(job));
   if (!a) {
     out.push(h("p", { class: "meta", text: "This job has no analysis yet." }));
-    out.push(nextSteps(job));
+    out.push(trackRow(job));
     return out;
   }
-  if (a.status === "partial") {
-    out.push(
-      h(
-        "div",
-        { class: "banner banner-warn", attrs: { role: "status" } },
-        h("p", { text: "The AI model wasn't available, so this is a basic reading of the posting." }),
-        button("Analyze again", () => void startOver(), { disabled: false }),
-      ),
-    );
-  }
   if (a.stale) out.push(h("div", { class: "banner banner-note" }, h("p", { text: "This page has changed since this analysis." })));
-  out.push(fitCard(job));
-  const groups = splitRequirements(a.requirements.filter((x) => !x.negated));
-  const ranked = groups.required.length || groups.preferred.length;
-  const sections = [
-    reqSection("Must-haves", "req-required", groups.required),
-    reqSection("Nice-to-haves", "req-preferred", groups.preferred),
-    reqSection(ranked ? "Other requirements" : "Requirements", "req-unclear", groups.unclear, !ranked),
-  ].filter((x): x is HTMLElement => x !== null);
-  if (sections.length) out.push(...sections);
+  const items = buildChecklist(a.requirements, v.match);
+  out.push(coachCard(job, items));
+  const strip = progressStrip(items);
+  if (strip) out.push(strip);
+  const lists = checklist(items);
+  if (lists.length) out.push(...lists);
   else out.push(h("p", { class: "meta", text: "No requirements were found in this posting." }));
-  out.push(nextSteps(job));
+  out.push(trackRow(job));
   out.push(trackDetails(job));
   out.push(aboutDetails(job));
   return out;

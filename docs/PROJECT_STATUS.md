@@ -1,8 +1,15 @@
-# Project status — checkpoint 2026-10-13
+# Project status — checkpoint 2026-10-13 (production preparation)
+
+## Production readiness (latest)
+* **Prepared, not deployed.** Target: Render (web, API, worker, private Ollama) + Neon Postgres + S3-compatible storage; `render.yaml`, Dockerfiles, CI, runbook in DEPLOYMENT.md.
+* Done and tested: email verification, password reset by email, lockout (no enumeration), TOTP two-step with recovery codes, PostgreSQL-shared rate limits, verified-email gate for AI, S3 storage backend, production config guard (secrets never echoed), HSTS, `/metrics`, non-root container (built and smoke-tested locally), dashboard screens for all of the above (agent-built; typecheck/build re-verified).
+* Not yet verified: the Ollama image build (CI builds it), a real Render/Neon/R2/SMTP deployment, the production model's quality (qwen2.5:3b unevaluated), Edge runtime, store submission.
+* Needs you: accounts and secrets (Render, Neon, bucket, SMTP), a domain (optional), approval to deploy and to spend (~$46-106/month, mostly inference).
+
 
 ## Readiness
 * **Local release:** core product **implemented and largely locally verified** on this machine (see REQUIREMENTS.md). Not complete: Chrome/Edge runtime verification of the extension (R-35) is blocked on a manual browser step, and the items marked Partial below remain.
-* **Public beta:** **not ready**. Requires a maintained OIDC auth provider, hosted infrastructure with TLS, inference capacity, distributed rate limiting and monitoring (DEPLOYMENT.md). Nothing has been deployed or published.
+* **Public beta:** engineering prerequisites are in place (hardened auth, shared rate limits, TLS-only config guard, object storage, metrics, CI, deployment blueprint). Still required before launch: provisioning with your accounts, a monitored real deployment, evaluating the production model, and your approval. Nothing has been deployed or published.
 
 ## Checks run (latest results)
 | Check | Command | Result |
@@ -26,7 +33,7 @@ Not run: extension in real Chrome 154 / Edge 155 (needs Developer Mode, a user a
 3. Real-model runs of resume suggestions and job Q&A; stop Ollama and check the partial-analysis UI.
 4. Expand eval to ≥20 reviewed cases/domain with a second labeller; add taxonomy aliases for misses (e.g. "B2B sales" phrasing).
 5. Add axe-core scan + keyboard audit; ESLint for web.
-6. Before any public beta: replace first-party auth with an OIDC provider (PKCE), pick hosting (verify current terms), distributed limiter, monitoring — requires owner authorization.
+6. Before public launch: provision Render/Neon/bucket/SMTP with your accounts (DEPLOYMENT.md), evaluate the production model, wire alerts on `/metrics`, then deploy with your approval.
 
 ## Environment notes
 * DB container `browserelevate-db` (compose project renamed after an unrelated "elevate" project collision removed the first container). An unrelated Supabase stack named `elevate` on this machine was not touched.

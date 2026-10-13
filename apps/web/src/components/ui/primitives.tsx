@@ -5,8 +5,8 @@ import {
   forwardRef, useId, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from "react";
-import { AlertTriangle, CheckCircle2, CircleDashed, Info, Loader2, X, XCircle } from "lucide-react";
-import type { ApiError } from "@/lib/api";
+import { AlertTriangle, CheckCircle2, CircleDashed, Info, Loader2, MailWarning, X, XCircle } from "lucide-react";
+import { apiFetch, type ApiError } from "@/lib/api";
 
 export function cx(...c: Array<string | false | null | undefined>): string {
   return c.filter(Boolean).join(" ");
@@ -213,6 +213,7 @@ export function EmptyState({ title, children, action, icon }: { title: string; c
 export function ErrorState({ error, onRetry, title = "Something went wrong" }: { error: ApiError | Error | null; onRetry?: () => void; title?: string }) {
   if (!error) return null;
   const e = error as Partial<ApiError>;
+  if (e.code === "email_unverified") return <EmailUnverifiedNotice message={error.message} />;
   return (
     <div role="alert" className="rounded-lg border border-danger/30 bg-danger-soft px-4 py-3 text-sm">
       <div className="flex items-start gap-2">
@@ -231,6 +232,53 @@ export function ErrorState({ error, onRetry, title = "Something went wrong" }: {
           {onRetry ? (
             <Button size="sm" className="mt-2" onClick={onRetry}>Try again</Button>
           ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- Email verification
+/** "Resend link" for the email-confirmation message. Says "Sent" only when the server actually sent one. */
+export function ResendVerification({ size = "sm", deliveryConfigured }: { size?: Size; deliveryConfigured?: boolean }) {
+  const [state, setState] = useState<"idle" | "busy" | "sent" | "not_sent" | "error">("idle");
+  const [msg, setMsg] = useState<string | null>(null);
+  const resend = async () => {
+    setState("busy");
+    setMsg(null);
+    try {
+      const r = await apiFetch<{ sent: boolean }>("auth/resend-verification", { method: "POST" });
+      setState(r?.sent ? "sent" : "not_sent");
+    } catch (err) {
+      setState("error");
+      setMsg((err as ApiError)?.message || "Could not resend the link.");
+    }
+  };
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+      <Button size={size} onClick={resend} loading={state === "busy"} disabled={state === "sent"}>
+        {state === "sent" ? "Sent" : "Resend link"}
+      </Button>
+      <span role="status" aria-live="polite" className="text-[13px] text-ink-2">
+        {state === "sent" ? "Check your inbox for a new confirmation link." : null}
+        {state === "not_sent" ? (deliveryConfigured === false
+          ? "Email delivery isn't set up on this server, so no link was sent. Ask the person who runs this installation for help."
+          : "No link was sent. Email delivery may not be set up on this server, or your address is already confirmed.") : null}
+        {state === "error" ? <span className="text-danger">{msg}</span> : null}
+      </span>
+    </span>
+  );
+}
+
+export function EmailUnverifiedNotice({ message }: { message?: string }) {
+  return (
+    <div role="alert" className="rounded-lg border border-warn/30 bg-warn-soft px-4 py-3 text-sm">
+      <div className="flex items-start gap-2">
+        <MailWarning aria-hidden className="size-4 mt-0.5 text-warn shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-ink">Confirm your email to continue</p>
+          <p className="text-ink-2 mt-0.5 break-words">{message || "Confirm your email address to use AI analysis."}</p>
+          <div className="mt-2"><ResendVerification /></div>
         </div>
       </div>
     </div>

@@ -20,9 +20,10 @@ from sqlalchemy import func, select, text, update
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
-from ..errors import Conflict, NotFound, TooManyRequests
+from ..errors import Conflict, Forbidden, NotFound, TooManyRequests
 from ..models import Operation
 
+AI_KINDS = {"job_analysis", "resume_suggest", "interview_generate", "answer_evaluate", "job_qa", "knowledge_ingest"}
 TERMINAL = {"succeeded", "partially_succeeded", "failed", "timed_out", "cancelled"}
 ACTIVE = {"queued", "running", "cancellation_requested"}
 
@@ -44,6 +45,12 @@ def create(db: Session, owner_id: uuid.UUID | None, kind: str, payload: dict[str
                 raise Conflict("This idempotency key was already used with a different request.",
                                code="idempotency_conflict")
             return existing, False
+    if owner_id is not None and s.require_verified_email and kind in AI_KINDS:
+        from ..models import User
+        verified = db.execute(select(User.email_verified_at).where(User.id == owner_id)).scalar()
+        if verified is None:
+            raise Forbidden("Confirm your email address to use AI features. Check your inbox or resend the link "
+                            "from Settings.", code="email_unverified")
     if owner_id is not None:
         active = db.execute(select(func.count()).select_from(Operation).where(
             Operation.owner_id == owner_id, Operation.state.in_(ACTIVE))).scalar_one()

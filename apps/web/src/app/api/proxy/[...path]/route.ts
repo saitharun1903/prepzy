@@ -12,15 +12,23 @@ const ALLOWED_TOP = new Set([
   "me", "jobs", "operations", "profile", "resumes", "match-reports", "interviews", "roadmaps", "applications",
   "notes", "reminders", "notifications", "knowledge", "account", "taxonomy", "admin",
 ]);
-const ALLOWED_AUTH = new Set(["extension-grant", "change-password", "logout-all"]);
+const ALLOWED_AUTH = new Set(["extension-grant", "change-password", "logout-all", "resend-verification"]);
+/** Two-step verification endpoints: path under auth/ -> the only method allowed. */
+const ALLOWED_MFA: Record<string, string> = {
+  "mfa": "GET", "mfa/setup": "POST", "mfa/enable": "POST", "mfa/disable": "POST",
+};
 const SEGMENT = /^[A-Za-z0-9._~-]+$/;
 
 const FORWARD_REQUEST_HEADERS = ["content-type", "idempotency-key", "accept"];
 const FORWARD_RESPONSE_HEADERS = ["content-type", "content-disposition", "x-request-id", "retry-after"];
 
-function allowed(path: string[]): boolean {
+function allowed(path: string[], method: string): boolean {
   if (!path.length || path.some((s) => !SEGMENT.test(s) || s === "." || s === "..")) return false;
-  if (path[0] === "auth") return path.length === 2 && ALLOWED_AUTH.has(path[1]);
+  if (path[0] === "auth") {
+    const rest = path.slice(1).join("/");
+    if (Object.hasOwn(ALLOWED_MFA, rest)) return ALLOWED_MFA[rest] === method.toUpperCase();
+    return path.length === 2 && ALLOWED_AUTH.has(path[1]);
+  }
   return ALLOWED_TOP.has(path[0]);
 }
 
@@ -48,7 +56,7 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
   const blocked = checkCsrf(req);
   if (blocked) return blocked;
   const { path } = await ctx.params;
-  if (!allowed(path)) return errorJson(404, "not_found", "Unknown API path.");
+  if (!allowed(path, req.method)) return errorJson(404, "not_found", "Unknown API path.");
 
   const url = `${apiBase()}/api/v1/${path.map(encodeURIComponent).join("/")}${req.nextUrl.search}`;
   const hasBody = !["GET", "HEAD"].includes(req.method.toUpperCase());

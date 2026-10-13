@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/primitives";
 import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
+import { SecuritySection } from "./security-section";
 
 const OPTIONAL_FEATURES: { key: keyof NonNullable<ReturnType<typeof useSession>["me"]>["capabilities"]; label: string }[] = [
   { key: "ai_analysis", label: "Local AI analysis (Ollama model)" },
@@ -230,6 +231,8 @@ export default function SettingsPage() {
           )}
           <p className="mt-2 text-[13px] text-muted">Nothing is sent to external AI services. Supported language: English.</p>
         </section>
+
+        <SecuritySection />
 
         <PasswordSection />
 

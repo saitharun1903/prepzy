@@ -11,6 +11,10 @@ export const SESSION_MARKER = "el_s";
 const REFRESH_MAX_AGE = 60 * 60 * 24 * 30;
 
 export function apiBase(): string {
+  // ELEVATE_API_HOSTPORT: private-network "host:port" injected by the hosting platform (preferred:
+  // web -> API traffic never leaves the private network). Otherwise a full URL in ELEVATE_API_URL.
+  const hp = process.env.ELEVATE_API_HOSTPORT;
+  if (hp && /^[a-z0-9.-]+:\d{2,5}$/i.test(hp)) return `http://${hp}`;
   return (process.env.ELEVATE_API_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
 }
 

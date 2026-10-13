@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Any, Literal
 
 from fastapi import APIRouter, File, Form, Header, Query, UploadFile
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import PlainTextResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select, update
 
@@ -192,7 +192,7 @@ def rename(rid: uuid.UUID, body: RenameIn, ctx: Authed) -> None:
 
 def _remove_file(owner: uuid.UUID, v: ResumeVersion) -> None:
     if v.storage_name:
-        rs.file_path(owner, v.storage_name).unlink(missing_ok=True)
+        rs.delete_file(owner, v.storage_name)
 
 
 @router.delete("/{rid}/versions/{vid}", status_code=204)
@@ -220,16 +220,16 @@ def delete_resume(rid: uuid.UUID, ctx: Authed) -> None:
 
 
 @router.get("/{rid}/versions/{vid}/file")
-def download_original(rid: uuid.UUID, vid: uuid.UUID, ctx: Authed) -> FileResponse:
+def download_original(rid: uuid.UUID, vid: uuid.UUID, ctx: Authed) -> Response:
     db, actor = ctx
     v = _get_version(db, actor.id, rid, vid)
     if not v.storage_name:
         raise NotFound("This version has no uploaded file")
-    p = rs.file_path(actor.id, v.storage_name)
-    if not p.exists():
-        raise NotFound("The stored file is missing")
-    return FileResponse(p, media_type=v.mime or "application/octet-stream",
-                        filename=v.original_filename or "resume", headers={"Cache-Control": "no-store"})
+    data = rs.read_file(actor.id, v.storage_name)
+    safe = re.sub(r'[^\w.\- ]', "_", v.original_filename or "resume")[:200]
+    return Response(data, media_type=v.mime or "application/octet-stream", headers={
+        "Content-Disposition": f'attachment; filename="{safe}"', "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff"})
 
 
 @router.get("/{rid}/versions/{vid}/export")

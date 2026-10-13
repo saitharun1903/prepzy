@@ -190,15 +190,14 @@ describe("popup UI flow", () => {
     await flush();
     const fit = app().textContent ?? "";
     expect(fit).toContain("Backend Engineer");
-    expect(fit).toContain("How you fit");
-    expect(fit).toContain("Partial match");
-    expect(fit).toContain("1 of 2 shown");
-    expect(fit).toContain("Must-haves · 2");
+    expect(fit).toContain("Here's my read.");
+    expect(fit).toContain("Missing from your resume");
+    expect(fit).toContain("Kafka");
+    expect(fit).toContain("You have");
     expect(fit).toContain("Java or Kotlin");
-    expect(fit).toContain("On your resume");
-    expect(fit).toContain("Nice-to-haves · 1");
-    expect(fit).toContain("Not on your resume");
-    expect(fit).toContain("To work on");
+    expect(fit).toContain("Check yourself");
+    expect(fit).toContain("on your resume");
+    expect(app().querySelector("svg.coach")).not.toBeNull();
     expect(fit).toContain("Model test-model");
     expect(fit).not.toContain("Not a hiring prediction.Not"); // sanity: rendered once
     expect(document.getElementById("btn-applied")?.getAttribute("aria-pressed")).toBe("false");

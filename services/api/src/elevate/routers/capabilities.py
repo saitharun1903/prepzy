@@ -37,10 +37,13 @@ def me(ctx: Authed) -> dict[str, Any]:
     ai_ok = bool(h.get("reachable") and h.get("llm_installed"))
     return {
         "user": {"id": str(u.id), "email": u.email, "display_name": u.display_name, "is_admin": u.is_admin,
-                 "timezone": u.timezone, "created_at": u.created_at},
+                 "timezone": u.timezone, "created_at": u.created_at, "email_verified": u.email_verified_at is not None,
+                 "mfa_enabled": u.totp_enabled_at is not None},
+        "account_security": {"require_verified_email": get_settings().require_verified_email,
+                             "email_delivery": get_settings().email_backend == "smtp"},
         "capabilities": {
             "ai_analysis": ai_ok, "semantic_search": bool(h.get("reachable") and h.get("embed_installed")),
-            "ocr": False, "email_delivery": False, "calendar_sync": False, "push": False, "code_execution": False,
+            "ocr": False, "email_delivery": get_settings().email_backend == "smtp", "calendar_sync": False, "push": False, "code_execution": False,
             "voice_interviews": False, "external_ai": False,
         },
         "limits": {"max_upload_mb": get_settings().max_upload_mb, "max_job_text_chars": get_settings().max_job_text_chars,

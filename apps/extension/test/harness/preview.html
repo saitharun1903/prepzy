@@ -50,6 +50,20 @@
       status: { r1: "partial", r2: "supported", r3: "not_evidenced", r4: "supported", r5: "supported", r6: "not_evidenced", r7: "supported", r8: "not_evidenced" },
       missing: ["Microservices", "AWS", "React"], hasResume: true, stale: false,
     } : null;
+    // ?case=cgi reproduces the user's CGI screenshot (Java listed twice, one gap).
+    if (qp.get("case") === "cgi") {
+      job.job.title = "JAVA Jr API Developer (SE)"; job.job.company = "CGI";
+      job.analysis.fields.title.value = "JAVA Jr API Developer (SE)"; job.analysis.fields.company.value = "CGI";
+      job.analysis.fields.location.value = null; job.analysis.fields.work_mode.value = null;
+      job.analysis.fields.employment_type.value = null; job.analysis.fields.experience.value = "3+ Years";
+      job.analysis.requirements = [
+        req("r1", "strong expertise in Java and API development with Core Java", "required", ["Java"], "single", null),
+        req("r2", "deep expertise in Core Java (Java 3+), multithreading, asynchronous programming", "required", ["Java"], "single", "3+ yrs"),
+        req("r3", "strong experience in designing enterprise microservices", "required", ["Microservices"], "single", null),
+      ];
+      if (match) Object.assign(match, { required: { coverage: 50, total: 2, met: 1 }, preferred: { coverage: null, total: 0, met: 0 },
+        status: { r1: "supported", r2: "unassessable", r3: "not_evidenced" }, missing: ["Microservices"] });
+    }
     const record = { captureId: "c1", operationId: "o1", jobId: JOB, analysisId: "an-1", tabId: 7, url: "https://www.linkedin.com/jobs/view/4475160467",
       accountId: "u1", state: "completed", stage: "succeeded", attempt: 1, maxAttempts: 3, error: null, connection: "ok", title: "Java Software Engineer",
       startedAt: now - 60000, updatedAt: now, appliedAt: now, seq: 3 };

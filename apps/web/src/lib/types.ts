@@ -15,7 +15,10 @@ export type Operation<R = Record<string, unknown>> = {
 
 export type Accepted = { operation_id: string; status_url: string };
 
-export type User = { id: string; email: string; display_name: string | null; is_admin: boolean; timezone: string; created_at?: string };
+export type User = {
+  id: string; email: string; display_name: string | null; is_admin: boolean; timezone: string; created_at?: string;
+  email_verified?: boolean; mfa_enabled?: boolean;
+};
 
 export type Me = {
   user: User;
@@ -24,7 +27,11 @@ export type Me = {
     push: boolean; code_execution: boolean; voice_interviews: boolean; external_ai: boolean;
   };
   limits: { max_upload_mb: number; max_job_text_chars: number; supported_resume_formats: string[]; supported_languages: string[] };
+  account_security?: { require_verified_email: boolean; email_delivery: boolean };
 };
+
+export type MfaStatus = { enabled: boolean; recovery_codes_left: number };
+export type MfaSetup = { secret: string; otpauth_uri: string; qr_svg: string };
 
 export type Profile = {
   revision: number; career_stage: string | null; target_roles: string[]; domains: string[]; locations: string[];

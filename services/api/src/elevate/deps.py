@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import threading
-import time
-from collections import defaultdict, deque
 from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Annotated
@@ -15,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from .config import get_settings
 from .db import session_factory
-from .errors import Forbidden, TooManyRequests, Unauthorized
+from .errors import Forbidden, Unauthorized
 from .models import User
 from .security import decode_access_token
 
@@ -43,6 +40,8 @@ def get_db_and_actor(authorization: Annotated[str | None, Header()] = None) -> I
         user = db.get(User, claims.user_id)
         if user is None or user.deleted_at is not None or user.token_version != claims.token_version:
             raise Unauthorized("Session is no longer valid", code="session_revoked")
+        from .services.account_security import rate_limit
+        rate_limit(db, f"api-user:{user.id}", get_settings().api_rate_per_minute)
         yield db, Actor(user.id, user.email, user.is_admin, user.timezone, claims.client)
     finally:
         db.close()
@@ -71,27 +70,26 @@ def require_admin(ctx: Authed) -> tuple[Session, Actor]:
 AdminCtx = Annotated[tuple[Session, Actor], Depends(require_admin)]
 
 
-class SlidingWindowLimiter:
-    """In-process limiter. Single-instance only (documented in docs/SECURITY.md)."""
-
-    def __init__(self) -> None:
-        self._hits: dict[str, deque[float]] = defaultdict(deque)
-        self._lock = threading.Lock()
-
-    def check(self, key: str, limit: int, window: float = 60.0) -> None:
-        now = time.monotonic()
-        with self._lock:
-            q = self._hits[key]
-            while q and q[0] <= now - window:
-                q.popleft()
-            if len(q) >= limit:
-                raise TooManyRequests("Too many attempts. Try again in a minute.", extra={"retry_after": int(window)})
-            q.append(now)
-
-
-limiter = SlidingWindowLimiter()
+def client_ip(request: Request) -> str:
+    """Client address. Behind a platform proxy, uvicorn runs with --proxy-headers so this is the
+    real client from X-Forwarded-For (only trusted from the configured proxy)."""
+    return request.client.host if request.client else "unknown"
 
 
 def auth_rate_limit(request: Request) -> None:
-    ip = request.client.host if request.client else "unknown"
-    limiter.check(f"auth:{ip}", get_settings().auth_rate_per_minute)
+    """Per-IP limit on sign-in endpoints, shared by every API instance (PostgreSQL)."""
+    from .db import system_session
+    from .services.account_security import rate_limit
+    with system_session() as db:
+        rate_limit(db, f"auth-ip:{client_ip(request)}", get_settings().auth_rate_per_minute)
+
+
+def require_verified_email(ctx: Authed) -> tuple[Session, Actor]:
+    """Gate expensive AI operations behind a verified email when the deployment requires it."""
+    db, actor = ctx
+    if get_settings().require_verified_email:
+        u = db.get(User, actor.id)
+        if u is None or u.email_verified_at is None:
+            raise Forbidden("Confirm your email address to use AI analysis. Check your inbox or resend the link "
+                            "from Settings.", code="email_unverified")
+    return ctx

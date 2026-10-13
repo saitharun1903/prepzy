@@ -27,6 +27,9 @@ def main() -> int:
             key, val = m.group(1), m.group(2)
             if val == "__generate__":
                 val = secrets.token_urlsafe(32)
+            elif val == "__generate_fernet__":
+                import base64
+                val = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode()
             val = re.sub(r"\$\{([A-Z0-9_]+)\}", lambda mm: values.get(mm.group(1), ""), val)
             values[key] = val
             line = f"{key}={val}"

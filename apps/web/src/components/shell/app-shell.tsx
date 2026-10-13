@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  Bell, Briefcase, CalendarCheck, FileText, Home, LogOut, Menu, MessagesSquare, Route, Settings, ShieldCheck, UserRound, X,
+  Bell, Briefcase, CalendarCheck, FileText, Home, LogOut, MailWarning, Menu, MessagesSquare, Route, Settings, ShieldCheck, UserRound, X,
 } from "lucide-react";
 import { sessionPost } from "@/lib/api";
-import { cx } from "@/components/ui/primitives";
+import { ResendVerification, cx } from "@/components/ui/primitives";
 import { Dialog } from "@/components/ui/dialog";
 import { SessionProvider, useSession } from "./session";
 
@@ -110,6 +110,46 @@ function SignOut({ className }: { className?: string }) {
   );
 }
 
+const VERIFY_BANNER_KEY = "el_verify_banner_dismissed";
+
+/** Slim banner while the deployment requires a confirmed email and this account has not confirmed it.
+ * Dismissal lasts for this browser tab session only. */
+function VerifyEmailBanner() {
+  const { me } = useSession();
+  const [dismissed, setDismissed] = useState(true);
+  useEffect(() => {
+    try {
+      setDismissed(sessionStorage.getItem(VERIFY_BANNER_KEY) === "1");
+    } catch {
+      setDismissed(false);
+    }
+  }, []);
+  if (!me || dismissed || !me.account_security?.require_verified_email || me.user.email_verified !== false) return null;
+  const dismiss = () => {
+    setDismissed(true);
+    try {
+      sessionStorage.setItem(VERIFY_BANNER_KEY, "1");
+    } catch {
+      /* storage unavailable */
+    }
+  };
+  return (
+    <div role="region" aria-label="Email confirmation" className="mb-6 rounded-md border border-warn/30 bg-warn-soft px-3.5 py-2.5 text-sm flex items-start gap-2.5">
+      <MailWarning aria-hidden className="size-4 mt-0.5 shrink-0 text-warn" />
+      <div className="min-w-0 flex-1 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <p className="text-ink">
+          <span className="font-medium">Confirm your email to use AI analysis.</span>{" "}
+          {me.account_security.email_delivery ? <span className="text-ink-2 break-all">Look for the link we sent to {me.user.email}.</span> : null}
+        </p>
+        <ResendVerification deliveryConfigured={me.account_security.email_delivery} />
+      </div>
+      <button type="button" onClick={dismiss} aria-label="Dismiss email confirmation reminder" className="rounded p-0.5 text-muted hover:text-ink">
+        <X aria-hidden className="size-4" />
+      </button>
+    </div>
+  );
+}
+
 function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [drawer, setDrawer] = useState(false);
@@ -153,7 +193,10 @@ function Shell({ children }: { children: ReactNode }) {
       </Dialog>
 
       <main id="main" tabIndex={-1} className="min-w-0 px-4 sm:px-8 lg:px-12 pt-6 sm:pt-10 pb-28 lg:pb-16 focus:outline-none">
-        <div className="mx-auto max-w-[1080px]">{children}</div>
+        <div className="mx-auto max-w-[1080px]">
+          <VerifyEmailBanner />
+          {children}
+        </div>
       </main>
 
       {/* Mobile bottom nav */}
