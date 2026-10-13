@@ -1,0 +1,21 @@
+TEST FIXTURE — fictional candidate authored for Elevate tests.
+Asha Example
+asha.example@example.test | +91 90000 00000
+
+Summary
+Final-year computer science student interested in backend development.
+
+Education
+B.Tech in Computer Science, Example Institute of Technology, 2022 - 2026
+
+Experience
+Backend Intern, Sample Labs — Jun 2025 - Aug 2025
+- Built REST APIs in Java with Spring Boot for an internal inventory tool.
+- Wrote SQL queries against a PostgreSQL database and added unit tests with JUnit.
+
+Projects
+Campus Event Planner — a web app using React and Node.js with a MongoDB backend.
+Data structures practice — solved 200 algorithm problems in Java.
+
+Skills
+Java, Python, SQL, Git, Docker, HTML, CSS

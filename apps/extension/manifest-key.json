@@ -1,0 +1,5 @@
+{
+ "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAm5sHpEGPd6w4OBdKmWSnt1v7F3ZyLnCSspEHdFEsSWh4emUtnSnkMtxUOLE73mj+npy/76v3woXPSdMaI7EyC6CYWGDZWzWFtJy2TdMr5KF30FAt/RbXz3rDq7MTz+2WlCj2a4dIlUHZv+8YPJ6zfi69HKCrXoui3obPjl7zVVCs8P2BxidZ7TnncSNeLJr3Et4qU4qjS3TxtT/7DqKLMiPT8smnh/LRBCgOMx+/H6/9XxPbbEnm5oy2PDL3wqD3DqXSoRObPyK43xsj5e8RRwB5OY94ffc79pzUqBQF5BCD0wWRXIQ3AlnbaFsoVfYsWWse6qVPqZgwbRPsr1Jq5QIDAQAB",
+ "id": "bjhbbpnbmichlooillmiaeofcioofkni",
+ "note": "Public key only. Pins the development extension ID. Private key is apps/extension/dev-key.pem (gitignored)."
+}

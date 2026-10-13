@@ -1,0 +1,163 @@
+@import "tailwindcss";
+
+/* ------------------------------------------------------------------ design tokens
+   Neutral, editorial palette with a single accent (deep green). Light is default;
+   dark applies via [data-theme="dark"] (set before paint by an inline script). */
+:root {
+  --bg: #f7f6f3;
+  --surface: #ffffff;
+  --surface-2: #f1efea;
+  --ink: #1b1a17;
+  --ink-2: #4a4740;
+  --muted: #6b675e;
+  --border: #e3e0d8;
+  --border-strong: #cfcbc1;
+  --accent: #2d6a55;
+  --accent-ink: #ffffff;
+  --accent-soft: #e4efe9;
+  --ok: #2d6a55;
+  --ok-soft: #e4efe9;
+  --warn: #8a5a00;
+  --warn-soft: #f7ecd6;
+  --danger: #a23b2a;
+  --danger-soft: #f6e3df;
+  --info: #3c5a86;
+  --info-soft: #e5ebf4;
+  --focus: #1f5fbf;
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --dur-fast: 120ms;
+  --dur: 200ms;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --bg: #121311;
+  --surface: #191a18;
+  --surface-2: #20221f;
+  --ink: #ecebe6;
+  --ink-2: #c9c7c0;
+  --muted: #9a978e;
+  --border: #2c2e2a;
+  --border-strong: #3c3f3a;
+  --accent: #7cc4a6;
+  --accent-ink: #0d1a14;
+  --accent-soft: #1d2c25;
+  --ok: #7cc4a6;
+  --ok-soft: #1d2c25;
+  --warn: #e0b260;
+  --warn-soft: #2e2617;
+  --danger: #ec8b78;
+  --danger-soft: #331d19;
+  --info: #9db8e2;
+  --info-soft: #1c2433;
+  --focus: #8fb8ff;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-focus: var(--focus);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius-lg);
+  --font-sans: var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-newsreader), ui-serif, Georgia, serif;
+}
+
+html {
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01", "cv11";
+  line-height: 1.5;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+h1, h2, h3 {
+  text-wrap: balance;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+/* Visible, consistent focus for keyboard users (WCAG 2.4.7 / 2.4.13). */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.serif {
+  font-family: var(--font-serif);
+  font-optical-sizing: auto;
+}
+
+.prewrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.sr-only-focusable:not(:focus) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes el-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.skeleton {
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  animation: el-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes el-spin {
+  to { transform: rotate(360deg); }
+}
+.spin {
+  animation: el-spin 0.9s linear infinite;
+}

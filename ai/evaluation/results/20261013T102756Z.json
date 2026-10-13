@@ -1,0 +1,464 @@
+{
+ "run_at": "2026-10-13T10:27:55.857261+00:00",
+ "dataset": "eval-v1",
+ "labeling": "Single author labeled expected concept groups, importance and unknown fields by hand. Not independently reviewed.",
+ "model": "qwen2.5-coder:7b",
+ "prompt_version": "job-extract-4",
+ "schema_version": "job-analysis-1",
+ "taxonomy_version": "tax-2026.10.1",
+ "temperature": 0.1,
+ "num_ctx": 8192,
+ "environment": {
+  "os": "Windows-11-10.0.26200-SP0",
+  "python": "3.13.5",
+  "hardware": "i5-12500H, 16 GB RAM, RTX 3050 Laptop 4 GB (model partially CPU-offloaded)"
+ },
+ "targets": {
+  "required_f1": 0.75,
+  "alternative_accuracy": 0.8,
+  "salary_unknown": 1.0,
+  "schema_valid": 0.95
+ },
+ "aggregate": {
+  "cases": 10,
+  "required_f1": 0.971,
+  "preferred_f1": 0.919,
+  "any_importance_f1": 0.959,
+  "importance_accuracy": 0.946,
+  "alternative_accuracy": 1.0,
+  "salary_unknown": 1.0,
+  "schema_valid": 1.0,
+  "domain_accuracy": 1.0,
+  "latency_s": {
+   "median": 43.8,
+   "max": 68.5
+  }
+ },
+ "by_domain": {
+  "software_engineering": {
+   "status": "measured_experimental",
+   "cases": 1,
+   "required_f1": 1.0,
+   "note": "n=1 baseline; not validated"
+  },
+  "digital_marketing": {
+   "status": "measured_experimental",
+   "cases": 1,
+   "required_f1": 1.0,
+   "note": "n=1 baseline; not validated"
+  },
+  "data_analytics": {
+   "status": "measured_experimental",
+   "cases": 1,
+   "required_f1": 1.0,
+   "note": "n=1 baseline; not validated"
+  },
+  "ai_ml": {
+   "status": "measured_experimental",
+   "cases": 1,
+   "required_f1": 1.0,
+   "note": "n=1 baseline; not validated"
+  },
+  "cloud_devops": {
+   "status": "measured_experimental",
+   "cases": 1,
+   "required_f1": 1.0,
+   "note": "n=1 baseline; not validated"
+  },
+  "cybersecurity": {
+   "status": "measured_experimental",
+   "cases": 1,
+   "required_f1": 1.0,
+   "note": "n=1 baseline; not validated"
+  },
+  "business_analysis": {
+   "status": "measured_experimental",
+   "cases": 1,
+   "required_f1": 1.0,
+   "note": "n=1 baseline; not validated"
+  },
+  "sales_cs": {
+   "status": "measured_experimental",
+   "cases": 1,
+   "required_f1": 0.857,
+   "note": "n=1 baseline; not validated"
+  },
+  "hr_recruiting": {
+   "status": "measured_experimental",
+   "cases": 1,
+   "required_f1": 0.857,
+   "note": "n=1 baseline; not validated"
+  },
+  "finance_ops": {
+   "status": "measured_experimental",
+   "cases": 1,
+   "required_f1": 1.0,
+   "note": "n=1 baseline; not validated"
+  }
+ },
+ "cases": [
+  {
+   "id": "swe-1",
+   "domain": "software_engineering",
+   "status": "complete",
+   "model": "qwen2.5-coder:7b",
+   "seconds": 68.5,
+   "n_requirements": 7,
+   "required": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "preferred": {
+    "precision": 0.75,
+    "recall": 1.0,
+    "f1": 0.857
+   },
+   "any_importance": {
+    "precision": 0.917,
+    "recall": 1.0,
+    "f1": 0.957
+   },
+   "importance_accuracy": 1.0,
+   "alternatives": {
+    "labelled": 1,
+    "correct": 1
+   },
+   "salary_correct": true,
+   "negation_detected": null,
+   "injection_resisted": null,
+   "domain_top": "software_engineering",
+   "domain_correct": true,
+   "issues": [
+    "rules_gap_fill"
+   ]
+  },
+  {
+   "id": "mkt-1",
+   "domain": "digital_marketing",
+   "status": "complete",
+   "model": "qwen2.5-coder:7b",
+   "seconds": 65.9,
+   "n_requirements": 7,
+   "required": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "preferred": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "any_importance": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "importance_accuracy": 1.0,
+   "alternatives": {
+    "labelled": 0,
+    "correct": 0
+   },
+   "salary_correct": true,
+   "negation_detected": null,
+   "injection_resisted": true,
+   "domain_top": "digital_marketing",
+   "domain_correct": true,
+   "issues": [
+    "rules_gap_fill"
+   ]
+  },
+  {
+   "id": "da-1",
+   "domain": "data_analytics",
+   "status": "complete",
+   "model": "qwen2.5-coder:7b",
+   "seconds": 46.1,
+   "n_requirements": 6,
+   "required": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "preferred": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "any_importance": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "importance_accuracy": 1.0,
+   "alternatives": {
+    "labelled": 2,
+    "correct": 2
+   },
+   "salary_correct": true,
+   "negation_detected": null,
+   "injection_resisted": null,
+   "domain_top": "data_analytics",
+   "domain_correct": true,
+   "issues": [
+    "rules_gap_fill"
+   ]
+  },
+  {
+   "id": "ml-1",
+   "domain": "ai_ml",
+   "status": "complete",
+   "model": "qwen2.5-coder:7b",
+   "seconds": 40.6,
+   "n_requirements": 4,
+   "required": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "preferred": {
+    "precision": 1.0,
+    "recall": 0.5,
+    "f1": 0.667
+   },
+   "any_importance": {
+    "precision": 1.0,
+    "recall": 0.857,
+    "f1": 0.923
+   },
+   "importance_accuracy": 0.857,
+   "alternatives": {
+    "labelled": 1,
+    "correct": 1
+   },
+   "salary_correct": true,
+   "negation_detected": null,
+   "injection_resisted": null,
+   "domain_top": "ai_ml",
+   "domain_correct": true,
+   "issues": [
+    "rules_gap_fill"
+   ]
+  },
+  {
+   "id": "cloud-1",
+   "domain": "cloud_devops",
+   "status": "complete",
+   "model": "qwen2.5-coder:7b",
+   "seconds": 39.4,
+   "n_requirements": 6,
+   "required": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "preferred": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "any_importance": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "importance_accuracy": 1.0,
+   "alternatives": {
+    "labelled": 1,
+    "correct": 1
+   },
+   "salary_correct": true,
+   "negation_detected": null,
+   "injection_resisted": null,
+   "domain_top": "cloud_devops",
+   "domain_correct": true,
+   "issues": [
+    "rules_gap_fill"
+   ]
+  },
+  {
+   "id": "sec-1",
+   "domain": "cybersecurity",
+   "status": "complete",
+   "model": "qwen2.5-coder:7b",
+   "seconds": 42.8,
+   "n_requirements": 5,
+   "required": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "preferred": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "any_importance": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "importance_accuracy": 1.0,
+   "alternatives": {
+    "labelled": 0,
+    "correct": 0
+   },
+   "salary_correct": true,
+   "negation_detected": true,
+   "injection_resisted": null,
+   "domain_top": "cybersecurity",
+   "domain_correct": true,
+   "issues": [
+    "rules_gap_fill"
+   ]
+  },
+  {
+   "id": "ba-1",
+   "domain": "business_analysis",
+   "status": "complete",
+   "model": "qwen2.5-coder:7b",
+   "seconds": 45.5,
+   "n_requirements": 4,
+   "required": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "preferred": {
+    "precision": 0.5,
+    "recall": 1.0,
+    "f1": 0.667
+   },
+   "any_importance": {
+    "precision": 0.875,
+    "recall": 1.0,
+    "f1": 0.933
+   },
+   "importance_accuracy": 1.0,
+   "alternatives": {
+    "labelled": 0,
+    "correct": 0
+   },
+   "salary_correct": true,
+   "negation_detected": null,
+   "injection_resisted": null,
+   "domain_top": "business_analysis",
+   "domain_correct": true,
+   "issues": [
+    "rules_gap_fill"
+   ]
+  },
+  {
+   "id": "sales-1",
+   "domain": "sales_cs",
+   "status": "complete",
+   "model": "qwen2.5-coder:7b",
+   "seconds": 41.9,
+   "n_requirements": 5,
+   "required": {
+    "precision": 1.0,
+    "recall": 0.75,
+    "f1": 0.857
+   },
+   "preferred": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "any_importance": {
+    "precision": 1.0,
+    "recall": 0.8,
+    "f1": 0.889
+   },
+   "importance_accuracy": 0.8,
+   "alternatives": {
+    "labelled": 0,
+    "correct": 0
+   },
+   "salary_correct": true,
+   "negation_detected": null,
+   "injection_resisted": null,
+   "domain_top": "sales_cs",
+   "domain_correct": true,
+   "issues": [
+    "rules_gap_fill"
+   ]
+  },
+  {
+   "id": "hr-1",
+   "domain": "hr_recruiting",
+   "status": "complete",
+   "model": "qwen2.5-coder:7b",
+   "seconds": 44.9,
+   "n_requirements": 5,
+   "required": {
+    "precision": 1.0,
+    "recall": 0.75,
+    "f1": 0.857
+   },
+   "preferred": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "any_importance": {
+    "precision": 1.0,
+    "recall": 0.8,
+    "f1": 0.889
+   },
+   "importance_accuracy": 0.8,
+   "alternatives": {
+    "labelled": 0,
+    "correct": 0
+   },
+   "salary_correct": true,
+   "negation_detected": null,
+   "injection_resisted": null,
+   "domain_top": "hr_recruiting",
+   "domain_correct": true,
+   "issues": [
+    "rules_gap_fill"
+   ]
+  },
+  {
+   "id": "fin-1",
+   "domain": "finance_ops",
+   "status": "complete",
+   "model": "qwen2.5-coder:7b",
+   "seconds": 42.3,
+   "n_requirements": 5,
+   "required": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "preferred": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "any_importance": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+   },
+   "importance_accuracy": 1.0,
+   "alternatives": {
+    "labelled": 0,
+    "correct": 0
+   },
+   "salary_correct": true,
+   "negation_detected": null,
+   "injection_resisted": null,
+   "domain_top": "finance_ops",
+   "domain_correct": true,
+   "issues": [
+    "rules_gap_fill"
+   ]
+  }
+ ],
+ "limitations": [
+  "One case per domain; single author labels; English only; authored fixtures, not live postings."
+ ]
+}

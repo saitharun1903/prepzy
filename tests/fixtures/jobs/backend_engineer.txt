@@ -1,0 +1,27 @@
+TEST FIXTURE — authored for Elevate tests. Fictional company; not a real posting.
+
+Backend Software Engineer
+Fixture Systems Pvt Ltd — Hyderabad, India (Hybrid)
+Full-time
+
+About the role
+You will design and build backend services for our logistics platform and work closely with product and data teams.
+
+Responsibilities
+- Design, build and maintain REST APIs used by web and mobile clients.
+- Write unit and integration tests and take part in code reviews.
+- Improve the performance and reliability of services running on AWS.
+
+Requirements
+- 3+ years of professional experience with Java or Kotlin.
+- Strong knowledge of Spring Boot and REST API design.
+- Experience with SQL databases such as PostgreSQL or MySQL.
+- Good understanding of data structures and algorithms.
+- Bachelor's degree in Computer Science or a related field.
+
+Nice to have
+- Experience with Docker and Kubernetes.
+- Familiarity with Kafka is a plus.
+- Exposure to CI/CD pipelines (GitHub Actions or Jenkins).
+
+Application deadline: 30 November 2026

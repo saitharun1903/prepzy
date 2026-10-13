@@ -1,0 +1,22 @@
+# Local profile: PostgreSQL 17 + pgvector. Bound to loopback only; never publish this port publicly.
+name: browserelevate
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: browserelevate-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: elevate_owner
+      POSTGRES_PASSWORD: ${ELEVATE_DB_OWNER_PASSWORD:?set ELEVATE_DB_OWNER_PASSWORD in .env}
+      POSTGRES_DB: elevate
+    ports:
+      - "127.0.0.1:${ELEVATE_DB_PORT:-5433}:5432"
+    volumes:
+      - browserelevate_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U elevate_owner -d elevate"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+volumes:
+  browserelevate_pg:

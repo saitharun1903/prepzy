@@ -1,0 +1,13 @@
+{
+  "name": "elevate",
+  "private": true,
+  "workspaces": ["apps/web", "apps/extension", "packages/api-client"],
+  "scripts": {
+    "gen:api": "node scripts/gen-api.mjs",
+    "build:web": "npm run build -w apps/web",
+    "build:extension": "npm run build -w apps/extension",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "engines": { "node": ">=20" }
+}
