@@ -615,7 +615,7 @@ class E2E:
         jid, vid = self.s["job_id"], self.s["docx"]["version_id"]
         rep = self.api.j("POST", f"/api/v1/jobs/{jid}/match", self.tok, json={"resume_version_id": vid})
         res = rep["result"]
-        check(res["label"] == "Elevate evidence coverage estimate", "label")
+        check(res["label"] == "Prepzy evidence coverage estimate", "label")
         units = res["requirements"]
         for imp in ("required", "preferred", "unclear"):
             summ = res["summary"][imp]
