@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 /** Next 16 "proxy" (formerly middleware): per-request CSP nonce + optimistic auth redirects.
  * Real authorization happens at the API; this only decides which page to show. */
 
-const PUBLIC_PATHS = ["/login", "/register", "/privacy", "/forgot-password", "/reset-password", "/verify-email"];
+const PUBLIC_PATHS = ["/welcome", "/login", "/register", "/privacy", "/forgot-password", "/reset-password", "/verify-email"];
 
 function csp(nonce: string): string {
   const dev = process.env.NODE_ENV !== "production";
@@ -29,11 +29,12 @@ export function proxy(request: NextRequest) {
 
   if (!isPublic && !hasSession) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
+    // A signed-out visitor to the home page sees the welcome page; deep links go to sign-in and come back.
+    url.pathname = pathname === "/" ? "/welcome" : "/login";
     url.search = pathname !== "/" ? `?next=${encodeURIComponent(pathname + search)}` : "";
     return NextResponse.redirect(url);
   }
-  if ((pathname === "/login" || pathname === "/register") && hasSession) {
+  if ((pathname === "/login" || pathname === "/register" || pathname === "/welcome") && hasSession) {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     url.search = "";

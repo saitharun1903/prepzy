@@ -190,10 +190,18 @@ def handle_interview_generate(ctx: OpContext) -> None:
             except CapabilityUnavailable:
                 passages = []
     ctx.stage("generating_questions")
+    origin, prompt_version = "generated", iv.GEN_PROMPT_VERSION
     try:
         qs = iv.generate_questions(role=role, domains=cfg.get("domains", []), kinds=cfg["kinds"], requirements=requirements,
                                    topics=topics, difficulty=cfg["difficulty"], count=cfg["count"], passages=passages,
                                    cancel_check=ctx.cancelled)
+    except CapabilityUnavailable as e:
+        if e.retryable and ctx.attempt < ctx.op.max_attempts:
+            raise
+        # No AI available: fall back to built-in questions so practice still works.
+        qs = iv.template_questions(role=role, kinds=cfg["kinds"], requirements=requirements, topics=topics,
+                                   difficulty=cfg["difficulty"], count=cfg["count"])
+        origin, prompt_version, passages = "template", iv.TEMPLATE_PROMPT_VERSION, []
     except AppError as e:
         if not e.retryable or ctx.attempt >= ctx.op.max_attempts:
             with ctx.owner_db() as db:
@@ -209,10 +217,10 @@ def handle_interview_generate(ctx: OpContext) -> None:
         for i, q in enumerate(qs):
             db.add(InterviewQuestion(session_id=sid, owner_id=ctx.owner_id, ord=i + 1, kind=q["kind"], topic=q["topic"],
                                      prompt=q["prompt"], rubric=q["rubric"], rubric_version=iv.RUBRIC_VERSION,
-                                     origin="generated", requirement_ref=q["requirement_ref"]))
+                                     origin=origin, requirement_ref=q["requirement_ref"]))
         sess.status = "active"
         sess.config = {**sess.config, "passages_used": [p["chunk_id"] for p in passages],
-                       "prompt_version": iv.GEN_PROMPT_VERSION}
+                       "prompt_version": prompt_version}
         return {"session_id": str(sid), "questions": len(qs)}
     ctx.commit_result(write)
 
@@ -232,6 +240,10 @@ def handle_answer_evaluate(ctx: OpContext) -> None:
     ctx.stage("evaluating")
     try:
         ev = iv.evaluate_answer(prompt, kind, rubric, answer_text, cancel_check=ctx.cancelled)
+    except CapabilityUnavailable as e:
+        if e.retryable and ctx.attempt < ctx.op.max_attempts:
+            raise
+        ev = iv.checklist_evaluation(kind, rubric, answer_text)  # no AI: transparent structure checklist
     except AppError as e:
         if not e.retryable or ctx.attempt >= ctx.op.max_attempts:
             with ctx.owner_db() as db:

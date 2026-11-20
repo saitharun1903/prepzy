@@ -79,7 +79,7 @@ function EvaluationView({ ev }: { ev: Evaluation }) {
           </div>
         ))}
       </div>
-      <p className="text-[12px] text-muted">Feedback {ev.method === "rule" ? "from a rule (answer too short)" : `from ${MODEL}${ev.model ? ` (${ev.model})` : ""}`}. It is practice feedback, not a hiring judgement.</p>
+      <p className="text-[12px] text-muted">Feedback {ev.method === "rule" ? "from a rule (answer too short)" : ev.method === "checklist" ? "from the built-in checklist (AI unavailable): it checks your answer's structure, not whether it is correct" : `from ${MODEL}${ev.model ? ` (${ev.model})` : ""}`}. It is practice feedback, not a hiring judgement.</p>
     </div>
   );
 }
@@ -136,7 +136,7 @@ function QuestionView({ sid, q, active, onChanged }: { sid: string; q: Interview
     <article aria-labelledby={`q-${q.id}`} className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone="accent">{q.kind_label}</Badge>
-        <Badge>Generated practice question</Badge>
+        <Badge>{q.origin === "template" ? "Built-in practice question" : "Generated practice question"}</Badge>
         {q.topic ? <Badge>{q.topic}</Badge> : null}
         {q.status === "skipped" ? <Badge tone="warn">Skipped</Badge> : null}
       </div>

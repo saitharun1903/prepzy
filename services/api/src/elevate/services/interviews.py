@@ -181,3 +181,114 @@ def evaluate_answer(question: str, kind: str, rubric: list[dict[str, Any]], answ
     return {"assessable": out.assessable, "criteria": criteria, "strengths": out.strengths, "gaps": out.gaps,
             "improvements": out.improvements, "tally": tally, "dropped_quotes": dropped, "model": comp.model,
             "method": "model", "prompt_version": EVAL_PROMPT_VERSION}
+
+
+# ---------------------------------------------------------------- built-in practice (no AI available)
+# Used only when the AI model is disabled or unreachable, so practice still works. Questions are
+# filled from the job's own requirement concepts; feedback is a transparent structure checklist.
+TEMPLATE_PROMPT_VERSION = "iq-template-1"
+
+_TEMPLATES: dict[str, list[str]] = {
+    "technical": ["Explain {skill} as you would to an interviewer: what it is, when you would use it, and one limitation.",
+                  "What problems does {skill} solve well, and when would you choose something else instead?"],
+    "coding": ["Using {skill}, describe how you would return the 3 most frequent values in a large list. "
+               "Write code or pseudocode and state the time and space complexity.",
+               "Using {skill}, how would you detect duplicate records in a list of 1 million items? Discuss edge cases."],
+    "sql": ["Write a SQL query that lists every customer with their total order value for the last 30 days, "
+            "including customers with no orders. Explain how you handle NULLs and duplicates.",
+            "Write a SQL query to find the second-highest salary in each department. Explain your choice of approach."],
+    "system_design": ["Design a small service that uses {skill} to handle 1,000 requests per second. "
+                      "Describe the components, the data flow and the main bottleneck.",
+                      "How would you make a system that relies on {skill} reliable when one component fails?"],
+    "behavioral": ["Tell me about a time you used {skill} to solve a real problem. What was the situation, what did you do, and what was the result?",
+                   "Describe a time you had to learn {skill} (or something similar) quickly. How did you approach it?"],
+    "hr": ["Why are you interested in this {role} role, and what makes you a good fit?",
+           "Where do you want to grow in the next two years, and how does this {role} role help?"],
+    "case_study": ["A key metric related to {skill} dropped 20% last month. How would you find the cause and what would you recommend?",
+                   "You have one quarter and a small budget to improve results with {skill}. How would you plan and measure it?"],
+    "role_specific": ["Walk me through how you would apply {skill} in your first month in this {role} role.",
+                      "How do you measure whether your work with {skill} is successful?"],
+    "scenario": ["A stakeholder needs a result involving {skill} by tomorrow, but the data is incomplete. What do you do?",
+                 "Your team disagrees about how to use {skill} on a project. How do you reach a decision?"],
+}
+_DEPTH = {"easy": "", "medium": "", "hard": " Go deeper: discuss trade-offs and what could go wrong."}
+
+
+def template_questions(*, role: str, kinds: list[str], requirements: list[dict[str, Any]], topics: list[str],
+                       difficulty: str, count: int) -> list[dict[str, Any]]:
+    """Deterministic practice questions from authored templates and the job's requirement concepts."""
+    skills: list[tuple[str, str | None]] = [(t.strip(), None) for t in topics if t.strip()]
+    for r in requirements:
+        for c in r.get("concepts", []):
+            if c.get("label") and all(c["label"] != s for s, _ in skills):
+                skills.append((c["label"], r.get("key")))
+    if not skills:
+        skills = [("your core skills", None)]
+    role = (role or "this").strip()[:80]
+    usable = [k for k in kinds if k in _TEMPLATES] or ["behavioral", "hr", "role_specific"]
+    qs: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    rounds = max(len(t) for t in _TEMPLATES.values())
+    for t_round in range(rounds):
+        for s_idx in range(len(skills)):
+            for k_idx, kind in enumerate(usable):
+                if len(qs) >= count:
+                    return qs
+                skill, req_key = skills[(s_idx + k_idx) % len(skills)]
+                tpl = _TEMPLATES[kind][t_round % len(_TEMPLATES[kind])]
+                prompt = tpl.format(skill=skill, role=role) + _DEPTH.get(difficulty, "")
+                if prompt in seen:
+                    continue
+                seen.add(prompt)
+                uses_skill = "{skill}" in tpl
+                qs.append({"kind": kind, "topic": (skill if uses_skill else KIND_LABELS.get(kind, kind))[:120],
+                           "prompt": prompt, "rubric": [{"criterion": c, "origin": "base"} for c in BASE_RUBRICS[kind]],
+                           "requirement_ref": req_key if uses_skill else None})
+    return qs
+
+
+_CHECKS: dict[str, list[tuple[str, re.Pattern[str]]]] = {
+    "behavioral": [("Describes a specific situation (STAR: situation/task)",
+                    re.compile(r"\b(when|at my|during|in my|project|internship|team|last year|once)\b", re.I)),
+                   ("Explains own actions clearly", re.compile(r"\bI\s+(built|led|wrote|decided|created|fixed|designed|analy[sz]ed|started|organi[sz]ed|took|made|worked|implemented)\b", re.I)),
+                   ("States the result or what was learned", re.compile(r"\b(result|outcome|learn(ed|t)|improv|reduc|increas|saved|%|\d+)", re.I))],
+    "coding": [("States time/space complexity", re.compile(r"\bO\(|complexity|linear|logarithmic|quadratic", re.I)),
+               ("Handles edge cases", re.compile(r"edge case|empty|null|none|duplicate|negative|overflow", re.I))],
+    "sql": [("Correct joins/grouping/filtering", re.compile(r"\b(join|group by|where|having)\b", re.I)),
+            ("Considers NULLs/duplicates", re.compile(r"\b(null|coalesce|distinct|duplicate)\b", re.I))],
+    "system_design": [("Discusses bottlenecks and trade-offs", re.compile(r"trade-?off|bottleneck|scal|cache|latency|replica", re.I))],
+    "technical": [("Uses a concrete example", re.compile(r"for example|e\.g\.|for instance|such as|in my", re.I)),
+                  ("Notes trade-offs or limitations", re.compile(r"trade-?off|limitation|downside|however|but\b|drawback", re.I))],
+    "case_study": [("Uses relevant metrics or data", re.compile(r"metric|data|%|\d+|kpi|conversion|rate", re.I))],
+    "role_specific": [("Mentions how success is measured", re.compile(r"measure|metric|kpi|success|track|%|\d+", re.I))],
+}
+
+
+def checklist_evaluation(kind: str, rubric: list[dict[str, Any]], answer: str) -> dict[str, Any]:
+    """Transparent structure checks against the rubric when no AI model is available. It never judges
+    correctness: criteria it cannot check are left as cannot_assess."""
+    checks = dict(_CHECKS.get(kind, []))
+    criteria = []
+    for r in rubric:
+        name = r["criterion"]
+        pat = checks.get(name)
+        if pat is None:
+            criteria.append({"criterion": name, "rating": "cannot_assess", "answer_quote": None,
+                             "comment": "Check this one yourself; the built-in checklist cannot judge it."})
+            continue
+        m = pat.search(answer)
+        criteria.append({"criterion": name, "rating": "met" if m else "not_met",
+                         "answer_quote": m.group(0) if m else None,
+                         "comment": "Signal found in your answer." if m else "No clear sign of this in your answer."})
+    words = len(answer.split())
+    strengths = [f"Covers: {c['criterion'].lower()}." for c in criteria if c["rating"] == "met"]
+    gaps = [f"Not clearly covered: {c['criterion'].lower()}." for c in criteria if c["rating"] == "not_met"]
+    improvements = [f"Add a sentence that addresses: {c['criterion'].lower()}." for c in criteria if c["rating"] == "not_met"]
+    if words < 60:
+        improvements.append("Most strong interview answers run 120-250 words; add more detail.")
+    elif words > 450:
+        improvements.append("Your answer is long; aim for 120-250 words so the key points stand out.")
+    tally = {k: sum(1 for c in criteria if c["rating"] == k) for k in ("met", "partly", "not_met", "cannot_assess")}
+    return {"assessable": True, "criteria": criteria, "strengths": strengths, "gaps": gaps,
+            "improvements": improvements[:5], "tally": tally, "method": "checklist",
+            "prompt_version": TEMPLATE_PROMPT_VERSION}
