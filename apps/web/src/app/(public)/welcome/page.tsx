@@ -26,8 +26,8 @@ export default function WelcomePage() {
   return (
     <div className="mx-auto w-full max-w-5xl flex flex-col gap-16">
       <section className="flex flex-col items-start gap-5 max-w-3xl">
-        <p className="text-sm font-medium text-accent">Evidence-based career preparation</p>
-        <h1 className="serif text-4xl sm:text-5xl leading-tight tracking-tight">Know exactly where you stand for every job you apply to.</h1>
+        <p className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-white/70 px-3 py-1 text-[13px] font-medium text-accent shadow-sm"><span className="size-1.5 rounded-full bg-accent" />Evidence-based career preparation</p>
+        <h1 className="serif text-4xl sm:text-[56px] leading-[1.08] tracking-tight">Know exactly where you stand for <span className="text-brand">every job you apply to.</span></h1>
         <p className="text-lg text-ink-2">
           Elevate turns a job posting into a clear checklist of what you already have and what you&apos;re missing,
           then helps you close the gaps, practise interviews and keep track of your applications.
@@ -43,8 +43,8 @@ export default function WelcomePage() {
         <h2 id="how" className="serif text-2xl mb-6">How it works</h2>
         <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {STEPS.map((s, i) => (
-            <li key={s.title} className="rounded-lg border border-line bg-surface p-4 flex flex-col gap-2">
-              <span className="inline-flex items-center gap-2 text-accent"><s.icon aria-hidden className="size-5" /><span className="text-xs font-medium text-muted">Step {i + 1}</span></span>
+            <li key={s.title} className="rounded-xl border border-line bg-surface surface-premium lift p-5 flex flex-col gap-3">
+              <span className="flex items-center justify-between"><span aria-hidden className="icon-chip size-10"><s.icon className="size-5" /></span><span className="text-xs font-medium text-muted">Step {i + 1}</span></span>
               <h3 className="font-medium">{s.title}</h3>
               <p className="text-sm text-ink-2">{s.body}</p>
             </li>
@@ -55,19 +55,19 @@ export default function WelcomePage() {
       <section aria-labelledby="why" className="grid gap-6 sm:grid-cols-3">
         <h2 id="why" className="sr-only">Why Elevate</h2>
         {PRINCIPLES.map(([t, b]) => (
-          <div key={t} className="flex flex-col gap-1.5">
+          <div key={t} className="flex flex-col gap-1.5 rounded-xl border border-line/70 bg-white/60 p-5">
             <h3 className="font-medium">{t}</h3>
             <p className="text-sm text-ink-2">{b}</p>
           </div>
         ))}
       </section>
 
-      <section className="rounded-xl border border-line bg-surface p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <section className="relative overflow-hidden rounded-2xl p-6 sm:p-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-white bg-[image:var(--gloss),var(--brand-gradient)] shadow-[0_24px_60px_-24px_rgba(79,70,229,0.7)]">
         <div>
           <h2 className="serif text-2xl">Ready for your next application?</h2>
-          <p className="text-ink-2 mt-1">It takes about two minutes: add your resume, paste a job, see your match.</p>
+          <p className="text-white/85 mt-1">It takes about two minutes: add your resume, paste a job, see your match.</p>
         </div>
-        <ButtonLink href="/register" variant="primary" className="h-11 px-5">Get started</ButtonLink>
+        <ButtonLink href="/register" className="h-11 px-6 !bg-white !text-accent !border-white font-semibold shadow-lg">Get started</ButtonLink>
       </section>
     </div>
   );

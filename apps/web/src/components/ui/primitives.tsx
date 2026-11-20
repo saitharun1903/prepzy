@@ -16,10 +16,10 @@ export function cx(...c: Array<string | false | null | undefined>): string {
 type Variant = "primary" | "secondary" | "ghost" | "danger" | "link";
 type Size = "sm" | "md";
 const variants: Record<Variant, string> = {
-  primary: "bg-accent text-accent-ink border border-transparent shadow-sm hover:brightness-110 active:brightness-95",
-  secondary: "bg-surface text-ink border border-line-strong shadow-sm hover:bg-surface-2 hover:border-muted/40",
+  primary: "btn-gloss bg-accent text-accent-ink border border-white/10",
+  secondary: "btn-sheen text-ink border border-line-strong hover:border-accent/40 hover:text-accent",
   ghost: "bg-transparent text-ink-2 border border-transparent hover:bg-surface-2 hover:text-ink",
-  danger: "bg-danger text-white border border-transparent shadow-sm hover:brightness-110",
+  danger: "bg-danger text-white border border-transparent shadow-sm hover:brightness-110 bg-[image:var(--gloss)]",
   link: "bg-transparent text-accent underline underline-offset-4 border-0 px-0 hover:opacity-80",
 };
 const sizes: Record<Size, string> = { sm: "h-8 px-3 text-[13px] gap-1.5", md: "h-10 px-4 text-sm gap-2" };
@@ -148,7 +148,7 @@ export function Badge({ tone = "neutral", children, className, icon }: { tone?: 
 
 // ---------------------------------------------------------------- Layout bits
 export function Card({ children, className, as: As = "section" }: { children: ReactNode; className?: string; as?: "section" | "div" | "article" | "li" }) {
-  return <As className={cx("rounded-lg border border-line bg-surface shadow-sm", className)}>{children}</As>;
+  return <As className={cx("rounded-xl border border-line bg-surface surface-premium", className)}>{children}</As>;
 }
 
 export function PageHeader({ title, description, actions, eyebrow }: { title: ReactNode; description?: ReactNode; actions?: ReactNode; eyebrow?: ReactNode }) {
@@ -156,7 +156,7 @@ export function PageHeader({ title, description, actions, eyebrow }: { title: Re
     <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between pb-6 mb-6 border-b border-line">
       <div className="min-w-0">
         {eyebrow ? <div className="text-[13px] text-muted mb-1">{eyebrow}</div> : null}
-        <h1 className="serif text-3xl sm:text-[34px] leading-tight text-ink break-words">{title}</h1>
+        <h1 className="serif text-3xl sm:text-[36px] leading-tight text-ink break-words">{title}</h1>
         {description ? <div className="mt-2 text-ink-2 max-w-2xl text-[15px]">{description}</div> : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2 shrink-0">{actions}</div> : null}

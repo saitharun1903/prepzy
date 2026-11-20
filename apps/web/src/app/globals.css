@@ -155,3 +155,87 @@ h1, h2, h3 {
 .spin {
   animation: el-spin 0.9s linear infinite;
 }
+
+/* ------------------------------------------------------------------ premium finish
+   Glossy, layered surfaces: a soft top highlight, a gentle gradient and a coloured shadow.
+   Kept subtle so text stays crisp and contrast stays AA. */
+:root {
+  --accent-2: #7c3aed;               /* violet end of the brand gradient */
+  --gloss: linear-gradient(180deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0) 55%);
+  --brand-gradient: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 100% -10%, rgba(124, 58, 237, 0.07), transparent 60%),
+    radial-gradient(900px 500px at -10% 0%, rgba(79, 70, 229, 0.07), transparent 55%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+/* Primary button: brand gradient + glossy top highlight + coloured lift. */
+.btn-gloss {
+  background-image: var(--gloss), var(--brand-gradient);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 1px 2px rgba(17, 24, 39, 0.12), 0 6px 16px -6px rgba(79, 70, 229, 0.55);
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur) var(--ease), filter var(--dur) var(--ease);
+}
+.btn-gloss:hover:not(:disabled) {
+  filter: brightness(1.06) saturate(1.05);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 2px 4px rgba(17, 24, 39, 0.12), 0 10px 24px -8px rgba(79, 70, 229, 0.6);
+  transform: translateY(-1px);
+}
+.btn-gloss:active:not(:disabled) { transform: translateY(0); filter: brightness(0.97); }
+
+/* Secondary button: white with a faint sheen. */
+.btn-sheen {
+  background-image: linear-gradient(180deg, #ffffff 0%, #f8f9fc 100%);
+  box-shadow: inset 0 1px 0 #ffffff, 0 1px 2px rgba(17, 24, 39, 0.06);
+}
+
+/* Cards and panels: hairline border, white-to-near-white sheen, soft coloured depth. */
+.surface-premium {
+  background-image: linear-gradient(180deg, #ffffff 0%, #fbfbfe 100%);
+  box-shadow: inset 0 1px 0 #ffffff, 0 1px 2px rgba(17, 24, 39, 0.04), 0 12px 32px -14px rgba(79, 70, 229, 0.18);
+}
+.lift { transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease); }
+.lift:hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 #fff, 0 2px 4px rgba(17, 24, 39, 0.05), 0 18px 40px -16px rgba(79, 70, 229, 0.28); }
+
+/* Icon chip: a small glossy tile behind an icon. */
+.icon-chip {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--accent);
+  background-image: var(--gloss), linear-gradient(135deg, #eef2ff 0%, #f3e8ff 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(79, 70, 229, 0.12), 0 4px 10px -4px rgba(79, 70, 229, 0.25);
+}
+.icon-chip-solid {
+  display: inline-grid;
+  place-items: center;
+  color: #fff;
+  background-image: var(--gloss), var(--brand-gradient);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 4px 12px -4px rgba(79, 70, 229, 0.55);
+}
+
+/* Frosted glass for sticky navigation. */
+.glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(160%) blur(14px);
+  -webkit-backdrop-filter: saturate(160%) blur(14px);
+}
+
+/* Brand text: gradient fill for the wordmark and hero highlights. */
+.text-brand {
+  background-image: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Progress bars get the brand gradient with a sheen. */
+.bar-brand { background-image: var(--gloss), var(--brand-gradient); }
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-gloss, .lift { transition: none; }
+  .btn-gloss:hover:not(:disabled), .lift:hover { transform: none; }
+}

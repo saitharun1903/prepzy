@@ -17,7 +17,7 @@ function Journey({ steps, loading }: { steps: Step[]; loading: boolean }) {
   const next = steps.find((s) => !s.done);
   const pct = Math.round((100 * doneCount) / steps.length);
   return (
-    <section aria-labelledby="journey-h" className="mb-12 rounded-2xl border border-line bg-surface p-5 sm:p-7 shadow-md">
+    <section aria-labelledby="journey-h" className="mb-12 rounded-2xl border border-line bg-surface surface-premium p-5 sm:p-7">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="journey-h" className="serif text-xl">Your path to the next job</h2>
@@ -26,7 +26,7 @@ function Journey({ steps, loading }: { steps: Step[]; loading: boolean }) {
         <p className="text-sm text-muted"><span className="num text-ink font-semibold">{doneCount}</span> of {steps.length} done</p>
       </div>
       <div className="mt-4 h-2 rounded-full bg-surface-2 overflow-hidden" role="progressbar" aria-label="Steps completed" aria-valuemin={0} aria-valuemax={steps.length} aria-valuenow={doneCount}>
-        <div className="h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${pct}%` }} />
+        <div className="h-full rounded-full bar-brand transition-[width] duration-500" style={{ width: `${pct}%` }} />
       </div>
       <ol className="mt-6 grid gap-2">
         {steps.map((st, i) => {
@@ -36,9 +36,9 @@ function Journey({ steps, loading }: { steps: Step[]; loading: boolean }) {
             <li key={st.key}>
               <Link href={st.href} aria-current={current ? "step" : undefined}
                 className={cx("group flex items-center gap-4 rounded-xl border p-3.5 sm:p-4 transition-colors",
-                  current ? "border-accent bg-accent-soft" : "border-line hover:border-line-strong hover:bg-surface-2")}>
+                  current ? "border-accent/40 bg-gradient-to-r from-accent-soft to-white shadow-[0_10px_28px_-14px_rgba(79,70,229,0.45)]" : "border-line bg-white lift hover:border-accent/30")}>
                 <span aria-hidden className={cx("grid place-items-center size-9 shrink-0 rounded-full text-sm font-semibold",
-                  st.done ? "bg-ok text-white" : current ? "bg-accent text-accent-ink" : "bg-surface-2 text-muted border border-line")}>
+                  st.done ? "bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_4px_10px_-4px_rgba(4,120,87,0.6)]" : current ? "icon-chip-solid" : "bg-white text-muted border border-line shadow-[inset_0_1px_0_#fff]")}>
                   {st.done ? <Check className="size-4" /> : i + 1}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -49,7 +49,7 @@ function Journey({ steps, loading }: { steps: Step[]; loading: boolean }) {
                   <span className="block text-sm text-ink-2 mt-0.5">{st.detail}</span>
                 </span>
                 {current ? (
-                  <span className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 h-9 text-sm font-medium text-accent-ink shadow-sm">
+                  <span className="btn-gloss hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 h-9 text-sm font-medium text-accent-ink">
                     {st.cta}<ArrowRight aria-hidden className="size-4" />
                   </span>
                 ) : (
@@ -130,8 +130,8 @@ export default function HomePage() {
               const Icon = a.icon;
               return (
                 <li key={a.key}>
-                  <Link href={a.href} className="group flex h-full items-start gap-3 rounded-lg border border-line bg-surface p-4 hover:border-line-strong">
-                    <Icon aria-hidden className="size-5 text-accent mt-0.5 shrink-0" />
+                  <Link href={a.href} className="group flex h-full items-start gap-3 rounded-xl border border-line bg-surface surface-premium lift p-4">
+                    <span aria-hidden className="icon-chip size-9 shrink-0"><Icon className="size-[18px]" /></span>
                     <span className="min-w-0 flex-1">
                       <span className="block font-medium text-ink break-words">{a.title}</span>
                       <span className="block text-sm text-ink-2 mt-0.5">{a.detail}</span>
@@ -178,7 +178,7 @@ export default function HomePage() {
                     <Link href={`/preparation/${r.id}`} className="text-sm font-medium hover:underline underline-offset-4 break-words">{r.title}</Link>
                     <div className="mt-2 flex items-center gap-3">
                       <div className="h-1.5 flex-1 rounded-full bg-surface-2 overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={r.progress.total} aria-valuenow={r.progress.done} aria-label={`${r.title} tasks done`}>
-                        <div className="h-full bg-accent" style={{ width: `${pct}%` }} />
+                        <div className="h-full bar-brand" style={{ width: `${pct}%` }} />
                       </div>
                       <span className="text-[13px] text-muted whitespace-nowrap">{r.progress.done} of {r.progress.total} tasks</span>
                     </div>

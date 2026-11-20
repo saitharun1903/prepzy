@@ -34,9 +34,14 @@ function isActive(pathname: string, href: string) {
 function Wordmark() {
   return (
     <Link href="/" className="inline-flex items-center gap-2 text-ink" aria-label="Elevate home">
-      <svg aria-hidden viewBox="0 0 32 32" className="size-6">
-        <rect width="32" height="32" rx="7" fill="var(--accent)" />
-        <path d="M10 22V10h12M10 16h9M10 22h12" stroke="var(--accent-ink)" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+      <svg aria-hidden viewBox="0 0 32 32" className="size-7 drop-shadow-[0_4px_8px_rgba(79,70,229,0.35)]">
+        <defs>
+          <linearGradient id="el-logo-app" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#4f46e5" /><stop offset="1" stopColor="#7c3aed" /></linearGradient>
+          <linearGradient id="el-gloss-app" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff" stopOpacity="0.45" /><stop offset="0.55" stopColor="#fff" stopOpacity="0" /></linearGradient>
+        </defs>
+        <rect width="32" height="32" rx="9" fill="url(#el-logo-app)" />
+        <rect width="32" height="32" rx="9" fill="url(#el-gloss-app)" />
+        <path d="M10 22V10h12M10 16h9M10 22h12" stroke="#fff" strokeWidth="2.6" fill="none" strokeLinecap="round" />
       </svg>
       <span className="serif text-xl tracking-tight">Elevate</span>
     </Link>
@@ -57,14 +62,14 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
           aria-current={active ? "page" : undefined}
           className={cx(
             "flex items-center gap-3 rounded-lg px-3 py-2 text-[14px] transition-colors",
-            active ? "bg-accent-soft text-accent font-medium" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
+            active ? "bg-white text-accent font-medium shadow-[0_1px_2px_rgba(17,24,39,0.06),0_6px_16px_-8px_rgba(79,70,229,0.35)] ring-1 ring-accent/15" : "text-ink-2 hover:bg-white/70 hover:text-ink",
           )}
         >
           {n.step ? (
             <span aria-hidden className={cx("grid place-items-center size-5 rounded-full text-[11px] font-semibold",
-              active ? "bg-accent text-accent-ink" : "bg-surface-2 text-muted border border-line")}>{n.step}</span>
+              active ? "icon-chip-solid" : "bg-white text-muted border border-line shadow-[inset_0_1px_0_#fff]")}>{n.step}</span>
           ) : (
-            <Icon aria-hidden className={cx("size-4", active ? "text-accent" : "text-muted")} />
+            <span aria-hidden className={cx("grid place-items-center size-5", active ? "text-accent" : "text-muted")}><Icon className="size-4" /></span>
           )}
           <span className="flex-1">{n.step ? <span className="sr-only">Step {n.step}: </span> : null}{n.label}</span>
           {n.badge === "unread" && unread > 0 ? (
@@ -173,7 +178,7 @@ function Shell({ children }: { children: ReactNode }) {
       <a href="#main" className="sr-only-focusable fixed left-3 top-3 z-[70] rounded-md bg-surface px-3 py-2 border border-line">Skip to content</a>
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex lg:flex-col sticky top-0 h-dvh border-r border-line bg-bg px-4 py-6">
+      <aside className="hidden lg:flex lg:flex-col sticky top-0 h-dvh border-r border-line glass px-4 py-6">
         <div className="px-2 mb-8"><Wordmark /></div>
         <nav aria-label="Main" className="flex-1 overflow-y-auto"><NavList /></nav>
         <div className="border-t border-line pt-3 mt-3">
