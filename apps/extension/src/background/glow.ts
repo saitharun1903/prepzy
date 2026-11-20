@@ -13,13 +13,13 @@ export const GLOW_CSS = `
 #prepzy-glow-root { position: fixed !important; inset: 0 !important; z-index: 2147483647 !important; pointer-events: none !important;
   margin: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; transition: opacity .6s ease !important; }
 #prepzy-glow-root.prepzy-out { opacity: 0 !important; }
-#prepzy-glow-root .prepzy-ring { position: absolute; inset: 0; padding: 5px; border-radius: 14px;
-  background: conic-gradient(from var(--prepzy-a), #1b2f52, #2a4675, #c9a24b, #f3dc9a, #c9a24b, #2a4675, #1b2f52);
+#prepzy-glow-root .prepzy-ring { position: absolute; inset: 0; padding: 7px; border-radius: 0;
+  background: conic-gradient(from var(--prepzy-a), #f3dc9a, #c9a24b, #ff7ab6, #7c5cff, #3aa0ff, #2a4675, #f3dc9a);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-  animation: prepzy-spin 2.6s linear infinite; filter: drop-shadow(0 0 10px rgba(201, 162, 75, .75)); }
-#prepzy-glow-root .prepzy-halo { position: absolute; inset: 0; border-radius: 14px;
-  box-shadow: inset 0 0 36px 4px rgba(201, 162, 75, .35), inset 0 0 90px 10px rgba(27, 47, 82, .18);
+  animation: prepzy-spin 2.4s linear infinite; filter: drop-shadow(0 0 12px rgba(124, 92, 255, .8)) saturate(1.2); }
+#prepzy-glow-root .prepzy-halo { position: absolute; inset: 0; border-radius: 0;
+  box-shadow: inset 0 0 40px 10px rgba(124, 92, 255, .38), inset 0 0 110px 22px rgba(201, 162, 75, .3), inset 0 0 160px 30px rgba(255, 122, 182, .12);
   animation: prepzy-breathe 2.2s ease-in-out infinite; }
 #prepzy-glow-root .prepzy-pill { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); pointer-events: auto; cursor: pointer;
   display: flex; align-items: center; gap: 8px; max-width: calc(100vw - 32px); padding: 8px 14px 8px 8px; border-radius: 999px;
@@ -30,9 +30,10 @@ export const GLOW_CSS = `
   font: 800 12px/1 system-ui, sans-serif; color: #1b2f52; background: linear-gradient(135deg, #f3dc9a, #c9a24b); }
 #prepzy-glow-root .prepzy-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #prepzy-glow-root .prepzy-dots::after { content: "…"; animation: prepzy-dots 1.2s steps(3, end) infinite; display: inline-block; width: 1em; overflow: hidden; vertical-align: bottom; }
-#prepzy-glow-root[data-mode="done"] .prepzy-ring { animation: none; background: linear-gradient(135deg, #f3dc9a, #c9a24b, #f3dc9a);
-  filter: drop-shadow(0 0 16px rgba(201, 162, 75, .95)); }
-#prepzy-glow-root[data-mode="done"] .prepzy-halo { animation: prepzy-flash 1.2s ease-out 1; box-shadow: inset 0 0 50px 6px rgba(201, 162, 75, .45); }
+#prepzy-glow-root[data-mode="done"] .prepzy-ring { animation: none; background: linear-gradient(135deg, #6ee7b7, #12925f, #34d399, #6ee7b7);
+  filter: drop-shadow(0 0 16px rgba(18, 146, 95, .9)); }
+#prepzy-glow-root[data-mode="done"] .prepzy-halo { animation: prepzy-flash 1.2s ease-out 1; box-shadow: inset 0 0 60px 12px rgba(18, 146, 95, .4); }
+#prepzy-glow-root[data-mode="done"] .prepzy-pill { border-color: rgba(110, 231, 183, .85); }
 #prepzy-glow-root[data-mode="error"] .prepzy-ring { animation: none; background: linear-gradient(135deg, #f0a49c, #d1372c); filter: drop-shadow(0 0 10px rgba(209, 55, 44, .6)); }
 #prepzy-glow-root[data-mode="error"] .prepzy-halo { animation: none; box-shadow: inset 0 0 36px 4px rgba(209, 55, 44, .25); }
 #prepzy-glow-root[data-mode="error"] .prepzy-pill { border-color: rgba(240, 164, 156, .8); }
