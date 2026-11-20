@@ -77,7 +77,10 @@ interface View {
   error: ErrorInfo | null;
   notice: string | null;
   connectionLost: boolean;
+  resultTab: ResultTab;
 }
+
+type ResultTab = "match" | "prepare" | "interviews" | "track";
 
 const v: View = {
   seq: 0,
@@ -98,6 +101,7 @@ const v: View = {
   match: undefined,
   application: undefined,
   busy: null,
+  resultTab: "match",
   error: null,
   notice: null,
   connectionLost: false,
@@ -151,6 +155,7 @@ async function load(): Promise<void> {
   v.match = undefined;
   v.application = undefined;
   v.resultJobId = null;
+  v.resultTab = "match";
   v.connectionLost = false;
   try {
     const st = await send({ v: 1, type: "state.get", tabId: v.tabId, url: v.url });
@@ -521,7 +526,7 @@ function header(): HTMLElement {
   return h(
     "header",
     { class: "top" },
-    IS_PANEL ? h("span", { class: "brand" }) : h("div", { class: "brand" }, h("span", { class: "mark", attrs: { "aria-hidden": "true" }, text: "P" }), h("span", { class: "wordmark", text: "Prepzy" })),
+    h("div", { class: "brand" }, h("span", { class: "mark", attrs: { "aria-hidden": "true" }, text: "P" }), h("span", { class: "wordmark", text: "Prepzy" })),
     signedIn
       ? h(
           "div",
@@ -561,22 +566,28 @@ function pageCard(): HTMLElement {
   );
 }
 
+function onboardStep(n: number, title: string, detail: string): HTMLElement {
+  return h("li", { class: "onboard-step" },
+    h("span", { class: "onboard-n", attrs: { "aria-hidden": "true" }, text: String(n) }),
+    h("div", {}, h("p", { class: "onboard-t", text: title }), h("p", { class: "onboard-d", text: detail })));
+}
+
 function renderSignedOut(): HTMLElement[] {
+  const web = v.state?.webBase ?? WEB_BASE;
   return [
-    heading("Connect Prepzy"),
-    h(
-      "div",
-      { class: "prose" },
-      h("p", { text: "Prepzy reads a job posting only when you ask it to, and sends it to your Prepzy account for an evidence-based analysis." }),
-      h(
-        "ol",
-        { class: "steps" },
-        h("li", { text: "Open the Prepzy dashboard and sign in." }),
-        h("li", { text: "Approve the connection on the Connect extension page." }),
-        h("li", { text: "Come back here. Your password is never shared with the extension." }),
-      ),
+    h("section", { class: "welcome" },
+      h("div", { class: "welcome-avatar" }, avatar("wave", 64)),
+      h("h1", { class: "welcome-title", id: "screen-title", text: "Welcome to Prepzy", attrs: { tabindex: "-1" } }),
+      h("p", { class: "welcome-sub", text: "See how well you match any job in one click, then get a plan to close the gaps." }),
     ),
-    button("Open the connect page", () => openTab(CONNECT_PAGE), { kind: "primary", id: "btn-connect", disabled: false }),
+    h("ol", { class: "onboard", attrs: { "aria-label": "Get started in 3 steps" } },
+      onboardStep(1, "Sign in on the Prepzy website", "No account yet? Create one free in a minute."),
+      onboardStep(2, "Click \u201cConnect extension\u201d", "This links the extension to your account. Your password is never shared with it."),
+      onboardStep(3, "Open any job and click the Prepzy icon", "Your match, plan and interview prep appear in seconds."),
+    ),
+    button("Connect Prepzy", () => openTab(CONNECT_PAGE), { kind: "primary", id: "btn-connect", disabled: false }),
+    h("p", { class: "welcome-alt" }, "New here? ",
+      h("button", { type: "button", class: "link", id: "btn-register", text: "Create a free account", on: { click: () => openTab(`${web}/register`) } })),
   ];
 }
 
@@ -914,18 +925,30 @@ function canSubmit(): boolean {
   return verdictFor(ext).kind === "ok";
 }
 
+const PROGRESS_STEPS = ["Reading the job posting", "Finding the requirements", "Comparing with your resume", "Building your plan"];
+
 function renderProgress(): HTMLElement[] {
   const r = v.record!;
   const stage = stageLabel(r.stage);
+  // 0-based step in progress: the posting is already read once it reaches the server; the model then
+  // extracts requirements, and the match/plan are built when it finishes.
+  const active = r.state !== "queued" && /match|compar|scor/i.test(r.stage ?? "") ? 2 : 1;
+  const secs = Math.max(0, Math.round((Date.now() - r.startedAt) / 1000));
   const out: HTMLElement[] = [
-    heading(stateLabel(r.state)),
-    h(
-      "section",
-      { class: "card progress", attrs: { "aria-label": "Analysis status" } },
-      h("p", { class: "eyebrow", text: r.title || hostOf(r.url) || "Pasted text" }),
-      h("p", { class: "stage" }, h("span", { class: "dot", attrs: { "aria-hidden": "true" } }), stage ? `Server stage: ${stage}` : "Waiting for the server"),
-      r.attempt > 1 ? h("p", { class: "meta", text: `Attempt ${r.attempt}${r.maxAttempts ? ` of ${r.maxAttempts}` : ""}` }) : null,
-      h("p", { class: "meta", text: `Started ${new Date(r.startedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` }),
+    h("section", { class: "working", attrs: { "aria-labelledby": "screen-title" } },
+      h("div", { class: "working-head" },
+        h("span", { class: "spinner", attrs: { "aria-hidden": "true" } }),
+        h("div", {},
+          h("h1", { class: "working-title", id: "screen-title", text: stateLabel(r.state), attrs: { tabindex: "-1" } }),
+          h("p", { class: "working-job", text: r.title || hostOf(r.url) || "Pasted job text" }))),
+      h("ol", { class: "steps-track" }, PROGRESS_STEPS.map((label, i) =>
+        h("li", { class: `track-step ${i < active ? "is-done" : i === active ? "is-active" : ""}` },
+          h("span", { class: "track-dot", attrs: { "aria-hidden": "true" }, text: i < active ? "\u2713" : String(i + 1) }),
+          h("span", { text: label }),
+          i === active ? h("span", { class: "sr-only", text: " (in progress)" }) : null))),
+      h("p", { class: "working-hint", text: `Usually 5\u201320 seconds${secs >= 3 ? ` \u00b7 ${secs}s so far` : ""}` }),
+      h("p", { class: "fine", text: stage ? `Server stage: ${stage}` : "Waiting for the server" }),
+      r.attempt > 1 ? h("p", { class: "fine", text: `Attempt ${r.attempt}${r.maxAttempts ? ` of ${r.maxAttempts}` : ""}` }) : null,
     ),
   ];
   if (r.state === "cancellation-requested") {
@@ -936,7 +959,7 @@ function renderProgress(): HTMLElement[] {
       h(
         "div",
         { class: "banner banner-warn", attrs: { role: "status" } },
-        h("p", { text: "Connection lost — still processing on the server?" }),
+        h("p", { text: "Connection lost \u2014 still processing on the server?" }),
         button("Check again", () => void checkAgain(), { id: "btn-check" }),
       ),
     );
@@ -945,11 +968,11 @@ function renderProgress(): HTMLElement[] {
     h(
       "div",
       { class: "actions" },
-      r.state !== "cancellation-requested" ? button("Cancel analysis", () => void cancelCapture(), { kind: "danger", id: "btn-cancel" }) : null,
+      r.state !== "cancellation-requested" ? button("Cancel", () => void cancelCapture(), { kind: "danger", id: "btn-cancel" }) : null,
       button("Open in dashboard", () => openTab(dashboardUrl(r.jobId)), { kind: "quiet" }),
     ),
   );
-  out.push(h("p", { class: "fine", text: "You can close this window. Prepzy keeps tracking the analysis and marks the toolbar icon when it finishes." }));
+  out.push(h("p", { class: "fine", text: "You can close this window. Prepzy keeps working and marks the toolbar icon when it finishes." }));
   return out;
 }
 
@@ -1218,18 +1241,55 @@ function renderResult(): HTMLElement[] {
   if (a.stale) out.push(h("div", { class: "banner banner-note" }, h("p", { text: "This page has changed since this analysis." })));
   const items = buildChecklist(a.requirements, v.match);
   out.push(coachCard(job, items));
+  // Four focused tabs instead of one long page. Every panel stays in the DOM (inactive ones hidden)
+  // so switching is instant and nothing typed into a note or reminder is lost.
   const strip = progressStrip(items);
-  if (strip) out.push(strip);
   const lists = checklist(items);
-  if (lists.length) out.push(...lists);
-  else out.push(h("p", { class: "meta", text: "No requirements were found in this posting." }));
-  out.push(prepareCard(job, items));
   const research = researchCard(job);
-  if (research) out.push(research);
-  out.push(trackRow(job));
-  out.push(trackDetails(job));
-  out.push(aboutDetails(job));
+  const panels: Record<ResultTab, (HTMLElement | null)[]> = {
+    match: [strip, ...(lists.length ? lists : [h("p", { class: "meta", text: "No requirements were found in this posting." })]), aboutDetails(job)],
+    prepare: [prepareCard(job, items)],
+    interviews: research ? [research] : [h("p", { class: "meta", text: "Interview links appear once the company or role is known." })],
+    track: [trackRow(job), trackDetails(job)],
+  };
+  out.push(resultTabs(items));
+  for (const id of RESULT_TABS.map((t) => t.id)) {
+    out.push(h("div", { class: "tabpanel", id: `panel-${id}`, attrs: { role: "tabpanel", "aria-labelledby": `tab-${id}`, hidden: v.resultTab !== id } },
+      ...panels[id]));
+  }
   return out;
+}
+
+const RESULT_TABS: { id: ResultTab; label: string }[] = [
+  { id: "match", label: "Match" },
+  { id: "prepare", label: "Prepare" },
+  { id: "interviews", label: "Interviews" },
+  { id: "track", label: "Track" },
+];
+
+function resultTabs(items: ChecklistItem[]): HTMLElement {
+  const gaps = v.match?.hasResume ? items.filter((i) => i.bucket === "missing" || i.bucket === "partly").length : 0;
+  const select = (id: ResultTab) => {
+    v.resultTab = id;
+    render();
+    document.getElementById(`tab-${id}`)?.focus();
+  };
+  return h("div", { class: "tabs", attrs: { role: "tablist", "aria-label": "Result sections" } },
+    RESULT_TABS.map((t, i) => h("button", {
+      type: "button", class: "tab", id: `tab-${t.id}`,
+      attrs: { role: "tab", "aria-selected": v.resultTab === t.id ? "true" : "false", "aria-controls": `panel-${t.id}`, tabindex: v.resultTab === t.id ? "0" : "-1" },
+      on: {
+        click: () => select(t.id),
+        keydown: (ev) => {
+          const k = (ev as KeyboardEvent).key;
+          if (k === "ArrowRight" || k === "ArrowLeft") {
+            ev.preventDefault();
+            const n = RESULT_TABS[(i + (k === "ArrowRight" ? 1 : RESULT_TABS.length - 1)) % RESULT_TABS.length]!;
+            select(n.id);
+          }
+        },
+      },
+    }, t.label, t.id === "prepare" && gaps ? h("span", { class: "tab-badge", text: String(gaps), attrs: { "aria-label": `${gaps} gaps` } }) : null)));
 }
 
 /** What to do next: the biggest gaps first, then the plan and practice built from this job. */
