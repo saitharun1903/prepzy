@@ -531,26 +531,3 @@ html[data-context="sidepanel"] .tabs { top: 51px; }
 @media (prefers-reduced-motion: reduce) {
   .working, .scanbar > span, .skel-icon, .skel-bar { animation: none; }
 }
-
-/* ---- edge glow around the extension window while analysing ---- */
-@property --ga { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
-#edge-glow { position: fixed; inset: 0; z-index: 50; pointer-events: none; opacity: 0; transition: opacity 400ms ease; padding: 5px;
-  border-radius: 0;
-  background: conic-gradient(from var(--ga), #e7c873, #c9a24b, #ff7ab6, #7c5cff, #3aa0ff, #1b2f52, #e7c873);
-  -webkit-mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
-#edge-halo { position: fixed; inset: 0; z-index: 49; pointer-events: none; opacity: 0; transition: opacity 400ms ease;
-  box-shadow: inset 0 0 26px 8px rgba(124, 92, 255, 0.38), inset 0 0 60px 14px rgba(201, 162, 75, 0.28); }
-#edge-halo[data-mode="active"] { opacity: 1; animation: halo-pulse 2.2s ease-in-out infinite; }
-#edge-halo[data-mode="done"] { box-shadow: inset 0 0 28px 8px rgba(18, 146, 95, 0.42); animation: ga-flash 4s ease-out forwards; }
-#edge-halo[data-mode="error"] { box-shadow: inset 0 0 28px 8px rgba(180, 35, 24, 0.38); animation: ga-flash 5s ease-out forwards; }
-@keyframes halo-pulse { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
-#edge-glow[data-mode="active"] { opacity: 1; animation: ga-spin 2.6s linear infinite, ga-breathe 2.2s ease-in-out infinite; }
-#edge-glow[data-mode="done"] { opacity: 0; background: linear-gradient(135deg, #34d399, #12925f, #6ee7b7); animation: ga-flash 4s ease-out forwards; }
-#edge-glow[data-mode="error"] { opacity: 0; background: linear-gradient(135deg, #f87171, #b42318); animation: ga-flash 5s ease-out forwards; }
-@keyframes ga-spin { to { --ga: 360deg; } }
-@keyframes ga-breathe { 0%, 100% { filter: saturate(1) brightness(1); } 50% { filter: saturate(1.35) brightness(1.12); } }
-@keyframes ga-flash { 0% { opacity: 0; } 12% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) {
-  #edge-glow[data-mode="active"], #edge-halo[data-mode="active"] { animation: none; }
-}

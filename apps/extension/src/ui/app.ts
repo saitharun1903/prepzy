@@ -1351,35 +1351,7 @@ function researchCard(job: JobView): HTMLElement | null {
 
 let lastScreen: Screen | null = null;
 
-/** Glowing edge around the extension window itself: animated while a job is analysed, a short green
- * (or red) flash when it finishes. Nothing is drawn on the job website. */
-function edgeGlowMode(): "active" | "done" | "error" | "off" {
-  const r = v.record;
-  if (!r) return "off";
-  if (r.state === "queued" || r.state === "analyzing" || r.state === "cancellation-requested") return "active";
-  const recent = Date.now() - (r.updatedAt ?? 0) < 8000;
-  if (!recent) return "off";
-  if (r.state === "completed" || r.state === "partial-result") return "done";
-  if (r.state === "failed" || r.state === "timed-out") return "error";
-  return "off";
-}
-
-function syncEdgeGlow(): void {
-  const mode = edgeGlowMode();
-  for (const id of ["edge-halo", "edge-glow"]) {
-    let el = document.getElementById(id);
-    if (!el) {
-      el = document.createElement("div");
-      el.id = id;
-      el.setAttribute("aria-hidden", "true");
-      document.body.append(el);
-    }
-    if (el.dataset.mode !== mode) el.dataset.mode = mode;
-  }
-}
-
 function render(): void {
-  syncEdgeGlow();
   const focusedId = document.activeElement instanceof HTMLElement ? document.activeElement.id : "";
   const openDetails = Array.from(document.querySelectorAll("details[open] > summary")).map((s) => s.textContent);
   const scroll = root.scrollTop;

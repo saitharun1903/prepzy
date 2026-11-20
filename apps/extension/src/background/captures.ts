@@ -1,6 +1,7 @@
 // Capture records: persistence, restart recovery, polling and the action badge.
 
 import { applyOperation, badgeFor, isActive, isTerminal, toOperationView, type CaptureRecord } from "../shared/state";
+import { glowModeFor, showGlow } from "./glow";
 import { api } from "./api";
 import { AppError } from "./errors";
 import { createLock, getLocal, getSession, setLocal, setSession } from "./storage";
@@ -151,6 +152,8 @@ async function afterChange(rec: CaptureRecord): Promise<void> {
   if (rec.tabId !== null) {
     const b = badgeFor(rec.state);
     await setBadge(rec.tabId, b.text, b.color);
+    const mode = glowModeFor(rec.state);
+    if (mode) void showGlow(rec.tabId, mode);
   }
   await syncAlarm(Object.values(await load()));
 }
