@@ -520,13 +520,15 @@ function button(label: string, onClick: () => void, opts: { kind?: "primary" | "
   });
 }
 
+const EXT_VERSION: string = (() => { try { return chrome.runtime.getManifest?.().version ?? ""; } catch { return ""; } })();
+
 function header(): HTMLElement {
   const signedIn = !!v.state?.signedIn;
   const email = v.state?.email ?? "";
   return h(
     "header",
     { class: "top" },
-    h("div", { class: "brand" }, h("span", { class: "mark", attrs: { "aria-hidden": "true" }, text: "P" }), h("span", { class: "wordmark", text: "Prepzy" })),
+    h("div", { class: "brand" }, h("span", { class: "mark", attrs: { "aria-hidden": "true" }, text: "P" }), h("span", { class: "wordmark", text: "Prepzy" }), EXT_VERSION ? h("span", { class: "ver", text: `v${EXT_VERSION}` }) : null),
     signedIn
       ? h(
           "div",
@@ -946,11 +948,21 @@ function renderProgress(): HTMLElement[] {
           h("span", { class: "track-dot", attrs: { "aria-hidden": "true" }, text: i < active ? "\u2713" : String(i + 1) }),
           h("span", { text: label }),
           i === active ? h("span", { class: "sr-only", text: " (in progress)" }) : null))),
+      h("div", { class: "scanbar", attrs: { "aria-hidden": "true" } }, h("span")),
       h("p", { class: "working-hint", text: `Usually 5\u201320 seconds${secs >= 3 ? ` \u00b7 ${secs}s so far` : ""}` }),
       h("p", { class: "fine", text: stage ? `Server stage: ${stage}` : "Waiting for the server" }),
       r.attempt > 1 ? h("p", { class: "fine", text: `Attempt ${r.attempt}${r.maxAttempts ? ` of ${r.maxAttempts}` : ""}` }) : null,
     ),
   ];
+  out.push(
+    h("section", { class: "preview-skel", attrs: { "aria-hidden": "true" } },
+      h("p", { class: "skel-title", text: "Getting your results ready" }),
+      ...[["Match", "How well your resume fits"], ["Prepare", "Your plan for the gaps"], ["Interview", "What past candidates were asked"]].map(([t, d]) =>
+        h("div", { class: "skel-row" },
+          h("span", { class: "skel-icon" }),
+          h("div", { class: "skel-text" }, h("span", { class: "skel-name", text: t }), h("span", { class: "skel-desc", text: d })),
+          h("span", { class: "skel-bar" })))),
+  );
   if (r.state === "cancellation-requested") {
     out.push(h("p", { class: "prose", text: "Cancellation requested. The server stops at its next checkpoint, and the analysis may still finish." }));
   }
