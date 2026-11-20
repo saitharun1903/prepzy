@@ -135,7 +135,7 @@ export default function ExtensionConnectPage() {
             <li>Click <strong>Load unpacked</strong> and choose the unzipped folder (the one that contains <code className="font-mono text-[12px]">manifest.json</code>).</li>
             <li>Pin it: click the puzzle icon in the toolbar, then the pin next to Elevate.</li>
             <li>Come back to this page and click <strong>Connect extension</strong>.</li>
-            <li>Open any job posting, click the Elevate icon, then <strong>Analyze this job</strong>.</li>
+            <li>Open any job posting and click the Elevate icon: the analysis starts by itself, then shows your match, a preparation plan and links to real interview experiences.</li>
           </ol>
           <p className="mt-3 text-[12px] text-muted break-all">Expected extension ID: {EXTENSION_ID}</p>
         </aside>

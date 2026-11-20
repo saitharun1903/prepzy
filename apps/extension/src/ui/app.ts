@@ -12,7 +12,8 @@ import {
 import { avatar, buildChecklist, coach, type Bucket, type ChecklistItem } from "./coach";
 import type { ErrorInfo, Reply, ReplyMap, StateData, TextSource, UiRequest } from "../shared/messages";
 import { isActive, isRetryable, isTerminal, pollDelayMs, stageLabel, stateLabel, type CaptureRecord } from "../shared/state";
-import { classifyUrl, dashboardJobUrl, hostOf, normalizeUrl, type PageAccess } from "../shared/url";
+import { classifyUrl, dashboardJobUrl, hostOf, looksLikeJobPage, normalizeUrl, type PageAccess } from "../shared/url";
+import { interviewResearchLinks } from "../shared/research";
 import { clear, h } from "./dom";
 
 const IS_PANEL = document.documentElement.dataset.context === "sidepanel";
@@ -202,9 +203,19 @@ async function loadLookup(seq: number): Promise<void> {
   } catch (e) {
     if (seq !== v.seq) return;
     v.lookup = null;
-    handleAuthError(e);
+    if (handleAuthError(e)) return;
   }
-  if (v.screen === "main") render();
+  if (v.screen !== "main") return;
+  // One click: opening Elevate on a job page shows the saved result, or starts the analysis right away.
+  if (v.lookup?.latestAnalysisId) {
+    viewExisting(v.lookup.id);
+    return;
+  }
+  if (!v.lookup && !v.busy && looksLikeJobPage(v.url)) {
+    void readPage(true);
+    return;
+  }
+  render();
 }
 
 function handleAuthError(e: unknown): boolean {
@@ -678,7 +689,7 @@ function renderMain(): HTMLElement[] {
         "div",
         { class: "cta" },
         button(v.lookup ? "Analyze again" : "Analyze this job", () => void readPage(true), { kind: v.lookup?.latestAnalysisId ? "secondary" : "primary", id: "btn-analyze" }),
-        h("p", { class: "cta-hint", text: "Takes about a minute on your computer. Compares the posting with your resume." }),
+        h("p", { class: "cta-hint", text: "Takes a few seconds. Compares the posting with your resume." }),
         h("div", { class: "cta-alt" },
           button("Review text first", () => void readPage(false), { kind: "quiet", id: "btn-review" }),
           h("span", { class: "dotsep", attrs: { "aria-hidden": "true" }, text: "·" }),
@@ -1214,10 +1225,58 @@ function renderResult(): HTMLElement[] {
   const lists = checklist(items);
   if (lists.length) out.push(...lists);
   else out.push(h("p", { class: "meta", text: "No requirements were found in this posting." }));
+  out.push(prepareCard(job, items));
+  const research = researchCard(job);
+  if (research) out.push(research);
   out.push(trackRow(job));
   out.push(trackDetails(job));
   out.push(aboutDetails(job));
   return out;
+}
+
+/** What to do next: the biggest gaps first, then the plan and practice built from this job. */
+function prepareCard(job: JobView, items: ChecklistItem[]): HTMLElement {
+  const rank = (i: ChecklistItem) => (i.importance === "required" ? 0 : 1) + (i.bucket === "missing" ? 0 : 0.5);
+  const gaps = v.match?.hasResume
+    ? items.filter((i) => i.bucket === "missing" || i.bucket === "partly").sort((x, y) => rank(x) - rank(y)).slice(0, 3)
+    : [];
+  const topics = [...items].sort((x, y) => (x.importance === "required" ? 0 : 1) - (y.importance === "required" ? 0 : 1))
+    .map((i) => i.label).filter((l, k, all) => all.indexOf(l) === k).slice(0, 6);
+  return h(
+    "section",
+    { class: "prep", attrs: { "aria-labelledby": "prep-h" } },
+    h("h2", { class: "section-h", id: "prep-h", text: "Your preparation plan" }),
+    gaps.length
+      ? h("ol", { class: "prep-steps" }, gaps.map((g, k) =>
+          h("li", {}, h("span", { class: "prep-n", text: String(k + 1), attrs: { "aria-hidden": "true" } }),
+            h("span", {}, h("strong", { text: g.label }), g.bucket === "partly" ? " · strengthen the evidence" : " · learn and add proof to your resume"))))
+      : h("p", { class: "meta", text: v.match?.hasResume ? "Your resume covers the stated requirements. Practise explaining them with examples." : "Add your resume on the website to see your personal gaps." }),
+    topics.length
+      ? h("div", { class: "topics" },
+          h("p", { class: "topics-h", text: "Likely interview topics (from this job's requirements)" }),
+          h("ul", { class: "chips" }, topics.map((t) => h("li", { class: "chip", text: t }))))
+      : null,
+    h("div", { class: "row prep-actions" },
+      button("Build my study plan", () => runCoachAction("plan", job), { kind: "primary", id: "btn-plan" }),
+      button("Practise interview", () => runCoachAction("practice", job), { kind: "secondary", id: "btn-practice" }),
+    ),
+  );
+}
+
+/** Real interview experiences, read by the user on each site (Elevate never scrapes them). */
+function researchCard(job: JobView): HTMLElement | null {
+  const f = job.analysis?.fields;
+  const links = interviewResearchLinks(f?.company.value ?? job.job.company, f?.title.value ?? job.job.title);
+  if (!links.length) return null;
+  return h(
+    "details",
+    { class: "fold research", attrs: { open: "" } },
+    h("summary", { text: "Real interview experiences" }),
+    h("p", { class: "meta", text: "Opens searches on each site in a new tab, for this company and role. Elevate doesn't copy or summarise these sites." }),
+    h("ul", { class: "research-list" }, links.map((l) =>
+      h("li", {}, h("button", { class: "research-link", type: "button", attrs: { "data-id": l.id }, on: { click: () => openTab(l.url) } },
+        h("span", { class: "research-name", text: l.label }), h("span", { class: "research-hint", text: l.hint }), h("span", { attrs: { "aria-hidden": "true" }, text: "↗" }))))),
+  );
 }
 
 let lastScreen: Screen | null = null;

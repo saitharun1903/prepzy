@@ -97,7 +97,9 @@ for (const f of files) {
 }
 
 // ---------------------------------------------------------------- code
-const ALLOWED_URL_PREFIXES = [apiOrigin, ...webOrigins, "http://www.w3.org/"];
+// Search pages the popup may OPEN in a new tab (never fetched by the extension): interview research links.
+const RESEARCH_LINK_PREFIXES = ["https://www.google.com/search?", "https://www.reddit.com/search/?"];
+const ALLOWED_URL_PREFIXES = [apiOrigin, ...webOrigins, "http://www.w3.org/", ...RESEARCH_LINK_PREFIXES];
 const urlRe = /\bhttps?:\/\/[^\s"'`)<>\\]+/g;
 for (const f of files.filter((p) => /\.(js|html|css)$/.test(p))) {
   const src = readFileSync(f, "utf8");
@@ -111,7 +113,7 @@ for (const f of files.filter((p) => /\.(js|html|css)$/.test(p))) {
   if (/\.innerHTML\s*=|insertAdjacentHTML|document\.write\s*\(/.test(src)) fail(`${name}: HTML injection sink (innerHTML/insertAdjacentHTML/document.write)`);
   if (/BEGIN (RSA |EC )?PRIVATE KEY/.test(src)) fail(`${name}: contains a private key`);
   for (const u of src.match(urlRe) ?? []) {
-    if (!ALLOWED_URL_PREFIXES.some((p) => p && (u === p || u.startsWith(p.endsWith("/") ? p : `${p}/`)))) {
+    if (!ALLOWED_URL_PREFIXES.some((p) => p && (u === p || u.startsWith(p.endsWith("/") || p.endsWith("?") ? p : `${p}/`)))) {
       fail(`${name}: unexpected remote URL ${u}`);
     }
   }

@@ -88,7 +88,7 @@ function Workspace({ jobId }: { jobId: string }) {
         {tab === "original" ? <OriginalTab detail={d} /> : null}
         {tab === "match" ? <MatchTab jobId={jobId} hasAnalysis={Boolean(d.analysis)} onJobChanged={detail.reload} /> : null}
         {tab === "guidance" ? <GuidanceTab jobId={jobId} /> : null}
-        {tab === "interview" ? <InterviewTab jobId={jobId} /> : null}
+        {tab === "interview" ? <InterviewTab jobId={jobId} company={company} title={d.analysis?.result.fields.title?.value || d.job.title} /> : null}
         {tab === "ask" ? <AskTab jobId={jobId} /> : null}
         {tab === "application" ? <ApplicationTab jobId={jobId} /> : null}
       </TabPanel>

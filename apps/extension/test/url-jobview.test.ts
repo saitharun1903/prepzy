@@ -121,3 +121,27 @@ describe("lookup / applications", () => {
     expect(toApplicationView({ id: "a", status: "planned" })).toBeNull();
   });
 });
+
+describe("looksLikeJobPage + interview research links", () => {
+  it("recognises single job postings and skips search pages", async () => {
+    const { looksLikeJobPage } = await import("../src/shared/url");
+    expect(looksLikeJobPage("https://www.linkedin.com/jobs/view/4012345678/")).toBe(true);
+    expect(looksLikeJobPage("https://www.linkedin.com/jobs/search/?keywords=java")).toBe(false);
+    expect(looksLikeJobPage("https://www.linkedin.com/jobs/search/?currentJobId=401")).toBe(true);
+    expect(looksLikeJobPage("https://in.indeed.com/viewjob?jk=abc123")).toBe(true);
+    expect(looksLikeJobPage("https://boards.greenhouse.io/acme/jobs/123")).toBe(true);
+    expect(looksLikeJobPage("https://acme.com/careers/backend-engineer")).toBe(true);
+    expect(looksLikeJobPage("https://news.ycombinator.com/item?id=1")).toBe(false);
+    expect(looksLikeJobPage("chrome://extensions")).toBe(false);
+  });
+
+  it("builds encoded search links for company and role", async () => {
+    const { interviewResearchLinks } = await import("../src/shared/research");
+    const links = interviewResearchLinks("Acme & Co", "Backend Engineer (Java)");
+    expect(links.map((l) => l.id)).toEqual(["glassdoor", "ambitionbox", "leetcode", "gfg", "reddit", "google"]);
+    for (const l of links) expect(l.url.startsWith("https://")).toBe(true);
+    expect(links[0]!.url).toContain(encodeURIComponent('"Acme & Co"'));
+    expect(links[0]!.url).not.toContain("(Java)");
+    expect(interviewResearchLinks(null, null)).toEqual([]);
+  });
+});

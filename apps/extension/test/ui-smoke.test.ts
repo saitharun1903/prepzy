@@ -5,6 +5,9 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import type { CaptureRecord } from "../src/shared/state";
 
 const TAB_URL = "https://careers.example.test/jobs/42";
+// A page that is not recognisably a single job: the popup waits for the user to click Analyze.
+const NON_JOB_URL = "https://careers.example.test/about-us";
+let tabUrl = TAB_URL;
 const JOB_ID = "3f2b7c1e-8a4d-4f6b-9c2e-1d5a7b9e0f12";
 const sent: { type: string; [k: string]: unknown }[] = [];
 let signedIn = false;
@@ -121,7 +124,7 @@ const sessionStore: Record<string, unknown> = {};
 beforeAll(() => {
   (globalThis as unknown as { chrome: unknown }).chrome = {
     runtime: { sendMessage: async (m: { type: string }) => reply(m) },
-    tabs: { query: vi.fn(async () => [{ id: 5, windowId: 1, url: TAB_URL, title: "Backend Engineer – Ostrava Freight" }]), create: (o: unknown) => created.push(o), onActivated: listeners("tabs.onActivated"), onUpdated: listeners("tabs.onUpdated") },
+    tabs: { query: vi.fn(async () => [{ id: 5, windowId: 1, url: tabUrl, title: "Backend Engineer – Ostrava Freight" }]), create: (o: unknown) => created.push(o), onActivated: listeners("tabs.onActivated"), onUpdated: listeners("tabs.onUpdated") },
     storage: {
       session: {
         get: vi.fn(async (k: string) => ({ [k]: sessionStore[k] })),
@@ -154,6 +157,7 @@ describe("popup UI flow", () => {
 
   it("goes main -> preview -> progress -> result", async () => {
     signedIn = true;
+    tabUrl = NON_JOB_URL;
     // simulate the tab being re-activated to reload the context
     for (const fn of registered["tabs.onActivated"] ?? []) fn();
     await flush();
@@ -199,20 +203,23 @@ describe("popup UI flow", () => {
     expect(fit).toContain("on your resume");
     expect(app().querySelector("svg.coach")).not.toBeNull();
     expect(fit).toContain("Model test-model");
+    expect(fit).toContain("Your preparation plan");
+    expect(fit).toContain("Likely interview topics");
+    expect(fit).toContain("Real interview experiences");
+    expect(app().querySelectorAll(".research-link").length).toBe(6);
     expect(fit).not.toContain("Not a hiring prediction.Not"); // sanity: rendered once
     expect(document.getElementById("btn-applied")?.getAttribute("aria-pressed")).toBe("false");
     // no HTML from data is ever interpreted
     expect(app().querySelectorAll("script").length).toBe(0);
   });
 
-  it("one-click analyze sends a clean single-job page straight to the server", async () => {
+  it("opening the popup on a job page starts the analysis without another click", async () => {
     vi.useRealTimers();
     pollState = "running";
-    for (const fn of registered["tabs.onActivated"] ?? []) fn();
-    await flush();
+    tabUrl = TAB_URL;
     const before = sent.filter((m) => m.type === "capture.submit").length;
-    click("btn-analyze");
-    await flush();
+    for (const fn of registered["tabs.onActivated"] ?? []) fn();
+    await flush(5);
     expect(sent.filter((m) => m.type === "capture.submit").length).toBe(before + 1);
     expect(app().textContent).not.toContain("Review before analysing");
     expect(app().textContent).toContain("Server stage");

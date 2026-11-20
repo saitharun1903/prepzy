@@ -96,3 +96,26 @@ export function dashboardJobUrl(webBase: string, jobId: string): string | null {
   if (!isUuid(jobId)) return null;
   return `${webBase.replace(/\/+$/, "")}/jobs/${encodeURIComponent(jobId)}`;
 }
+
+/** Job boards and applicant-tracking systems whose pages are (almost always) a single job posting. */
+const JOB_HOSTS = /(^|\.)(linkedin\.com|indeed\.[a-z.]+|naukri\.com|glassdoor\.[a-z.]+|foundit\.in|monster\.[a-z.]+|internshala\.com|wellfound\.com|angel\.co|instahyre\.com|hirist\.tech|cutshort\.io|shine\.com|timesjobs\.com|simplyhired\.[a-z.]+|ziprecruiter\.com|dice\.com|greenhouse\.io|lever\.co|ashbyhq\.com|myworkdayjobs\.com|workable\.com|smartrecruiters\.com|icims\.com|jobvite\.com|bamboohr\.com|recruitee\.com|breezy\.hr|teamtailor\.com|personio\.[a-z.]+)$/i;
+const JOB_PATH = /\/(jobs?|careers?|positions?|openings?|vacanc(y|ies)|opportunit(y|ies)|job-details|jobdetails|viewjob|job-listings?)(\/|$|\?|-)/i;
+
+/**
+ * True when the URL very likely shows ONE job posting, so the popup can start the analysis as soon as
+ * it opens (the user's click on the extension icon is the consent). Search-result pages are excluded.
+ */
+export function looksLikeJobPage(raw: string | null | undefined): boolean {
+  if (classifyUrl(raw).kind !== "ok" || !raw) return false;
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return false;
+  }
+  const path = u.pathname.toLowerCase();
+  if (/\/(search|results|jobs\/search|jobs\/collections)(\/|$)/.test(path) && !u.searchParams.get("currentJobId")) return false;
+  if (/(^|\.)linkedin\.com$/i.test(u.hostname)) return path.startsWith("/jobs/view/") || !!u.searchParams.get("currentJobId");
+  if (/(^|\.)indeed\./i.test(u.hostname)) return path.startsWith("/viewjob") || !!u.searchParams.get("vjk") || !!u.searchParams.get("jk");
+  return JOB_HOSTS.test(u.hostname) ? path.length > 1 : JOB_PATH.test(path + (u.search ? "?" : ""));
+}
