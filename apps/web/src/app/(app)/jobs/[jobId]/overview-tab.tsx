@@ -93,7 +93,7 @@ export function OverviewTab({ detail, reload, analysisId, setAnalysisId }: {
             </Notice>
           ) : null}
           {!a.result.language.supported ? (
-            <Notice tone="warn" title="Language not supported">{a.result.language.reason || "Elevate supports English postings only."}</Notice>
+            <Notice tone="warn" title="Language not supported">{a.result.language.reason || "Prepzy supports English postings only."}</Notice>
           ) : null}
 
           <section aria-labelledby="fields-h">
@@ -212,7 +212,7 @@ export function OverviewTab({ detail, reload, analysisId, setAnalysisId }: {
 
       <section aria-labelledby="avail-h" className="max-w-md">
         <SectionTitle id="avail-h">Availability</SectionTitle>
-        <Field label="Is this posting still open?" hint="Elevate cannot check this; it records what you observed.">
+        <Field label="Is this posting still open?" hint="Prepzy cannot check this; it records what you observed.">
           {(p) => (
             <Select id={p.id} value={detail.job.availability} onChange={(e) => setAvailability(e.target.value)} aria-describedby={p.describedBy}>
               <option value="unknown">Unknown</option>

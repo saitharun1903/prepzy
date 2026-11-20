@@ -99,7 +99,7 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
       }
     }
   } catch {
-    return errorJson(503, "api_unreachable", "The Elevate API is not reachable. Is it running?", { retryable: true });
+    return errorJson(503, "api_unreachable", "The Prepzy API is not reachable. Is it running?", { retryable: true });
   }
 
   const headers = new Headers({ "Cache-Control": "no-store" });

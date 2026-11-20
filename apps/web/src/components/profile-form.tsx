@@ -194,7 +194,7 @@ export function ProfileForm({ mode }: { mode: "onboarding" | "profile" }) {
         <Checkbox
           checked={draft.consent}
           onChange={(e) => set("consent", e.target.checked)}
-          label={HOSTED ? "I agree to Elevate processing my career data" : "I agree to Elevate processing my career data on this machine"}
+          label={HOSTED ? "I agree to Prepzy processing my career data" : "I agree to Prepzy processing my career data on this machine"}
           hint={HOSTED ? `Job postings, resumes and answers are stored in your private account and analysed by ${AI_PROVIDER}, which states it does not train on this data.` : "Job postings, resumes and answers are analysed by a local Ollama model and stored in a local PostgreSQL database. Nothing is sent to external AI services."}
         />
       </section>

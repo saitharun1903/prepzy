@@ -23,7 +23,7 @@ from ..errors import AppError, TooManyRequests, ValidationFailed
 from ..models import AuthToken, MfaRecoveryCode, User
 
 TOKEN_TTL = {"verify_email": timedelta(hours=48), "reset_password": timedelta(minutes=30)}
-ISSUER = "Elevate"
+ISSUER = "Prepzy"
 
 
 def _sha(v: str) -> str:

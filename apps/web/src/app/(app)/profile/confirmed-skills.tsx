@@ -58,7 +58,7 @@ export function ConfirmedSkills() {
     <section aria-labelledby="confirmed-skills">
       <SectionTitle id="confirmed-skills">Confirmed skills</SectionTitle>
       <Notice tone="info" className="mb-5">
-        <strong className="font-medium text-ink">Self-reported</strong> means you are telling Elevate you have the skill, without
+        <strong className="font-medium text-ink">Self-reported</strong> means you are telling Prepzy you have the skill, without
         something to show for it. <strong className="font-medium text-ink">Evidenced</strong> types (project, course, professional
         work, certification) say where the skill comes from — add a short detail so you can back it up. Both count towards job
         comparisons and are labelled as coming from your profile, not your resume.

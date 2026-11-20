@@ -61,7 +61,7 @@ export default function NewJobPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Jobs" title="Analyze a job" description="Paste the full text of one job posting. Elevate extracts requirements and quotes the exact wording it relied on. English postings only." />
+      <PageHeader eyebrow="Jobs" title="Analyze a job" description="Paste the full text of one job posting. Prepzy extracts requirements and quotes the exact wording it relied on. English postings only." />
 
       {captured?.operation_id ? (
         <div className="flex flex-col gap-4 max-w-2xl">
@@ -89,7 +89,7 @@ export default function NewJobPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Job title (optional)">{(p) => <Input id={p.id} value={title} maxLength={300} onChange={(e) => setTitle(e.target.value)} />}</Field>
             <Field label="Company (optional)">{(p) => <Input id={p.id} value={company} maxLength={300} onChange={(e) => setCompany(e.target.value)} />}</Field>
-            <Field label="Posting URL (optional)" className="sm:col-span-2" error={error?.fields?.["source.url"]} hint="Only http(s) links. Elevate does not fetch the page.">
+            <Field label="Posting URL (optional)" className="sm:col-span-2" error={error?.fields?.["source.url"]} hint="Only http(s) links. Prepzy does not fetch the page.">
               {(p) => <Input id={p.id} type="url" value={url} maxLength={4000} onChange={(e) => setUrl(e.target.value)} aria-invalid={p.invalid} aria-describedby={p.describedBy} />}
             </Field>
           </div>

@@ -1,6 +1,6 @@
 /**
  * Links that open real interview-experience searches for a company and role in the user's own browser.
- * Elevate never scrapes these sites: the user reads them directly, under each site's own terms.
+ * Prepzy never scrapes these sites: the user reads them directly, under each site's own terms.
  */
 export type ResearchLink = { id: string; label: string; hint: string; url: string };
 

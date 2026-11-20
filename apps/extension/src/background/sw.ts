@@ -1,4 +1,4 @@
-// Elevate service worker (MV3, module). Ephemeral: every listener is registered synchronously at
+// Prepzy service worker (MV3, module). Ephemeral: every listener is registered synchronously at
 // top level, and all state lives in chrome.storage so work resumes after the worker is stopped.
 
 import type { components } from "@elevate/api-client";
@@ -212,7 +212,7 @@ function mapScriptingError(e: unknown): AppError {
     return new AppError("restricted", "This page is protected by the browser and cannot be read. Paste the job text instead.");
   }
   if (/permission|cannot access contents|host/i.test(msg)) {
-    return new AppError("no_access", "Elevate can read a page only after you click the Elevate toolbar button while that page is open.");
+    return new AppError("no_access", "Prepzy can read a page only after you click the Prepzy toolbar button while that page is open.");
   }
   if (/frame|tab was closed|no tab/i.test(msg)) {
     return new AppError("tab_gone", "The tab changed or was closed. Try again.");
@@ -244,7 +244,7 @@ async function extract(tabId: number): Promise<ExtractResult> {
   }
   const first = results.find((r) => r.frameId === 0) ?? results[0];
   const result = validateExtraction(first?.result);
-  if (!result) throw new AppError("extract_failed", "The page returned data Elevate could not use. Paste the job text instead.");
+  if (!result) throw new AppError("extract_failed", "The page returned data Prepzy could not use. Paste the job text instead.");
   const tabNow = await chrome.tabs.get(tabId).catch(() => null);
   const norm = normalizeUrl(tabNow?.url ?? null);
   if (!norm || norm !== normalizeUrl(result.href)) {

@@ -24,7 +24,7 @@ export class AppError extends Error {
 }
 
 /** The user is not (or no longer) signed in to the extension. */
-export const authRequired = (message = "Connect Elevate to your account to continue.") => new AppError("auth_required", message);
+export const authRequired = (message = "Connect Prepzy to your account to continue.") => new AppError("auth_required", message);
 
 export const networkError = (message = "Connection lost. The server may still be processing your request.") =>
   new AppError("network_error", message, { retryable: true });

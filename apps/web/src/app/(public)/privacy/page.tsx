@@ -7,13 +7,13 @@ export default function PrivacyPage() {
   return (
     <article className="mx-auto max-w-2xl">
       <p className="text-[13px] text-muted mb-2">Data notice</p>
-      <h1 className="serif text-4xl leading-tight mb-6">How Elevate handles your data</h1>
+      <h1 className="serif text-4xl leading-tight mb-6">How Prepzy handles your data</h1>
       <div className="flex flex-col gap-6 text-[15px] text-ink-2 leading-relaxed">
         <section>
           <h2 className="text-ink font-semibold mb-1">Where it is stored</h2>
           {HOSTED ? (
             <p>Your account, jobs, resumes, notes, plans and practice answers are stored in a private PostgreSQL database
-              (Neon) used only by this Elevate service, which runs on Render. Uploaded resume files are stored in the same
+              (Neon) used only by this Prepzy service, which runs on Render. Uploaded resume files are stored in the same
               database and can only be read through your signed-in account.</p>
           ) : (
             <p>Your account, jobs, resumes, notes, plans and practice answers are stored in a PostgreSQL database running
@@ -39,7 +39,7 @@ export default function PrivacyPage() {
             <li>English-language job postings and resumes only.</li>
             <li>No OCR: scanned or image-only PDFs cannot be read. Use a text-based PDF, a DOCX file, or paste the text.</li>
             <li>Email is used only to confirm your address and reset your password. No push or calendar sync: reminders
-              appear inside Elevate; calendar files can be downloaded manually.</li>
+              appear inside Prepzy; calendar files can be downloaded manually.</li>
           </ul>
         </section>
         <section>
@@ -50,7 +50,7 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-ink font-semibold mb-1">Browser extension</h2>
           <p>If you connect the extension, it reads only the tab you click it on, only when you click it, and sends that
-            page&apos;s text to {HOSTED ? "your Elevate account" : "this local Elevate installation"}.</p>
+            page&apos;s text to {HOSTED ? "your Prepzy account" : "this local Prepzy installation"}.</p>
         </section>
       </div>
     </article>

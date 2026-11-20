@@ -34,29 +34,29 @@ export function encodePng(width, height, rgba) {
 }
 
 /**
- * Draw the Elevate monogram: a rounded square in the accent colour with a geometric "E".
+ * Draw the Prepzy monogram: a navy rounded square with a geometric gold "P".
  * Supersampled 4x for smooth edges.
  */
 export function monogramIcon(size) {
   const SS = 4;
   const N = size * SS;
-  const bg = [0x2b, 0x5a, 0x4a];
-  const fg = [0xff, 0xff, 0xff];
+  const bg = [0x1b, 0x2f, 0x52];
+  const fg = [0xe4, 0xc7, 0x7d];
   const radius = N * 0.22;
   const inRoundedSquare = (x, y) => {
     const cx = Math.min(Math.max(x, radius), N - radius);
     const cy = Math.min(Math.max(y, radius), N - radius);
     return (x - cx) ** 2 + (y - cy) ** 2 <= radius ** 2;
   };
-  // "E" geometry in unit coordinates.
-  const left = 0.3, right = 0.7, midRight = 0.64, top = 0.24, bottom = 0.76, stroke = 0.115;
-  const bars = [
-    [left, top, right, top + stroke],
-    [left, 0.5 - stroke / 2, midRight, 0.5 + stroke / 2],
-    [left, bottom - stroke, right, bottom],
-    [left, top, left + stroke, bottom],
-  ];
-  const inE = (u, v) => bars.some(([x0, y0, x1, y1]) => u >= x0 && u <= x1 && v >= y0 && v <= y1);
+  // "P" geometry in unit coordinates: a stem plus a rounded bowl.
+  const left = 0.3, top = 0.22, bottom = 0.78, stroke = 0.12, bowlBottom = 0.58;
+  const cx = 0.52, cy = (top + bowlBottom) / 2, rOut = (bowlBottom - top) / 2, rIn = rOut - stroke;
+  const inE = (u, v) => {
+    if (u >= left && u <= left + stroke && v >= top && v <= bottom) return true; // stem
+    if (u >= left && u <= cx && ((v >= top && v <= top + stroke) || (v >= bowlBottom - stroke && v <= bowlBottom))) return true; // bowl bars
+    const d = Math.hypot(u - cx, v - cy);
+    return u >= cx && d <= rOut && d >= rIn; // bowl curve
+  };
   const out = new Uint8Array(size * size * 4);
   for (let py = 0; py < size; py++) {
     for (let px = 0; px < size; px++) {

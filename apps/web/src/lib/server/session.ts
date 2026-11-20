@@ -127,7 +127,7 @@ export async function callAuth(path: string, body: unknown, bearer?: string): Pr
   } catch {
     return {
       status: 503,
-      json: { error: { code: "api_unreachable", message: "The Elevate API is not reachable. Is it running?", request_id: null, retryable: true, fields: {} } },
+      json: { error: { code: "api_unreachable", message: "The Prepzy API is not reachable. Is it running?", request_id: null, retryable: true, fields: {} } },
     };
   }
 }

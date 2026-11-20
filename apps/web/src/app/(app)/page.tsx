@@ -116,7 +116,7 @@ export default function HomePage() {
 
   return (
     <>
-      <PageHeader title={name ? `Hello, ${name}` : "Home"} description="Follow the steps below. Elevate shows you exactly where you stand for each job and helps you close the gaps." />
+      <PageHeader title={name ? `Hello, ${name}` : "Home"} description="Follow the steps below. Prepzy shows you exactly where you stand for each job and helps you close the gaps." />
       {anyError ? <div className="mb-6"><ErrorState error={anyError} title="Some information could not be loaded" /></div> : null}
 
       <Journey steps={steps} loading={loading} />

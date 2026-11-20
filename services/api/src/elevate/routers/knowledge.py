@@ -27,7 +27,7 @@ class SourceIn(BaseModel):
     domain: str | None = None
     skills: list[str] = Field(default_factory=list, max_length=30)
     license_basis: str = Field(min_length=5, max_length=1000,
-                               description="Why Elevate may use this text (licence, permission, own work).")
+                               description="Why Prepzy may use this text (licence, permission, own work).")
     published_on: date | None = None
 
     @field_validator("source_url")

@@ -50,7 +50,7 @@ def create_app() -> FastAPI:
         if stop is not None:
             stop.set()
 
-    app = FastAPI(title="Elevate API", version="0.1.0", openapi_url="/api/v1/openapi.json",
+    app = FastAPI(title="Prepzy API", version="0.1.0", openapi_url="/api/v1/openapi.json",
                   docs_url="/api/docs" if s.env != "production" else None, redoc_url=None, lifespan=lifespan)
 
     app.add_middleware(CORSMiddleware, allow_origins=s.cors_origins, allow_credentials=False,

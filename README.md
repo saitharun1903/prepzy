@@ -1,6 +1,6 @@
-# Elevate
+# Prepzy
 
-Evidence-based career preparation: capture a real job posting, see exactly which stated requirements your own evidence covers, prepare with a plan and practice interviews, and track applications. Everything runs locally: PostgreSQL + pgvector, a FastAPI API with a durable worker, a local Ollama model, a Next.js dashboard and a Chrome/Edge MV3 extension.
+Prepzy (formerly Elevate) is evidence-based career preparation: capture a real job posting, see exactly which stated requirements your own evidence covers, prepare with a plan and practice interviews, and track applications. Everything runs locally: PostgreSQL + pgvector, a FastAPI API with a durable worker, a local Ollama model, a Next.js dashboard and a Chrome/Edge MV3 extension.
 
 Elevate never predicts hiring outcomes. Its "Elevate evidence coverage estimate" only measures how much of a posting's stated requirements your supplied evidence covers, and it is withheld when too much can't be assessed.
 

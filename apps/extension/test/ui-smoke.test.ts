@@ -150,7 +150,7 @@ describe("popup UI flow", () => {
   it("shows the connect screen when signed out", async () => {
     await import("../src/ui/app");
     await flush();
-    expect(app().textContent).toContain("Connect Elevate");
+    expect(app().textContent).toContain("Connect Prepzy");
     click("btn-connect");
     expect(created[0]).toEqual({ url: "http://localhost:3000/extension/connect" });
   });

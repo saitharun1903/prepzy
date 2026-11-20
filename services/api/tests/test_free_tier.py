@@ -157,11 +157,11 @@ def test_brevo_email_backend(monkeypatch):
     s = get_settings()
     monkeypatch.setattr(s, "email_backend", "brevo")
     monkeypatch.setattr(s, "brevo_api_key", "test-brevo-key")
-    monkeypatch.setattr(s, "email_from", "Elevate <sender@example.test>")
+    monkeypatch.setattr(s, "email_from", "Prepzy <sender@example.test>")
     monkeypatch.setattr(email.httpx, "post", fake_post)
     assert email.send_verification("person@example.test", "tok123") is True
     assert sent["url"] == "https://api.brevo.com/v3/smtp/email" and sent["key"] == "test-brevo-key"
-    assert sent["body"]["sender"] == {"name": "Elevate", "email": "sender@example.test"}
+    assert sent["body"]["sender"] == {"name": "Prepzy", "email": "sender@example.test"}
     assert sent["body"]["to"] == [{"email": "person@example.test"}] and "tok123" in sent["body"]["textContent"]
     # A rejection (e.g. unverified sender) is reported, never raised into the sign-up request.
     monkeypatch.setattr(email.httpx, "post", lambda *a, **k: httpx.Response(400, json={"message": "sender not valid"}))

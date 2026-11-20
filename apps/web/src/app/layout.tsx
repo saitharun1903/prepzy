@@ -7,7 +7,7 @@ import { HOSTED } from "@/lib/hosting";
 
 
 export const metadata: Metadata = {
-  title: { default: "Elevate", template: "%s · Elevate" },
+  title: { default: "Prepzy", template: "%s · Prepzy" },
   description: HOSTED ? "Evidence-based career preparation." : "Evidence-based career preparation. Runs locally.",
   robots: { index: false, follow: false },
 };

@@ -17,7 +17,7 @@ const STEPS = [
 ];
 
 const PRINCIPLES = [
-  ["No fake hiring scores", "Elevate never predicts whether you will be hired. It measures how much of the posting your evidence covers, and says so when it can't tell."],
+  ["No fake hiring scores", "Prepzy never predicts whether you will be hired. It measures how much of the posting your evidence covers, and says so when it can't tell."],
   ["Nothing invented", "Every requirement is quoted from the real posting. Resume suggestions can't add skills or numbers you don't have."],
   ["You stay in control", "Correct any result, export everything, or delete your account at any time."],
 ] as const;
@@ -29,7 +29,7 @@ export default function WelcomePage() {
         <p className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-white/70 px-3 py-1 text-[13px] font-medium text-gold-ink shadow-sm"><span className="size-1.5 rounded-full bg-gold" />Evidence-based career preparation</p>
         <h1 className="serif text-4xl sm:text-[56px] leading-[1.08] tracking-tight">Know exactly where you stand for <span className="text-brand">every job you apply to.</span></h1>
         <p className="text-lg text-ink-2">
-          Elevate turns a job posting into a clear checklist of what you already have and what you&apos;re missing,
+          Prepzy turns a job posting into a clear checklist of what you already have and what you&apos;re missing,
           then helps you close the gaps, practise interviews and keep track of your applications.
         </p>
         <div className="flex flex-wrap gap-3">
@@ -53,7 +53,7 @@ export default function WelcomePage() {
       </section>
 
       <section aria-labelledby="why" className="grid gap-6 sm:grid-cols-3">
-        <h2 id="why" className="sr-only">Why Elevate</h2>
+        <h2 id="why" className="sr-only">Why Prepzy</h2>
         {PRINCIPLES.map(([t, b]) => (
           <div key={t} className="flex flex-col gap-1.5 rounded-xl border border-line/70 bg-white/60 p-5">
             <h3 className="font-medium">{t}</h3>

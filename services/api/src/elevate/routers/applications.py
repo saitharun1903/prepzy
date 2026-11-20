@@ -386,7 +386,7 @@ def reminder_ics(rid: uuid.UUID, ctx: Authed) -> Response:
         return s.replace("\\", "\\\\").replace(";", "\\;").replace(",", "\\,").replace("\n", "\\n")
     stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     start = r.due_at.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
-    body = "\r\n".join(["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Elevate//Reminders//EN", "BEGIN:VEVENT",
+    body = "\r\n".join(["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Prepzy//Reminders//EN", "BEGIN:VEVENT",
                         f"UID:{r.id}@elevate.local", f"DTSTAMP:{stamp}", f"DTSTART:{start}",
                         f"SUMMARY:{esc(r.title)}", "END:VEVENT", "END:VCALENDAR", ""])
     return Response(body, media_type="text/calendar; charset=utf-8",
