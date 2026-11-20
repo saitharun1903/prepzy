@@ -522,13 +522,28 @@ function button(label: string, onClick: () => void, opts: { kind?: "primary" | "
 
 const EXT_VERSION: string = (() => { try { return chrome.runtime.getManifest?.().version ?? ""; } catch { return ""; } })();
 
+/** The Prepzy "zap" bolt as an inline SVG (brand mark; option 07). */
+function zapSvg(viewBox: string, d: string, cls = "bolt"): SVGSVGElement {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", viewBox);
+  svg.setAttribute("class", cls);
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS(NS, "path");
+  path.setAttribute("d", d);
+  path.setAttribute("fill", "currentColor");
+  svg.append(path);
+  return svg;
+}
+
 function header(): HTMLElement {
   const signedIn = !!v.state?.signedIn;
   const email = v.state?.email ?? "";
   return h(
     "header",
     { class: "top" },
-    h("div", { class: "brand" }, h("span", { class: "mark", attrs: { "aria-hidden": "true" }, text: "P" }), h("span", { class: "wordmark", text: "Prepzy" }), EXT_VERSION ? h("span", { class: "ver", text: `v${EXT_VERSION}` }) : null),
+    h("div", { class: "brand", attrs: { role: "img", "aria-label": "Prepzy" } }, h("span", { class: "mark", attrs: { "aria-hidden": "true" } }, zapSvg("0 0 64 64", "M37 10L18 37h12l-4 17 20-28H34z")),
+      h("span", { class: "wordmark", attrs: { "aria-hidden": "true" } }, "prep", zapSvg("0 0 30 46", "M20 2L4 26h10l-4 18L26 18H16z", "zap"), "y"), EXT_VERSION ? h("span", { class: "ver", text: `v${EXT_VERSION}` }) : null),
     signedIn
       ? h(
           "div",

@@ -1,6 +1,6 @@
 {
   "name": "@elevate/extension",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "description": "Elevate browser extension (Chrome/Edge, Manifest V3): capture a job posting from the current tab and track its analysis.",
