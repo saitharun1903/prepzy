@@ -7,7 +7,9 @@
   "scripts": {
     "build": "node scripts/build.mjs --mode=dev",
     "build:release": "node scripts/build.mjs --mode=release",
+    "build:hosted": "node scripts/build.mjs --mode=hosted",
     "package": "node scripts/package.mjs",
+    "package:hosted": "node scripts/package.mjs --hosted",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.test.json",
     "test": "vitest run",
     "validate": "node scripts/validate.mjs dist && node scripts/validate.mjs dist-release --release --if-present"

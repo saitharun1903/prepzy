@@ -9,6 +9,7 @@ by the caller — schema-shaped output is not proof of correctness.
 from __future__ import annotations
 
 import json
+import re
 import threading
 import time
 from dataclasses import dataclass
@@ -28,6 +29,22 @@ class Completion:
     prompt_tokens: int | None
     output_tokens: int | None
 
+
+MAX_RATE_LIMIT_WAIT_SECONDS = 20.0
+
+
+def _retry_after_seconds(headers: Any) -> float | None:
+    """Seconds the provider asks us to wait (Retry-After, or Groq/OpenAI reset headers like '7.2s')."""
+    for name in ("retry-after", "x-ratelimit-reset-requests", "x-ratelimit-reset-tokens"):
+        raw = headers.get(name)
+        if not raw:
+            continue
+        m = re.fullmatch(r"\s*(?:(\d+)m(?!s))?\s*([\d.]+)?(ms|s)?\s*", str(raw))
+        if not m or (m.group(1) is None and m.group(2) is None):
+            continue
+        secs = float(m.group(1) or 0) * 60 + float(m.group(2) or 0) * (0.001 if m.group(3) == "ms" else 1)
+        return max(0.5, min(secs, 600.0))
+    return None
 
 class LLMProvider(Protocol):
     def generate_json(self, system: str, user: str, schema: dict[str, Any], *, max_tokens: int | None = None,
@@ -175,7 +192,8 @@ class OpenAICompatProvider:
 
     def _post(self, body: dict[str, Any]) -> dict[str, Any]:
         r = None
-        for attempt in range(2):  # one quick retry on a transient 5xx
+        waited_for_limit = False
+        for attempt in range(3):  # one quick retry on a transient 5xx; one short wait on a rate limit
             try:
                 with httpx.Client(timeout=httpx.Timeout(self.timeout, connect=10.0)) as c:
                     r = c.post(f"{self.base}/chat/completions", json=body,
@@ -184,7 +202,16 @@ class OpenAICompatProvider:
                 raise CapabilityUnavailable("The AI service could not be reached.", code="model_unavailable") from e
             except httpx.TimeoutException as e:
                 raise CapabilityUnavailable("The AI service did not respond in time.", code="model_timeout") from e
-            if r.status_code < 500 or attempt == 1:
+            if r.status_code == 429 and not waited_for_limit:
+                # Free tiers limit requests per minute and say when to come back. A short wait here
+                # keeps the user's result complete instead of falling back to a partial analysis.
+                delay = _retry_after_seconds(r.headers)
+                if delay is not None and delay <= MAX_RATE_LIMIT_WAIT_SECONDS:
+                    waited_for_limit = True
+                    time.sleep(delay)
+                    continue
+                break
+            if r.status_code < 500 or attempt >= 1:
                 break
             time.sleep(3)
         assert r is not None

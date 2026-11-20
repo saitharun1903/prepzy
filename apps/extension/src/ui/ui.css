@@ -1,4 +1,4 @@
-/* Elevate extension UI. Calm, editorial, one accent. Light/dark via prefers-color-scheme. */
+/* Elevate extension UI. Calm, editorial, one accent. Light theme only. */
 @font-face {
   font-family: "Geist";
   src: url("fonts/geist.woff2") format("woff2");
@@ -8,16 +8,16 @@
 }
 
 :root {
-  --bg: #f6f7f9;
+  --bg: #f7f8fc;
   --surface: #ffffff;
-  --surface-2: #f0f2f5;
-  --ink: #0d1117;
-  --ink-2: #3a4252;
-  --muted: #667085;
-  --line: #e4e7ec;
-  --accent: #2f5bea;
+  --surface-2: #f1f3f9;
+  --ink: #111827;
+  --ink-2: #374151;
+  --muted: #6b7280;
+  --line: #e5e7ef;
+  --accent: #4f46e5;
   --accent-ink: #ffffff;
-  --accent-soft: #edf1ff;
+  --accent-soft: #eef2ff;
   --ok: #067a52;
   --ok-soft: #e6f6ef;
   --part: #b25e09;
@@ -29,42 +29,14 @@
   --error-bg: #fdecea;
   --error-line: #f5c2bd;
   --error-ink: #b42318;
-  --focus: #2f5bea;
+  --focus: #4f46e5;
   --radius: 12px;
   --radius-sm: 8px;
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 6px 18px -6px rgba(16, 24, 40, 0.08);
   --display: "Geist", "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
   --sans: "Geist", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
   --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
-  color-scheme: light dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b0d12;
-    --surface: #12151c;
-    --surface-2: #1a1e28;
-    --ink: #eef1f6;
-    --ink-2: #c3c9d4;
-    --muted: #8b93a7;
-    --line: #242a37;
-    --accent: #7d95ff;
-    --accent-ink: #0b0d12;
-    --accent-soft: #1a2142;
-    --ok: #45d39a;
-    --ok-soft: #0f2a20;
-    --part: #f3b35b;
-    --part-soft: #2b2112;
-    --gap: #ff7d73;
-    --gap-soft: #2e1618;
-    --warn-bg: #2b2112;
-    --warn-line: #5a4320;
-    --error-bg: #2e1618;
-    --error-line: #6b2b27;
-    --error-ink: #ffb4ab;
-    --focus: #9aaeff;
-    --shadow: none;
-  }
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -185,22 +157,12 @@ dl.facts dd.unknown { color: var(--muted); font-style: italic; }
 
 /* ---- coach (Eli) ---- */
 :root {
-  --coach-body: #2f5bea;
+  --coach-body: #4f46e5;
   --coach-face: #ffffff;
   --coach-ink: #0d1117;
   --coach-cheek: #ffc9c2;
   --coach-spark: #ffb020;
   --coach-panel: #eef2ff;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --coach-body: #7d95ff;
-    --coach-face: #f4f6ff;
-    --coach-ink: #0b0d12;
-    --coach-cheek: #ffb4aa;
-    --coach-spark: #ffc44d;
-    --coach-panel: #161b2e;
-  }
 }
 .coach { display: block; overflow: visible; }
 .coach-eye { transform-origin: center; transform-box: fill-box; animation: blink 5.5s infinite; }

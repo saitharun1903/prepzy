@@ -1,14 +1,68 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Bell, Briefcase, CalendarClock, FileText, Route, UserRound } from "lucide-react";
+import { ArrowRight, Bell, Briefcase, CalendarCheck, CalendarClock, Check, FileText, MessagesSquare, Route, UserRound } from "lucide-react";
 import { useApi } from "@/lib/hooks";
 import { formatDateTime, humanize, jobTitle, relativeTime } from "@/lib/format";
-import type { JobSummary, Profile, Reminder, Resume, RoadmapSummary } from "@/lib/types";
+import type { InterviewSessionSummary, JobSummary, Profile, Reminder, Resume, RoadmapSummary } from "@/lib/types";
 import { useSession } from "@/components/shell/session";
-import { Badge, ButtonLink, EmptyState, ErrorState, LoadingBlock, PageHeader, SectionTitle } from "@/components/ui/primitives";
+import { Badge, ButtonLink, EmptyState, ErrorState, LoadingBlock, PageHeader, SectionTitle, cx } from "@/components/ui/primitives";
 
 type Action = { key: string; href: string; title: string; detail: string; icon: typeof Briefcase };
+type Step = { key: string; title: string; detail: string; href: string; cta: string; done: boolean; icon: typeof Briefcase };
+
+/** The five-step journey, in order. The first unfinished step is the one thing to do next. */
+function Journey({ steps, loading }: { steps: Step[]; loading: boolean }) {
+  const doneCount = steps.filter((s) => s.done).length;
+  const next = steps.find((s) => !s.done);
+  const pct = Math.round((100 * doneCount) / steps.length);
+  return (
+    <section aria-labelledby="journey-h" className="mb-12 rounded-2xl border border-line bg-surface p-5 sm:p-7 shadow-md">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 id="journey-h" className="serif text-xl">Your path to the next job</h2>
+          <p className="text-sm text-ink-2 mt-1">{next ? "Five short steps. Do them in order; each one uses the last." : "All five steps done. Repeat steps 2–5 for every job you're interested in."}</p>
+        </div>
+        <p className="text-sm text-muted"><span className="num text-ink font-semibold">{doneCount}</span> of {steps.length} done</p>
+      </div>
+      <div className="mt-4 h-2 rounded-full bg-surface-2 overflow-hidden" role="progressbar" aria-label="Steps completed" aria-valuemin={0} aria-valuemax={steps.length} aria-valuenow={doneCount}>
+        <div className="h-full rounded-full bg-accent transition-[width] duration-500" style={{ width: `${pct}%` }} />
+      </div>
+      <ol className="mt-6 grid gap-2">
+        {steps.map((st, i) => {
+          const current = !loading && next?.key === st.key;
+          const Icon = st.icon;
+          return (
+            <li key={st.key}>
+              <Link href={st.href} aria-current={current ? "step" : undefined}
+                className={cx("group flex items-center gap-4 rounded-xl border p-3.5 sm:p-4 transition-colors",
+                  current ? "border-accent bg-accent-soft" : "border-line hover:border-line-strong hover:bg-surface-2")}>
+                <span aria-hidden className={cx("grid place-items-center size-9 shrink-0 rounded-full text-sm font-semibold",
+                  st.done ? "bg-ok text-white" : current ? "bg-accent text-accent-ink" : "bg-surface-2 text-muted border border-line")}>
+                  {st.done ? <Check className="size-4" /> : i + 1}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2 font-medium text-ink">
+                    <Icon aria-hidden className="size-4 text-muted hidden sm:block" />{st.title}
+                    {st.done ? <span className="sr-only">(done)</span> : null}
+                  </span>
+                  <span className="block text-sm text-ink-2 mt-0.5">{st.detail}</span>
+                </span>
+                {current ? (
+                  <span className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-accent px-3.5 h-9 text-sm font-medium text-accent-ink shadow-sm">
+                    {st.cta}<ArrowRight aria-hidden className="size-4" />
+                  </span>
+                ) : (
+                  <ArrowRight aria-hidden className="size-4 text-muted group-hover:text-ink" />
+                )}
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
 
 export default function HomePage() {
   const { me, unread } = useSession();
@@ -17,23 +71,18 @@ export default function HomePage() {
   const jobs = useApi<{ items: JobSummary[]; total: number }>("jobs", { limit: 6 });
   const reminders = useApi<Reminder[]>("reminders", { status: "scheduled", limit: 5 });
   const roadmaps = useApi<RoadmapSummary[]>("roadmaps");
+  const sessions = useApi<InterviewSessionSummary[]>("interviews");
 
-  const loading = profile.loading || resumes.loading || jobs.loading || reminders.loading || roadmaps.loading;
+  const loading = profile.loading || resumes.loading || jobs.loading || reminders.loading || roadmaps.loading || sessions.loading;
   const anyError = profile.error || resumes.error || jobs.error || reminders.error || roadmaps.error;
 
   const actions: Action[] = [];
   if (profile.data && !profile.data.onboarded_at) {
     actions.push({ key: "onboard", href: "/onboarding", title: "Finish setting up", detail: "Add target roles, domains and weekly study time.", icon: UserRound });
   }
-  if (resumes.data && resumes.data.length === 0) {
-    actions.push({ key: "resume", href: "/resumes", title: "Add a resume", detail: "Upload a PDF or DOCX, or paste text, so jobs can be compared with your evidence.", icon: FileText });
-  }
   const parsedVersions = (resumes.data || []).flatMap((r) => r.versions).filter((v) => v.parse_status === "parsed");
   if (resumes.data && resumes.data.length > 0 && parsedVersions.length === 0) {
     actions.push({ key: "resume-parse", href: "/resumes", title: "Fix your resume upload", detail: "None of your resume versions could be read yet.", icon: FileText });
-  }
-  if (jobs.data && jobs.data.total === 0) {
-    actions.push({ key: "job", href: "/jobs/new", title: "Analyze a job posting", detail: "Paste a posting to see its requirements with quoted evidence.", icon: Briefcase });
   }
   for (const j of (jobs.data?.items || []).filter((j) => !j.latest_analysis_status).slice(0, 3)) {
     actions.push({ key: `analyze-${j.id}`, href: `/jobs/${j.id}`, title: `Analysis missing: ${jobTitle(j)}`, detail: "This job has no completed analysis. Open it to re-run.", icon: Briefcase });
@@ -42,23 +91,39 @@ export default function HomePage() {
     actions.push({ key: "notif", href: "/notifications", title: `${unread} unread notification${unread === 1 ? "" : "s"}`, detail: "Reminders and updates waiting for you.", icon: Bell });
   }
   const activePlans = (roadmaps.data || []).filter((r) => r.status === "active");
-  if (roadmaps.data && roadmaps.data.length === 0 && jobs.data && jobs.data.total > 0) {
-    actions.push({ key: "plan", href: "/preparation", title: "Create a preparation plan", detail: "Turn a job's gaps into a weekly plan.", icon: Route });
-  }
 
   const name = me?.user.display_name;
+  const analyzed = (jobs.data?.items || []).find((j) => j.latest_analysis_status);
+  const steps: Step[] = [
+    { key: "resume", icon: FileText, title: "Add your resume", cta: "Add resume", href: "/resumes",
+      detail: "Upload a PDF or Word file, or paste the text. It is the evidence every job is compared with.",
+      done: parsedVersions.length > 0 },
+    { key: "job", icon: Briefcase, title: "Analyze a job and see your match", cta: analyzed ? "See match" : "Analyze a job",
+      href: analyzed ? `/jobs/${analyzed.id}?tab=match` : "/jobs/new",
+      detail: "Paste a posting (or use the browser extension). See which requirements you already cover and what is missing.",
+      done: Boolean(analyzed) },
+    { key: "plan", icon: Route, title: "Make a study plan for the gaps", cta: "Create plan", href: "/preparation",
+      detail: "A week-by-week plan that fits the hours you have.", done: (roadmaps.data || []).length > 0 },
+    { key: "practice", icon: MessagesSquare, title: "Practise interview questions", cta: "Start practising",
+      href: analyzed ? `/interviews/new?job_id=${analyzed.id}` : "/interviews/new",
+      detail: "Questions built from the job's requirements, with feedback on each answer.",
+      done: (sessions.data || []).some((x) => x.answered > 0) },
+    { key: "apply", icon: CalendarCheck, title: "Track your application", cta: "Track it",
+      href: analyzed ? `/jobs/${analyzed.id}?tab=application` : "/applications",
+      detail: "Record when you apply, add notes and set reminders so nothing slips.",
+      done: (jobs.data?.items || []).some((j) => j.application_status) },
+  ];
 
   return (
     <>
-      <PageHeader title={name ? `Hello, ${name}` : "Home"} description="What to do next, based on what is in your account." />
+      <PageHeader title={name ? `Hello, ${name}` : "Home"} description="Follow the steps below. Elevate shows you exactly where you stand for each job and helps you close the gaps." />
       {anyError ? <div className="mb-6"><ErrorState error={anyError} title="Some information could not be loaded" /></div> : null}
 
+      <Journey steps={steps} loading={loading} />
+
+      {actions.length ? (
       <section aria-labelledby="next-actions" className="mb-12">
-        <SectionTitle id="next-actions">Next steps</SectionTitle>
-        {loading && !actions.length ? <LoadingBlock rows={2} label="Loading your next steps" /> : null}
-        {!loading && !actions.length ? (
-          <p className="text-sm text-muted">Nothing needs attention right now.</p>
-        ) : null}
+        <SectionTitle id="next-actions">Needs your attention</SectionTitle>
         {actions.length ? (
           <ul className="grid gap-3 sm:grid-cols-2">
             {actions.map((a) => {
@@ -79,6 +144,7 @@ export default function HomePage() {
           </ul>
         ) : null}
       </section>
+      ) : null}
 
       <div className="grid gap-12 lg:grid-cols-2">
         <section aria-labelledby="upcoming">

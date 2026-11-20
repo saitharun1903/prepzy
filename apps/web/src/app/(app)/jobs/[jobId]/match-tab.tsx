@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   CheckCircle2, CircleDashed, CircleHelp, CircleMinus, CircleSlash, MinusCircle, RefreshCw, UserCheck, XCircle,
 } from "lucide-react";
@@ -91,6 +91,16 @@ export function MatchTab({ jobId, hasAnalysis, onJobChanged }: { jobId: string; 
     }
   };
 
+  // First visit with a resume ready: compare automatically (it is instant and uses no AI),
+  // so the user lands on their result instead of an extra button.
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (autoRan.current || loading || report || busy || error || !hasAnalysis || !pick?.versionId) return;
+    autoRan.current = true;
+    void compute(pick.versionId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, report, busy, error, hasAnalysis, pick]);
+
   const confirm = async (u: { key: string }, met: boolean) => {
     if (!report) return;
     setConfirming(u.key + String(met));
@@ -132,7 +142,7 @@ export function MatchTab({ jobId, hasAnalysis, onJobChanged }: { jobId: string; 
       {error ? <ErrorState error={error} title="Could not compute the comparison" /> : null}
 
       {!report ? (
-        <EmptyState title="No comparison yet">Choose a resume version and compare.</EmptyState>
+        <EmptyState title="No comparison yet">{busy ? "Comparing with your resume…" : "Add a resume (step 1), then choose it above and press Compare."}</EmptyState>
       ) : r ? (
         <>
           {report.stale_reasons.length ? (
