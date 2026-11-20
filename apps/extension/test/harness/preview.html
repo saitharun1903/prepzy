@@ -18,6 +18,9 @@
   <div id="app" aria-busy="true"><p class="meta">Loading…</p></div>
   <script>
     const qp = new URLSearchParams(location.search);
+    // ?screen=main|signedout|progress previews other screens; ?ctx=panel previews the side panel.
+    const screen = qp.get("screen") || "result";
+    if (qp.get("ctx") === "panel") document.documentElement.setAttribute("data-context", "sidepanel");
     const hasResume = qp.get("resume") !== "0";
     const JOB = "11111111-1111-4111-8111-111111111111";
     const URL_ = "https://www.linkedin.com/jobs/view/4475160467/";
@@ -67,10 +70,12 @@
     const record = { captureId: "c1", operationId: "o1", jobId: JOB, analysisId: "an-1", tabId: 7, url: "https://www.linkedin.com/jobs/view/4475160467",
       accountId: "u1", state: "completed", stage: "succeeded", attempt: 1, maxAttempts: 3, error: null, connection: "ok", title: "Java Software Engineer",
       startedAt: now - 60000, updatedAt: now, appliedAt: now, seq: 3 };
+    if (screen === "progress") Object.assign(record, { state: "analyzing", stage: "extracting_requirements", startedAt: now - 12000 });
     const reply = (m) => {
       switch (m.type) {
-        case "state.get": return { signedIn: true, email: "koppulasaitharunreddy7@gmail.com", record: qp.get("screen") === "main" ? null : record, recent: [], extraction: null, webBase: "http://localhost:3000" };
+        case "state.get": return { signedIn: screen !== "signedout", email: "koppulasaitharunreddy7@gmail.com", record: screen === "main" ? null : record, recent: [], extraction: null, webBase: "http://localhost:3000" };
         case "page.lookup": return { job: null };
+        case "capture.poll": return record;
         case "job.get": return job;
         case "job.applications": return { current: null };
         case "job.match": return { match };
@@ -80,7 +85,7 @@
     const ev = { addListener() {} };
     window.chrome = {
       runtime: { sendMessage: async (m) => ({ ok: true, data: reply(m) }), id: "preview" },
-      tabs: { query: async () => [{ id: 7, windowId: 1, url: URL_, title: "Java Software Engineer | Droisys | LinkedIn" }], create: async () => ({}), onActivated: ev, onUpdated: ev },
+      tabs: { query: async () => [{ id: 7, windowId: 1, url: screen === "main" ? "https://careers.example.com/about-us" : URL_, title: screen === "main" ? "About us | Example Careers" : "Java Software Engineer | Droisys | LinkedIn" }], create: async () => ({}), onActivated: ev, onUpdated: ev },
       storage: { session: { get: async () => ({}), set: async () => {}, remove: async () => {} }, onChanged: ev },
       sidePanel: { open: async () => {} },
     };
