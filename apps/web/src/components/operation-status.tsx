@@ -34,7 +34,7 @@ export function OperationStatus<R = Record<string, unknown>>({ opId, label, onDo
       if (kind === "cancel") await cancel();
       else await retry();
     } catch (e) {
-      notify("error", isApiError(e) ? e.message : "Request failed", isApiError(e) && e.requestId ? `Request ID ${e.requestId}` : undefined);
+      notify("error", isApiError(e) ? e.message : "Request failed", undefined);
     } finally {
       setBusy(null);
     }

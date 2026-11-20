@@ -1,3 +1,4 @@
+import { clientIpOf } from "@/lib/client-ip";
 import { NextResponse, type NextRequest } from "next/server";
 
 /** Next 16 "proxy" (formerly middleware): per-request CSP nonce + optimistic auth redirects.
@@ -24,6 +25,15 @@ function csp(nonce: string): string {
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+  // Public API paths (extension, health checks) forwarded to the local API: replace any client-sent
+  // X-Forwarded-For with the edge-verified visitor IP so rate limits cannot be spoofed or shared.
+  if (pathname.startsWith("/api/v1/") || pathname.startsWith("/health/")) {
+    const h = new Headers(request.headers);
+    const ip = clientIpOf(request.headers);
+    if (ip) h.set("x-forwarded-for", ip);
+    else h.delete("x-forwarded-for");
+    return NextResponse.next({ request: { headers: h } });
+  }
   // A retired deployment (e.g. the old elevate-web address) sends every visitor to the new site.
   const moved = process.env.ELEVATE_REDIRECT_ORIGIN;
   if (moved && /^https:\/\/[a-z0-9.-]+$/i.test(moved)) {
@@ -59,6 +69,8 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/api/v1/:path*",
+    "/health/:path*",
     {
       source: "/((?!api|_next/static|_next/image|favicon.ico|icon.svg|downloads/|health/|metrics$).*)",
       missing: [

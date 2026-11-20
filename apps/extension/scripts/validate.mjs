@@ -98,7 +98,7 @@ for (const f of files) {
 
 // ---------------------------------------------------------------- code
 // Search pages the popup may OPEN in a new tab (never fetched by the extension): interview research links.
-const RESEARCH_LINK_PREFIXES = ["https://www.google.com/search?", "https://www.reddit.com/search/?"];
+const RESEARCH_LINK_PREFIXES = ["https://www.google.com/search?", "https://www.reddit.com/search/?", "https://www.glassdoor.co.in/Search/results.htm?"];
 const ALLOWED_URL_PREFIXES = [apiOrigin, ...webOrigins, "http://www.w3.org/", ...RESEARCH_LINK_PREFIXES];
 const urlRe = /\bhttps?:\/\/[^\s"'`)<>\\]+/g;
 for (const f of files.filter((p) => /\.(js|html|css)$/.test(p))) {

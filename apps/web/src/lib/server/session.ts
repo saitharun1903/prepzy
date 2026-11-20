@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { headers as requestHeaders } from "next/headers";
+import { clientIpOf } from "@/lib/client-ip";
 import { NextResponse, type NextRequest } from "next/server";
 
 /** Server-only session helpers. Tokens live exclusively in HttpOnly cookies; browser JS never sees them. */
@@ -19,6 +21,16 @@ export function apiBase(): string {
 }
 
 const secure = () => process.env.NODE_ENV === "production";
+
+/** X-Forwarded-For for server-to-API calls made while handling the current request. */
+async function forwardedFor(): Promise<Record<string, string>> {
+  try {
+    const ip = clientIpOf(await requestHeaders());
+    return ip ? { "X-Forwarded-For": ip } : {};
+  } catch {
+    return {}; // outside a request scope
+  }
+}
 
 export type ApiUser = { id: string; email: string; display_name: string | null; is_admin: boolean; timezone: string };
 export type TokenOut = { access_token: string; expires_in: number; refresh_token: string; user: ApiUser };
@@ -92,7 +104,7 @@ export function refreshSession(refreshToken: string): Promise<RefreshResult> {
     try {
       const r = await fetch(`${apiBase()}/api/v1/auth/refresh`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await forwardedFor()) },
         body: JSON.stringify({ refresh_token: refreshToken }),
         cache: "no-store",
       });
@@ -113,7 +125,7 @@ export function refreshSession(refreshToken: string): Promise<RefreshResult> {
 /** Call the API's auth endpoints (no bearer). Returns status + parsed JSON (or null). */
 export async function callAuth(path: string, body: unknown, bearer?: string): Promise<{ status: number; json: unknown }> {
   try {
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    const headers: Record<string, string> = { "Content-Type": "application/json", ...(await forwardedFor()) };
     if (bearer) headers.Authorization = `Bearer ${bearer}`;
     const r = await fetch(`${apiBase()}/api/v1/auth/${path}`, {
       method: "POST", headers, body: JSON.stringify(body ?? {}), cache: "no-store",
