@@ -294,3 +294,80 @@ def test_transient_model_failure_raises_unless_final_attempt(monkeypatch):
     assert all(r["importance"] == "required" for r in out["result"]["requirements"])
     assert out["result"]["fields"]["title"]["value"] == "Backend Engineer"
     assert out["result"]["fields"]["title"]["source"] == "page"
+
+
+# ------------------------------------------------------------------ rules-only posting fields (no AI)
+def test_rule_fields_read_header_details_with_exact_quotes():
+    from elevate.services.job_analysis import rule_fields
+    text = ("Backend Software Engineer\nFixture Systems Pvt Ltd — Hyderabad, India (Hybrid)\nFull-time\n\n"
+            "Requirements\n- 3+ years of professional experience with Java or Kotlin.\n"
+            "- Bachelor's degree in Computer Science or a related field.\n\nApplication deadline: 30 November 2026\n")
+    f = rule_fields(text)
+    assert f["work_mode"].value == "Hybrid"
+    assert f["employment_type"].value == "Full-time"
+    assert f["location"].value == "Hyderabad, India"
+    assert f["deadline"].value == "30 November 2026"
+    assert f["experience"].value.startswith("3+ years")
+    assert f["education"].value.startswith("Bachelor's degree")
+    for q in f.values():  # every value is backed by text that exists in the posting
+        assert q.quote in text
+
+
+def test_rule_fields_do_not_guess_when_absent():
+    from elevate.services.job_analysis import rule_fields
+    f = rule_fields("We build remote controls for televisions. Join our friendly team.")
+    assert "work_mode" not in f  # "remote controls" is not a work arrangement
+    assert "deadline" not in f and "experience" not in f
+
+
+def test_rules_only_analysis_fills_fields(monkeypatch):
+    from elevate.errors import CapabilityUnavailable
+    from elevate.services import job_analysis
+
+    class Down:
+        def generate_json(self, *a, **k):
+            raise CapabilityUnavailable("AI disabled", code="ai_disabled", retryable=False)
+
+    monkeypatch.setattr(job_analysis, "get_provider", lambda: Down())
+    text = "Data Analyst\nLocation: Pune, India\nInternship\nRequirements\n- SQL and Excel.\nApply by 5 Dec 2026\n"
+    out = job_analysis.analyze(text, None, None)
+    fields = out["result"]["fields"]
+    assert out["status"] == "partial"
+    assert fields["location"]["value"] == "Pune, India" and fields["location"]["source"] == "job_text"
+    assert fields["employment_type"]["value"] == "Internship"
+    assert fields["deadline"]["value"] == "5 Dec 2026"
+
+
+# ------------------------------------------------------------------ built-in interview practice (no AI)
+def test_template_questions_use_job_concepts_and_allowed_kinds():
+    from elevate.services import interviews as iv
+    reqs = [{"key": "r1", "concepts": [{"label": "Spring Boot"}]}, {"key": "r2", "concepts": [{"label": "PostgreSQL"}]}]
+    qs = iv.template_questions(role="Backend Engineer", kinds=["technical", "behavioral"], requirements=reqs,
+                               topics=[], difficulty="medium", count=5)
+    assert len(qs) == 5
+    assert {q["kind"] for q in qs} <= {"technical", "behavioral"}
+    assert len({q["prompt"] for q in qs}) == 5  # no duplicates
+    assert any("Spring Boot" in q["prompt"] for q in qs) and any("PostgreSQL" in q["prompt"] for q in qs)
+    assert all(q["requirement_ref"] in (None, "r1", "r2") for q in qs)
+    assert all(q["rubric"] for q in qs)
+
+
+def test_template_questions_without_requirements_still_work():
+    from elevate.services import interviews as iv
+    qs = iv.template_questions(role="", kinds=["hr"], requirements=[], topics=[], difficulty="hard", count=2)
+    assert len(qs) == 2 and all("trade-offs" in q["prompt"] for q in qs)
+
+
+def test_checklist_evaluation_is_transparent():
+    from elevate.services import interviews as iv
+    rubric = [{"criterion": c, "origin": "base"} for c in iv.BASE_RUBRICS["behavioral"]]
+    ans = ("During my internship our test suite took 40 minutes. I built a parallel runner and fixed flaky tests. "
+           "As a result the suite ran in 9 minutes and I learned to measure before optimising.")
+    ev = iv.checklist_evaluation("behavioral", rubric, ans)
+    assert ev["method"] == "checklist" and ev["tally"]["met"] == 3
+    assert all(c["answer_quote"] in ans for c in ev["criteria"] if c["answer_quote"])
+    weak = iv.checklist_evaluation("coding", [{"criterion": c, "origin": "base"} for c in iv.BASE_RUBRICS["coding"]],
+                                   "I would loop over the list and count things in a dictionary.")
+    ratings = {c["criterion"]: c["rating"] for c in weak["criteria"]}
+    assert ratings["States time/space complexity"] == "not_met"
+    assert ratings["Describes a correct approach"] == "cannot_assess"  # never judges correctness

@@ -19,6 +19,7 @@ export function SourceBadge({ source }: { source: FieldSource | string }) {
   if (source === "job_text") return <Badge tone="ok">From posting text</Badge>;
   if (source === "structured_data") return <Badge tone="warn">Page metadata (unverified)</Badge>;
   if (source === "user_correction") return <Badge tone="info">Your correction</Badge>;
+  if (source === "page") return <Badge tone="info">Entered with the job</Badge>;
   return <Badge>Unknown</Badge>;
 }
 

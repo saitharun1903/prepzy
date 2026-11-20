@@ -245,6 +245,60 @@ def fill_section_gaps(text: str, requirements: list[dict[str, Any]]) -> int:
     return added
 
 
+# ---- Rules-only field extraction (used only when the model step did not run) ----------------
+# Each rule returns (value, quote) where quote is exact posting text, so _field() can verify it.
+_MONTHS = r"(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)"
+_DATE = (rf"(?:\d{{1,2}}(?:st|nd|rd|th)?\s+{_MONTHS}\.?,?\s+\d{{4}}|{_MONTHS}\.?\s+\d{{1,2}}(?:st|nd|rd|th)?,?\s+\d{{4}}"
+         r"|\d{4}-\d{2}-\d{2}|\d{1,2}/\d{1,2}/\d{4})")
+_RULE_DEADLINE = re.compile(rf"(?:application\s+deadline|apply\s+(?:by|before)|deadline|last\s+date(?:\s+to\s+apply)?|closing\s+date|applications?\s+close)"
+                            rf"\s*(?:is|on)?\s*[:\-\u2013]?\s*(?P<v>{_DATE})", re.IGNORECASE)
+_RULE_EMPLOYMENT = re.compile(r"\b(full[- ]time|part[- ]time|contract(?:or)?|internship|temporary|freelance|permanent)\b", re.IGNORECASE)
+_RULE_WORK_MODE = [
+    (re.compile(r"\bhybrid\b", re.IGNORECASE), "Hybrid"),
+    (re.compile(r"\b(?:on[- ]?site|in[- ]office|work from office)\b", re.IGNORECASE), "Onsite"),
+    (re.compile(r"(?:\(remote\)|\bfully remote\b|\b100% remote\b|\bremote[- ]first\b|\bwork from home\b|"
+                r"\blocation\s*:\s*remote\b|\bremote\s+(?:role|position|job|work)\b)", re.IGNORECASE), "Remote"),
+]
+_RULE_LOCATION = re.compile(r"^\s*(?:job\s+)?location\s*:\s*(?P<v>[^\n]{2,120})$", re.IGNORECASE | re.MULTILINE)
+_RULE_HEADER_LOCATION = re.compile(r"^[^\n]{2,80}?\s[\u2014\u2013-]\s(?P<v>[A-Z][^\n()]{1,80}?)\s*\((?:hybrid|on[- ]?site|remote)\)\s*$",
+                                   re.IGNORECASE | re.MULTILINE)
+_RULE_EDUCATION = re.compile(r"\b(bachelor'?s?|master'?s?|ph\.?d|doctorate|degree|b\.?\s?tech|m\.?\s?tech|b\.?e\.|b\.?sc|m\.?sc|mba|diploma)\b",
+                             re.IGNORECASE)
+_BULLET = re.compile(r"^\s*(?:[-*\u2022\u25cf\u25aa]|\d+[.)])\s*")
+
+
+def _lines(text: str) -> list[str]:
+    return [ln for ln in text.splitlines() if ln.strip()]
+
+
+def _clean_line(line: str) -> str:
+    return _BULLET.sub("", line).strip()[:300]
+
+
+def rule_fields(text: str) -> dict[str, Quoted]:
+    """Deterministic, quote-backed field values for the rules-only (no AI) analysis."""
+    out: dict[str, Quoted] = {}
+    head = text[:6000]
+    if m := _RULE_DEADLINE.search(head):
+        out["deadline"] = Quoted(value=m.group("v"), quote=m.group(0))
+    if m := _RULE_EMPLOYMENT.search(head):
+        word = m.group(1)
+        out["employment_type"] = Quoted(value=word[0].upper() + word[1:].lower(), quote=word)
+    for pat, label in _RULE_WORK_MODE:
+        if m := pat.search(head):
+            out["work_mode"] = Quoted(value=label, quote=m.group(0))
+            break
+    if (m := _RULE_LOCATION.search(head)) or (m := _RULE_HEADER_LOCATION.search(text[:1500])):
+        out["location"] = Quoted(value=m.group("v").strip(), quote=m.group("v").strip())
+    for line in _lines(head):
+        body = _clean_line(line)
+        if "experience" not in out and jt.parse_years(body) and re.search(r"\bexperience\b", body, re.IGNORECASE):
+            out["experience"] = Quoted(value=body, quote=body)
+        if "education" not in out and _RULE_EDUCATION.search(body) and len(body) <= 200:
+            out["education"] = Quoted(value=body, quote=body)
+    return out
+
+
 def analyze(text: str, structured: dict[str, Any] | None, page_title: str | None,
             cancel_check: Any = None, *, allow_partial: bool = True,
             page_hints: dict[str, str | None] | None = None) -> dict[str, Any]:
@@ -296,15 +350,18 @@ def analyze(text: str, structured: dict[str, Any] | None, page_title: str | None
             status = "partial"
 
     fields: dict[str, Any] = {}
+    rules = rule_fields(text) if llm is None else {}
     names = ["title", "company", "location", "work_mode", "employment_type", "seniority", "experience", "education",
              "salary", "deadline", "posted"]
     claim_map = {"title": "title", "company": "company", "location": "location", "work_mode": "work_mode",
                  "employment_type": "employment_type", "posted": "date_posted", "deadline": "valid_through"}
     for n in names:
-        q: Quoted = getattr(llm, n) if llm else Quoted()
+        q: Quoted = getattr(llm, n) if llm else rules.get(n, Quoted())
         if n == "work_mode" and q.value and q.value.lower() not in ("remote", "hybrid", "onsite", "on-site"):
             q = Quoted()
         f = _field(q.value, q.quote, "job_text", text, issues, n)
+        if llm is None and f["value"] is not None:
+            f["note"] = "Found by a keyword scan of the posting text (AI step did not run)."
         claim = claims.get(claim_map.get(n, ""))
         hint = (page_hints or {}).get(n)
         if f["value"] is None and isinstance(claim, str):
@@ -314,7 +371,7 @@ def analyze(text: str, structured: dict[str, Any] | None, page_title: str | None
             span = jt.locate_quote(text, hint) if len(hint) >= 3 else None
             f = {"value": hint.strip()[:300], "source": "page", "evidence": (
                 {"quote": text[span[0]:span[1]], "start": span[0], "end": span[1]} if span else None),
-                 "note": "Read from the page layout by the capture tool."}
+                 "note": "Entered when the job was added; not found in the posting text."}
         elif claim and isinstance(claim, str) and f["value"] and n in ("title", "company") and \
                 claim.lower() not in f["value"].lower() and f["value"].lower() not in claim.lower():
             f["conflict"] = {"structured_data": claim}

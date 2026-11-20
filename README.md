@@ -34,7 +34,7 @@ All settings are documented in [.env.example](.env.example) (server-only vs publ
 ```bash
 cd services/api
 uv run ruff check src tests --ignore E501     # lint
-uv run pytest -q                              # 33 unit + 15 integration (isolated DB "elevate_test")
+uv run pytest -q                              # 75 unit + integration tests (isolated DB "elevate_test")
 uv run alembic check                          # model/migration drift
 uv run python ../../ai/evaluation/run_eval.py # real-model extraction evaluation (slow)
 python ../../scripts/smoke_e2e.py             # real-service end-to-end (API+worker+Ollama running)

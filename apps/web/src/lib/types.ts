@@ -52,7 +52,7 @@ export type Fact = {
 };
 
 // ---------------------------------------------------------------- jobs
-export type FieldSource = "job_text" | "structured_data" | "user_correction" | "unknown";
+export type FieldSource = "job_text" | "structured_data" | "user_correction" | "page" | "unknown";
 export type AnalysisField = {
   value: string | null; source: FieldSource; evidence: { quote: string; start: number; end: number } | null;
   note?: string; conflict?: { structured_data: string }; original?: { value: string | null; source: string };
