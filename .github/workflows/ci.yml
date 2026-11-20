@@ -81,6 +81,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker build -f services/api/Dockerfile -t elevate-api:ci .
       - run: docker build -f infrastructure/ollama/Dockerfile -t elevate-ollama:ci .
+      - run: docker build -f infrastructure/render/prepzy.Dockerfile -t prepzy:ci .
       - name: Production config guard refuses dev settings
         run: |
           if docker run --rm -e ELEVATE_DATABASE_URL=postgresql+psycopg://x:y@db/z -e ELEVATE_JWT_SECRET=ci-dummy-secret-long-enough-for-field-validation-000 elevate-api:ci \

@@ -24,6 +24,11 @@ function csp(nonce: string): string {
 
 export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
+  // A retired deployment (e.g. the old elevate-web address) sends every visitor to the new site.
+  const moved = process.env.ELEVATE_REDIRECT_ORIGIN;
+  if (moved && /^https:\/\/[a-z0-9.-]+$/i.test(moved)) {
+    return NextResponse.redirect(`${moved}${pathname}${search}`, 308);
+  }
   const hasSession = Boolean(request.cookies.get("el_at")?.value || request.cookies.get("el_s")?.value);
   const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 
@@ -55,7 +60,7 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     {
-      source: "/((?!api|_next/static|_next/image|favicon.ico|icon.svg|downloads/).*)",
+      source: "/((?!api|_next/static|_next/image|favicon.ico|icon.svg|downloads/|health/|metrics$).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

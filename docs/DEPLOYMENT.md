@@ -122,3 +122,12 @@ produces `apps/extension/release/elevate-extension-<version>.zip` for the Chrome
 * No domain yet: Render's `*.onrender.com` URLs work; a custom domain needs DNS changes by you.
 * The production model's quality is unmeasured (see above). More than a handful of concurrent analyses needs a bigger inference plan or a GPU host.
 * No monitoring service is wired; `/metrics` is ready for one (e.g. Grafana Cloud's free tier).
+
+## Free deployment, single service (current): `render.yaml` → `prepzy`
+
+The web app and the API now run in ONE free Render service (`infrastructure/render/prepzy.Dockerfile`,
+started by `scripts/start_prepzy.py`): Next.js listens on `$PORT` and forwards `/api/v1/*`, `/health/*` and
+`/metrics` to the API on `127.0.0.1:8000` (embedded worker). One always-on free instance (~720 h/month) fits
+Render's 750 free hours; two do not. Keep it awake with a free uptime monitor (e.g. UptimeRobot) pinging
+`https://<service>.onrender.com/health/live` every 10 minutes. The old `elevate-web` service redirects to
+the new address when `ELEVATE_REDIRECT_ORIGIN` is set on it. Memory use measured locally: ~260 MB of 512 MB.

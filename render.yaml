@@ -1,62 +1,23 @@
-# FREE Render Blueprint for Elevate. Nothing is created until you open
-#   https://dashboard.render.com/blueprints -> New Blueprint Instance -> this repo
+# FREE Render Blueprint for Prepzy: ONE service runs the web app and the API (with its embedded worker).
+# Nothing is created until you open https://dashboard.render.com/blueprints -> New Blueprint Instance -> this repo
 # and approve it. Values marked `sync: false` are asked for once, in Render's UI. See docs/DEPLOYMENT.md.
 # The paid setup (self-hosted Ollama, separate worker, S3) is infrastructure/render/render.paid.yaml.
 #
-# Topology:  browser ──https──> elevate-web ──https──> elevate-api ──https──> Groq (free tier AI)
-#            extension ─https─────────────────────────> elevate-api ──TLS──> Neon Postgres (free)
-# Free-plan trade-offs: services sleep after ~15 min idle (first request then takes ~1 min), the
-# worker runs inside the API process, resume files are stored in Postgres, migrations run at start.
+# Topology:  browser / extension ──https──> prepzy (Next.js on $PORT ─▶ FastAPI on 127.0.0.1:8000) ──> Neon, Groq, Brevo
+# Why one service: free instances sleep after ~15 min idle and share 750 hours/month. One always-on service
+# (~720 h) fits; two do not. Keep it awake with an external uptime ping to /health/live every 10 minutes.
 
 services:
-  # ---------------------------------------------------------------- dashboard (Next.js)
   - type: web
-    name: elevate-web
-    runtime: node
-    region: singapore
-    plan: free
-    # --include=dev: NODE_ENV=production would otherwise skip the build tools (Tailwind, TypeScript).
-    buildCommand: npm ci --include=dev --no-audit --no-fund && npm run build -w apps/web
-    startCommand: npm run start -w apps/web
-    healthCheckPath: /login
-    autoDeploy: false
-    envVars:
-      - key: NODE_VERSION
-        value: "24"
-      - key: NODE_ENV
-        value: production
-      - key: NEXT_TELEMETRY_DISABLED
-        value: "1"
-      # Privacy wording for the hosted setup (data in Neon/Render, AI by Groq). Read at build time.
-      - key: NEXT_PUBLIC_ELEVATE_HOSTED
-        value: "1"
-      - key: NEXT_PUBLIC_ELEVATE_AI_PROVIDER
-        value: Groq
-      # Free services cannot receive private-network traffic, so the web app calls the API's public URL.
-      - key: ELEVATE_API_URL            # https://elevate-api.onrender.com (check the real URL after creation)
-        sync: false
-      - key: ELEVATE_APP_ORIGINS        # this site's own URL, e.g. https://elevate-web.onrender.com
-        sync: false
-      - key: NEXT_PUBLIC_ELEVATE_EXTENSION_ID
-        sync: false
-
-  # ---------------------------------------------------------------- API + embedded worker (FastAPI)
-  - type: web
-    name: elevate-api
+    name: prepzy
     runtime: docker
     region: singapore
     plan: free
-    dockerfilePath: ./services/api/Dockerfile
+    dockerfilePath: ./infrastructure/render/prepzy.Dockerfile
     dockerContext: .
-    # Free instances have no pre-deploy step: create the runtime role + apply migrations (idempotent), then serve.
-    dockerCommand: python /app/scripts/start_api.py
     healthCheckPath: /health/live
     autoDeploy: false
     envVars:
-      - key: ELEVATE_ENV
-        value: production
-      - key: ELEVATE_EMBEDDED_WORKER
-        value: "true"
       - key: ELEVATE_STORAGE_BACKEND
         value: db
       - key: ELEVATE_LLM_PROVIDER
@@ -71,7 +32,6 @@ services:
         value: "30"
       - key: ELEVATE_DB_POOL_SIZE
         value: "4"
-      # All dashboard sign-ins reach the API from the web service's address; allow for that.
       - key: ELEVATE_AUTH_RATE_PER_MINUTE
         value: "60"
       - key: ELEVATE_JWT_SECRET
@@ -82,28 +42,27 @@ services:
         value: elevate
       - key: ELEVATE_REQUIRE_VERIFIED_EMAIL
         value: "true"
-      # Render free blocks outbound SMTP ports, so email goes through Brevo's HTTPS API.
       - key: ELEVATE_EMAIL_BACKEND
         value: brevo
       - key: ELEVATE_LOG_LEVEL
         value: INFO
-      - key: ELEVATE_OPENAI_API_KEY     # Groq API key (console.groq.com -> API Keys; free, no card)
+      - key: ELEVATE_EXTENSION_IDS
+        value: bjhbbpnbmichlooillmiaeofcioofkni
+      - key: ELEVATE_OPENAI_API_KEY     # Groq API key (console.groq.com -> API Keys)
         sync: false
       - key: ELEVATE_DATABASE_URL       # postgresql+psycopg://elevate_app:<pw>@<neon-host>/<db>?sslmode=require
         sync: false
       - key: ELEVATE_MIGRATION_DATABASE_URL   # same host, Neon owner role, ?sslmode=require
         sync: false
-      - key: ELEVATE_DB_APP_PASSWORD    # password for elevate_app (created/updated at start by db_bootstrap.py)
-        sync: false
       - key: ELEVATE_DATA_KEY           # Fernet key (see docs/DEPLOYMENT.md); keep a copy
         sync: false
-      - key: ELEVATE_BREVO_API_KEY      # Brevo -> SMTP & API -> API keys (free)
+      - key: ELEVATE_BREVO_API_KEY
         sync: false
-      - key: ELEVATE_EMAIL_FROM         # e.g. Elevate <you@example.com> (a sender verified with your SMTP provider)
+      - key: ELEVATE_EMAIL_FROM         # e.g. Prepzy <you@example.com> (a sender verified in Brevo)
         sync: false
-      - key: ELEVATE_WEB_URL            # https://elevate-web.onrender.com (the web service's real URL)
+      - key: ELEVATE_WEB_URL            # this service's URL, e.g. https://prepzy.onrender.com
         sync: false
       - key: ELEVATE_ALLOWED_ORIGINS    # same as ELEVATE_WEB_URL
         sync: false
-      - key: ELEVATE_EXTENSION_IDS      # Chrome extension id(s), comma-separated (may be empty at first)
+      - key: ELEVATE_APP_ORIGINS        # same as ELEVATE_WEB_URL
         sync: false
