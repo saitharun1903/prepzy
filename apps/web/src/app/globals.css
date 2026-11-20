@@ -271,3 +271,15 @@ body {
   .btn-gloss, .lift { transition: none; }
   .btn-gloss:hover:not(:disabled), .lift:hover { transform: none; }
 }
+
+/* ---- tailored resume: preview links + print only the sheet ---- */
+.resume-sheet a { color: inherit; text-decoration: none; }
+.resume-sheet ul { list-style: disc; }
+.resume-print { display: none; }
+@media print {
+  @page { size: A4; margin: 0; }
+  html, body { background: #fff !important; }
+  body > *:not(.resume-print) { display: none !important; }
+  .resume-print { display: block !important; }
+  .resume-print .resume-sheet { box-shadow: none !important; }
+}

@@ -156,6 +156,49 @@ def handle_resume_suggest(ctx: OpContext) -> None:
     ctx.commit_result(write)
 
 
+# ------------------------------------------------------------------ tailored resume
+@handler("resume_tailor")
+def handle_resume_tailor(ctx: OpContext) -> None:
+    from .services import tailor
+    vid = uuid.UUID(ctx.payload["version_id"])
+    job_id = uuid.UUID(ctx.payload["job_id"])
+    ctx.stage("loading")
+    with ctx.owner_db() as db:
+        v = db.execute(select(ResumeVersion).where(ResumeVersion.id == vid, ResumeVersion.owner_id == ctx.owner_id)
+                       ).scalar_one_or_none()
+        if v is None or not v.text:
+            raise NotFound("Resume version not found", retryable=False)
+        resume_text = v.text
+        a = db.execute(select(JobAnalysis).where(JobAnalysis.job_id == job_id).order_by(JobAnalysis.created_at.desc())
+                       .limit(1)).scalar_one_or_none()
+        if a is None:
+            raise NotFound("Analyse the job first", retryable=False)
+        eff = effective_analysis(a, active_corrections(db, job_id, a.id))
+        reqs = [r["text"] for r in eff.get("requirements", []) if not r.get("removed_by_user") and not r.get("negated")]
+        title = eff["fields"]["title"]["value"] or "this role"
+        company = eff["fields"].get("company", {}).get("value")
+        rep = db.execute(select(MatchReport).where(MatchReport.job_id == job_id).order_by(MatchReport.created_at.desc())
+                         .limit(1)).scalar_one_or_none()
+        gaps = [p["label"] for p in (rep.result.get("priorities", []) if rep else [])]
+    ctx.stage("generating")
+    comp = get_provider().generate_json(tailor.SYSTEM, tailor.build_prompt(resume_text, title, company, reqs, gaps),
+                                        tailor.SCHEMA, max_tokens=4096, cancel_check=ctx.cancelled)
+    try:
+        data = tailor.Tailored.model_validate(comp.data)
+    except ValidationError as e:
+        raise ModelOutputInvalid("The model returned the resume in an unexpected format.") from e
+    ctx.stage("validating")
+    resume, dropped = tailor.validate(data, resume_text)
+    template = ctx.payload.get("template") if ctx.payload.get("template") in tailor.TEMPLATES else "classic"
+
+    def write(_: Session) -> dict[str, Any]:
+        return {"version_id": str(vid), "job_id": str(job_id), "template": template, "job_title": title,
+                "company": company, "resume": resume, "dropped": dropped[:20], "model": comp.model,
+                "prompt_version": tailor.PROMPT_VERSION,
+                "note": "Built only from facts in your resume. Anything the AI added that isn't in your resume was removed."}
+    ctx.commit_result(write)
+
+
 # ------------------------------------------------------------------ interviews
 @handler("interview_generate")
 def handle_interview_generate(ctx: OpContext) -> None:

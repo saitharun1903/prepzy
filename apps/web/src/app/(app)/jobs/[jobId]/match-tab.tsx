@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight, CheckCircle2, ChevronDown, CircleDashed, CircleHelp, CircleMinus, CircleSlash, FileText, MessageCircle,
-  MessagesSquare, RefreshCw, Sparkles, UserCheck, XCircle,
+  MessagesSquare, RefreshCw, Sparkles, UserCheck, Wand2, XCircle,
 } from "lucide-react";
 import { ApiError, apiFetch } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
@@ -225,14 +225,17 @@ export function MatchTab({ jobId, hasAnalysis, onJobChanged, onGoTo }: {
           {/* 2 — what to do next */}
           <section aria-labelledby="next-h">
             <h2 id="next-h" className="serif text-2xl">What to do next</h2>
-            <div className="mt-3 grid gap-3 md:grid-cols-3">
-              <NextCard n={1} icon={<FileText aria-hidden className="size-5" />} title="Improve your resume"
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <NextCard n={1} icon={<Wand2 aria-hidden className="size-5" />} title="Get a tailored resume"
+                text="A one-page resume for this job in a professional template, as a PDF or LaTeX file."
+                action="Generate resume" onClick={() => onGoTo?.("resume")} />
+              <NextCard n={2} icon={<FileText aria-hidden className="size-5" />} title="Improve your resume"
                 text={missingSkills.length ? `Add proof of ${missingSkills.join(", ")} if you have it, and fix wording.` : "Tighten wording and make your skills easy to spot."}
                 action="Open resume tips" onClick={() => onGoTo?.("guidance")} />
-              <NextCard n={2} icon={<MessagesSquare aria-hidden className="size-5" />} title="Practise the interview"
+              <NextCard n={3} icon={<MessagesSquare aria-hidden className="size-5" />} title="Practise the interview"
                 text="Likely questions for this role, plus what past candidates were asked."
                 action="Start practising" onClick={() => onGoTo?.("interview")} />
-              <NextCard n={3} icon={<Sparkles aria-hidden className="size-5" />} title="Ask AI about this job"
+              <NextCard n={4} icon={<Sparkles aria-hidden className="size-5" />} title="Ask AI about this job"
                 text="Ask anything — what to learn first, how to answer, what the role involves."
                 action="Ask a question" onClick={() => onGoTo?.("ask")} />
             </div>

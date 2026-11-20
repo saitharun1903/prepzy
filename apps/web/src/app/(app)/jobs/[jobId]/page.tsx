@@ -14,6 +14,7 @@ import { RequirementsTab } from "./requirements-tab";
 import { OriginalTab } from "./original-tab";
 import { MatchTab } from "./match-tab";
 import { GuidanceTab } from "./guidance-tab";
+import { TailorTab } from "./tailor-tab";
 import { InterviewTab } from "./interview-tab";
 import { AskTab } from "./ask-tab";
 import { ApplicationTab } from "./application-tab";
@@ -22,6 +23,7 @@ import { ApplicationTab } from "./application-tab";
 const TABS = [
   { id: "match", label: "Your match", hint: "How well your resume fits this job, and what to do next." },
   { id: "guidance", label: "Improve resume", hint: "Fixes and wording suggestions for your resume, based on this job." },
+  { id: "resume", label: "Tailored resume", hint: "Generate a one-page resume for this job in a professional template — PDF or LaTeX." },
   { id: "interview", label: "Interview prep", hint: "Practice questions for this role and what past candidates were asked." },
   { id: "ask", label: "Ask AI", hint: "Ask anything about this job — answers use the posting and your resume." },
   { id: "application", label: "Track application", hint: "Record when you applied, interviews and follow-ups." },
@@ -89,6 +91,7 @@ function Workspace({ jobId }: { jobId: string }) {
         {tab === "original" ? <OriginalTab detail={d} /> : null}
         {tab === "match" ? <MatchTab jobId={jobId} hasAnalysis={Boolean(d.analysis)} onJobChanged={detail.reload} onGoTo={changeTab} /> : null}
         {tab === "guidance" ? <GuidanceTab jobId={jobId} /> : null}
+        {tab === "resume" ? <TailorTab jobId={jobId} jobTitle={d.analysis?.result.fields.title?.value || d.job.title || ""} /> : null}
         {tab === "interview" ? <InterviewTab jobId={jobId} company={company} title={d.analysis?.result.fields.title?.value || d.job.title} /> : null}
         {tab === "ask" ? <AskTab jobId={jobId} /> : null}
         {tab === "application" ? <ApplicationTab jobId={jobId} /> : null}
