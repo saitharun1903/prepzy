@@ -69,6 +69,16 @@ def _check_docx_zip(data: bytes) -> None:
         raise ValidationFailed("The DOCX file is damaged.", code="malformed_file") from e
 
 
+# PDF text from LaTeX/Word exports often splits a word after its first capital ("T elangana",
+# "W eb", "CGP A"). Re-join only these unambiguous shapes; "I" and "A" stay separate words.
+_SPLIT_CAP = re.compile(r"\b([B-HJ-Z]) ([a-z]{2,})\b")
+_SPLIT_GPA = re.compile(r"\b(CGP|SGP|GP) A\b")
+
+
+def clean_pdf_text(text: str) -> str:
+    return _SPLIT_GPA.sub(r"\1A", _SPLIT_CAP.sub(r"\1\2", text))
+
+
 def extract_text(data: bytes, kind: str) -> tuple[str, list[str]]:
     """Return (text, warnings). Raises ValidationFailed for unsupported content."""
     warnings: list[str] = []
@@ -86,7 +96,7 @@ def extract_text(data: bytes, kind: str) -> tuple[str, list[str]]:
             parts = [(p.extract_text() or "") for p in pages]
         except PdfReadError as e:
             raise ValidationFailed("The PDF could not be read (it may be damaged).", code="malformed_file") from e
-        text = "\n".join(parts)
+        text = clean_pdf_text("\n".join(parts))
         if len(re.sub(r"\s", "", text)) < 100:
             raise ValidationFailed("This PDF has no extractable text (it may be scanned). OCR is not available; "
                                    "upload a text-based PDF/DOCX or paste your resume text.", code="no_text_layer")

@@ -406,3 +406,56 @@ def test_rate_limited_call_waits_once_then_succeeds(monkeypatch):
     provider.base, provider.key, provider.timeout, provider.model = "https://x", "k", 5, "m"
     assert provider._post({}) == {"ok": True}
     assert slept == [2.0] and len(calls) == 2
+
+
+def test_broad_and_soft_requirements_do_not_withhold_the_score():
+    """Internship-style posting: broad tech families + soft skills (regression for a withheld estimate)."""
+    a = _analysis(("Basic understanding of any programming language.", "required"),
+                  ("Familiarity with databases, APIs, or backend development.", "required"),
+                  ("Problem-solving and logical-thinking abilities.", "required"),
+                  ("Willingness to learn and complete assigned tasks.", "required"))
+    res = matching.compute(a, *_resume("Skills\nJava, Python, SQL, Spring Boot, REST APIs\n"), None, [])
+    s = res["summary"]
+    assert s["score_status"] == "available"
+    assert s["required"]["coverage"] == 100.0
+    assert s["required"]["total"] == 2 and s["required"]["soft_skills"] == 2
+    statuses = [u["status"] for u in res["requirements"]]
+    assert statuses.count("soft_skill") == 2
+
+
+def test_broad_family_unmet_without_any_family_skill():
+    a = _analysis(("Basic understanding of any programming language.", "required"), ("SQL", "required"))
+    res = matching.compute(a, *_resume("Skills\nSQL, Excel\n"), None, [])
+    assert res["summary"]["required"]["coverage"] == 50.0
+
+
+def test_pdf_split_words_are_rejoined():
+    from elevate.services.resumes import clean_pdf_text
+    assert clean_pdf_text("Hyderabad, T elangana. Backend & W eb. 9.30 CGP A") == "Hyderabad, Telangana. Backend & Web. 9.30 CGPA"
+    assert clean_pdf_text("I enjoy A lot of things") == "I enjoy A lot of things"
+
+
+def test_tailored_resume_drops_invented_facts():
+    from elevate.services import tailor
+    src = ("SAI DEMO\n+91 9032015985 sai@example.com linkedin.com/in/sai\nSkills: Java, Spring Boot, SQL, Docker\n"
+           "Projects\nWriteCode - online IDE in 16 languages. Cut CPU usage from 58% to 7%.\nEducation\nB.Tech CSE, 2023 - 2027, CGPA 9.30\n")
+    data = tailor.Tailored.model_validate({
+        "name": "Sai Demo", "headline": "Backend Developer",
+        "contact": {"phone": "+91 9032015985", "email": "fake@other.com", "linkedin": "https://linkedin.com/in/sai"},
+        "summary": "Backend-focused student skilled in **Java** and **Spring Boot**.",
+        "education": [{"school": "Some University", "degree": "B.Tech CSE", "dates": "2023 - 2027", "score": "CGPA 9.30"}],
+        "skills": [{"group": "Backend", "items": ["Java", "Spring Boot", "Kubernetes"]}],
+        "projects": [{"title": "WriteCode", "bullets": ["Built an online IDE supporting **16 languages**.",
+                                                       "Served 10000 users daily.",
+                                                       "Cut CPU usage from **58% to 7%**.",
+                                                       "Deployed on **Kubernetes**."]}],
+        "experience": [], "achievements": []})
+    out, dropped = tailor.validate(data, src)
+    assert out["contact"]["phone"] == "+91 9032015985"
+    assert out["contact"]["email"] is None  # not in the resume
+    assert out["contact"]["linkedin"]  # same link, different scheme
+    assert out["skills"][0]["items"] == ["Java", "Spring Boot"]  # Kubernetes is not in the resume
+    bullets = out["projects"][0]["bullets"]
+    assert len(bullets) == 2 and not any("10000" in b or "Kubernetes" in b for b in bullets)
+    assert any("16 languages" in b for b in bullets)
+    assert dropped

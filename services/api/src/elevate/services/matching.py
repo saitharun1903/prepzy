@@ -1,6 +1,6 @@
-"""Deterministic, explainable matching ("Prepzy evidence coverage estimate").
+"""Deterministic, explainable matching ("Your match score").
 
-Scoring version score-1 (documented in docs/AI_EVALUATION.md#scoring):
+Scoring version score-2 (documented in docs/AI_EVALUATION.md#scoring):
   * Units: each non-removed, non-negated requirement after deduplication (same concepts+group+years
     or same normalized text). An alternatives group ("Python or R") is ONE unit.
   * Credit per unit:
@@ -15,7 +15,10 @@ Scoring version score-1 (documented in docs/AI_EVALUATION.md#scoring):
       R6 education: degree-level keyword match against the resume education section, else unassessable.
   * Location / work arrangement / work authorization conditions are shown for review, never scored.
   * coverage = 100 * sum(credit) / count(assessable units), separately for required and preferred.
-  * Score withheld when required units == 0, or completeness < 0.6, or assessable required units < 2.
+      R7 broad families ("any programming language", "databases", "APIs", "backend"): any one family skill counts.
+      R8 soft skills / attitudes (problem solving, willingness to learn …) without evidence: shown, never scored,
+         and left out of totals so they cannot block the estimate.
+  * Score withheld when required units == 0, or completeness < 0.6, or assessable required units < min(2, total).
 Keyword repetition never adds credit: evidence is per concept, boolean.
 """
 
@@ -27,7 +30,7 @@ from typing import Any
 from .resumes import effective_skills
 from .taxonomy import load_taxonomy
 
-SCORING_VERSION = "score-1"
+SCORING_VERSION = "score-2"
 ADJACENT_CREDIT = 0.25
 MIN_COMPLETENESS = 0.6
 MIN_ASSESSABLE = 2
@@ -39,6 +42,28 @@ _DEGREES = {
     "diploma": r"\b(diploma)\b",
 }
 _LEVEL = {"diploma": 1, "bachelor": 2, "master": 3, "doctorate": 4}
+
+# R7: broad technology families named without a specific tool ("any programming language", "databases").
+# Any one listed concept with evidence satisfies the family (an alternatives group).
+_FAMILIES: list[tuple[str, str, tuple[str, ...]]] = [
+    (r"\b(programming|coding|scripting)\s+languages?\b|\bany\s+language\b", "A programming language",
+     ("python", "java", "javascript", "typescript", "c_lang", "cpp", "csharp", "go", "kotlin", "rust", "ruby", "php",
+      "swift", "r_lang")),
+    (r"\bdatabases?\b|\bdbms\b|\bdata\s*stores?\b", "Databases",
+     ("sql", "mysql", "postgresql", "mongodb", "redis", "nosql", "dbms")),
+    (r"\bapis?\b|\bweb\s+services?\b", "APIs", ("rest_api", "graphql", "fastapi", "spring_boot", "nodejs", "django", "flask")),
+    (r"\bback[\s-]?end\b|\bserver[\s-]side\b", "Backend development",
+     ("spring_boot", "nodejs", "django", "flask", "fastapi", "dotnet", "rest_api", "microservices")),
+    (r"\bfront[\s-]?end\b|\bui\s+development\b", "Frontend development",
+     ("react", "angular", "vue", "nextjs", "html_css", "javascript", "typescript")),
+    (r"\bcloud\b", "Cloud platforms", ("aws", "azure", "gcp")),
+    (r"\bversion\s+control\b", "Version control", ("git",)),
+]
+# Soft skills and attitudes: shown for review and interview prep, never part of the coverage estimate.
+_SOFT_TEXT = re.compile(r"\b(willing(ness)?|eager(ness)?|attitude|passion(ate)?|self[\s-]?motivat|curio(us|sity)|"
+                        r"team\s*player|teamwork|interpersonal|communication|problem[\s-]?solving|logical[\s-]?thinking|"
+                        r"analytical\s+(skills|thinking|mind)|quick\s+learner|learn(ing)?\s+new|adaptab|work\s+ethic|"
+                        r"punctual|dedicat|enthusias|ownership|initiative|detail[\s-]oriented)\b", re.IGNORECASE)
 
 
 def _degree_level(text: str) -> int | None:
@@ -106,6 +131,21 @@ def compute(analysis_result: dict[str, Any], resume_text: str | None, resume_ext
                                "note": "Shown for your review; not part of the coverage estimate."})
             continue
         cids = [c["id"] for c in r["concepts"]]
+        family_label = None
+        if not cids and r["category"] not in ("experience", "education"):
+            found = [c for c in tax.find_in_text(r["text"]) if c in tax.skills]
+            if found:
+                cids = found
+                base["concepts"] = [{"id": c, "label": tax.skills[c].label} for c in found]
+                base["group"] = "any" if len(found) > 1 else "single"
+            fam = [(lbl, ids) for pat, lbl, ids in _FAMILIES if re.search(pat, r["text"], re.IGNORECASE)]
+            if fam:
+                fam_ids = [i for _, ids in fam for i in ids if i in tax.skills and i not in cids]
+                cids = list(dict.fromkeys(cids + fam_ids))
+                family_label = " / ".join(lbl for lbl, _ in fam)
+                base["group"] = "any"
+        is_soft = (not cids or all(tax.skills[c].kind == "soft" for c in cids if c in tax.skills)) and \
+            bool(_SOFT_TEXT.search(r["text"])) and r["category"] not in ("experience", "education")
         sig = f"{sorted(cids)}|{r['group']}|{(r.get('years') or {}).get('min')}" if cids else \
             re.sub(r"\W+", " ", r["text"].lower()).strip()
         if sig in seen:
@@ -121,12 +161,17 @@ def compute(analysis_result: dict[str, Any], resume_text: str | None, resume_ext
             have = [c for c in cids if ev[c]]
             unit["evidence"] = [ev[c] for c in have]
             unit["missing"] = [{"id": c, "label": tax.skills[c].label} for c in cids if not ev[c]]
-            if r["group"] == "all":
+            if base["group"] == "all":
                 credit = len(have) / len(cids)
                 unit["rule"] = "R1-all"
             else:
                 credit = 1.0 if have else 0.0
-                unit["rule"] = "R1-any" if r["group"] == "any" else "R1"
+                unit["rule"] = "R1-any" if base["group"] == "any" else "R1"
+            if family_label:
+                unit["rule"] = "R7"
+                unit["notes"].append(f"Broad requirement ({family_label}): any one of the listed skills counts.")
+                if have:
+                    unit["missing"] = []
             if credit < 1.0:
                 adj = [a for a in (adjacent_for(c["id"]) for c in unit["missing"]) if a]
                 if adj and credit == 0.0:
@@ -183,10 +228,14 @@ def compute(analysis_result: dict[str, Any], resume_text: str | None, resume_ext
                 unit["notes"].append("Confirm whether you meet this; it can't be checked automatically.")
         else:
             unit["notes"].append("Confirm whether you meet this; it can't be checked automatically.")
+        if is_soft and unit["status"] not in ("supported", "user_confirmed", "not_met_confirmed"):
+            unit.update(status="soft_skill", credit=0.0, assessed_weight=0.0, missing=[], rule="R8")
+            unit["notes"] = ["A soft skill: employers judge this in the interview, so it isn't scored. "
+                             "Prepare a short example that shows it."]
         units.append(unit)
 
     def summarize(imp: str) -> dict[str, Any]:
-        us = [u for u in units if u["importance"] == imp]
+        us = [u for u in units if u["importance"] == imp and u["status"] != "soft_skill"]
         assessable = [u for u in us if u["assessed_weight"] > 0]
         weight = sum(u["assessed_weight"] for u in us)
         cov = round(100 * sum(u["credit"] for u in assessable) / len(assessable), 1) if assessable else None
@@ -197,15 +246,19 @@ def compute(analysis_result: dict[str, Any], resume_text: str | None, resume_ext
             "counts": {k: sum(1 for u in us if u["status"] == k) for k in
                        ("supported", "user_confirmed", "partial", "adjacent", "not_evidenced", "not_met_confirmed",
                         "unassessable")},
+            "soft_skills": sum(1 for u in units if u["importance"] == imp and u["status"] == "soft_skill"),
         }
 
     req, pref, unclear = summarize("required"), summarize("preferred"), summarize("unclear")
     status, reason = "available", None
     if req["total"] == 0:
-        status, reason = "withheld", "No required qualifications were identified; review the requirements."
-    elif (req["completeness"] or 0) < MIN_COMPLETENESS or req["assessable"] < MIN_ASSESSABLE:
-        status, reason = "withheld", ("Too many required items can't be assessed yet. Confirm them below or "
-                                      "review your resume evidence to get an estimate.")
+        status, reason = "withheld", ("This posting only lists soft skills or no checkable requirements, so there is "
+                                      "nothing to score. Use the interview prep instead." if any(
+                                          u["status"] == "soft_skill" for u in units) else
+                                      "No required qualifications were identified; review the requirements.")
+    elif (req["completeness"] or 0) < MIN_COMPLETENESS or req["assessable"] < min(MIN_ASSESSABLE, req["total"]):
+        status, reason = "withheld", ("Prepzy can't check enough of the required items automatically yet. Tick "
+                                      "\"I meet this\" on the items below to get your score.")
     if status == "withheld":
         req = {**req, "coverage": None}
 
@@ -222,7 +275,7 @@ def compute(analysis_result: dict[str, Any], resume_text: str | None, resume_ext
                                        if weight == 2 else "low"})
     return {
         "scoring_version": SCORING_VERSION,
-        "label": "Prepzy evidence coverage estimate",
+        "label": "Your match score",
         "disclaimer": "Estimates how much of this posting's stated requirements your supplied evidence covers. "
                       "It is not a hiring probability or an employer's ATS score.",
         "summary": {"required": req, "preferred": pref, "unclear": unclear, "score_status": status,

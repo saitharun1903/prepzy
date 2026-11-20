@@ -99,7 +99,7 @@ export type CaptureOut = {
 };
 
 // ---------------------------------------------------------------- matching
-export type MatchStatus = "supported" | "user_confirmed" | "partial" | "adjacent" | "not_evidenced" | "not_met_confirmed" | "unassessable";
+export type MatchStatus = "supported" | "user_confirmed" | "partial" | "adjacent" | "not_evidenced" | "not_met_confirmed" | "unassessable" | "soft_skill";
 export type Evidence = { concept_id?: string; label: string; type: string; source: string; excerpt?: string | null };
 export type MatchUnit = {
   key: string; text: string; importance: string; category: string; group: string; concepts: Concept[];
@@ -107,7 +107,7 @@ export type MatchUnit = {
   missing: Concept[]; notes: string[]; status: MatchStatus; credit: number; assessed_weight: number; rule: string | null;
 };
 export type CoverageSummary = {
-  total: number; assessable: number; completeness: number | null; coverage: number | null; counts: Record<string, number>;
+  total: number; assessable: number; completeness: number | null; coverage: number | null; counts: Record<string, number>; soft_skills?: number;
 };
 export type MatchResult = {
   scoring_version: string; label: string; disclaimer: string;

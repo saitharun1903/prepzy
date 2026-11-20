@@ -159,7 +159,7 @@ def test_resume_upload_parse_review_match_and_delete(client, user):
     run_worker_once()
     rep = client.post(f"/api/v1/jobs/{job.json()['job_id']}/match", json={"resume_version_id": r.json()["version_id"]},
                       headers=user["h"]).json()
-    assert rep["result"]["label"] == "Prepzy evidence coverage estimate"
+    assert rep["result"]["label"] == "Your match score"
     rv = client.put(f"/api/v1/resumes/{r.json()['resume_id']}/versions/{r.json()['version_id']}/review",
                     json={"removed_skills": ["java"], "added_skills": []}, headers=user["h"])
     assert rv.status_code == 200

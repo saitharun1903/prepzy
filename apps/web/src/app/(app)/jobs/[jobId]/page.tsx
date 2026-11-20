@@ -14,20 +14,22 @@ import { RequirementsTab } from "./requirements-tab";
 import { OriginalTab } from "./original-tab";
 import { MatchTab } from "./match-tab";
 import { GuidanceTab } from "./guidance-tab";
+import { TailorTab } from "./tailor-tab";
 import { InterviewTab } from "./interview-tab";
 import { AskTab } from "./ask-tab";
 import { ApplicationTab } from "./application-tab";
 
 // Ordered by what people do: see the match, close gaps, practise, apply. Reference tabs come last.
 const TABS = [
-  { id: "match", label: "Your match" },
-  { id: "requirements", label: "Requirements" },
-  { id: "guidance", label: "Improve resume" },
-  { id: "interview", label: "Practice" },
-  { id: "ask", label: "Ask AI" },
-  { id: "application", label: "Application" },
-  { id: "overview", label: "Job details" },
-  { id: "original", label: "Original posting" },
+  { id: "match", label: "Your match", hint: "How well your resume fits this job, and what to do next." },
+  { id: "guidance", label: "Improve resume", hint: "Fixes and wording suggestions for your resume, based on this job." },
+  { id: "resume", label: "Tailored resume", hint: "Generate a one-page resume for this job in a professional template — PDF or LaTeX." },
+  { id: "interview", label: "Interview prep", hint: "Practice questions for this role and what past candidates were asked." },
+  { id: "ask", label: "Ask AI", hint: "Ask anything about this job — answers use the posting and your resume." },
+  { id: "application", label: "Track application", hint: "Record when you applied, interviews and follow-ups." },
+  { id: "requirements", label: "Requirements", hint: "Every requirement Prepzy found in the posting. Fix anything it got wrong." },
+  { id: "overview", label: "Job details", hint: "Salary, location, experience and other details from the posting." },
+  { id: "original", label: "Original posting", hint: "The job text exactly as it was captured." },
 ];
 
 function Workspace({ jobId }: { jobId: string }) {
@@ -82,12 +84,14 @@ function Workspace({ jobId }: { jobId: string }) {
       />
       {detail.error ? <div className="mb-4"><ErrorState error={detail.error} onRetry={detail.reload} title="Could not refresh this job" /></div> : null}
       <Tabs label="Job workspace" tabs={TABS} value={tab} onChange={changeTab} />
+      <p className="mt-3 mb-6 text-[13.5px] text-muted">{TABS.find((t) => t.id === tab)?.hint}</p>
       <TabPanel id={tab}>
         {tab === "overview" ? <OverviewTab detail={d} reload={detail.reload} analysisId={analysisId} setAnalysisId={setAnalysisId} /> : null}
         {tab === "requirements" ? <RequirementsTab detail={d} reload={detail.reload} /> : null}
         {tab === "original" ? <OriginalTab detail={d} /> : null}
-        {tab === "match" ? <MatchTab jobId={jobId} hasAnalysis={Boolean(d.analysis)} onJobChanged={detail.reload} /> : null}
+        {tab === "match" ? <MatchTab jobId={jobId} hasAnalysis={Boolean(d.analysis)} onJobChanged={detail.reload} onGoTo={changeTab} /> : null}
         {tab === "guidance" ? <GuidanceTab jobId={jobId} /> : null}
+        {tab === "resume" ? <TailorTab jobId={jobId} jobTitle={d.analysis?.result.fields.title?.value || d.job.title || ""} /> : null}
         {tab === "interview" ? <InterviewTab jobId={jobId} company={company} title={d.analysis?.result.fields.title?.value || d.job.title} /> : null}
         {tab === "ask" ? <AskTab jobId={jobId} /> : null}
         {tab === "application" ? <ApplicationTab jobId={jobId} /> : null}

@@ -266,3 +266,25 @@ def request_suggestions(rid: uuid.UUID, vid: uuid.UUID, body: SuggestIn, ctx: Au
                        idempotency_key)
     db.commit()
     return {"operation_id": str(op.id), "status_url": f"/api/v1/operations/{op.id}"}
+
+
+class TailorIn(BaseModel):
+    job_id: uuid.UUID
+    template: str = Field(default="classic", pattern="^(classic|modern|ats)$")
+
+
+@router.post("/{rid}/versions/{vid}/tailored", status_code=202)
+def request_tailored(rid: uuid.UUID, vid: uuid.UUID, body: TailorIn, ctx: Authed,
+                     idempotency_key: str | None = Header(default=None, max_length=120)) -> dict[str, Any]:
+    """Generate a job-tailored resume (structured, template-ready) from this version's own facts."""
+    db, actor = ctx
+    v = _get_version(db, actor.id, rid, vid)
+    if v.parse_status != "parsed":
+        raise Conflict("Wait until this resume has been parsed.", code="not_parsed")
+    from ..services.jobs import get_job
+    get_job(db, actor.id, body.job_id)
+    op, _ = ops.create(db, actor.id, "resume_tailor", {"resume_id": str(rid), "version_id": str(vid),
+                                                       "job_id": str(body.job_id), "template": body.template},
+                       idempotency_key)
+    db.commit()
+    return {"operation_id": str(op.id), "status_url": f"/api/v1/operations/{op.id}"}
