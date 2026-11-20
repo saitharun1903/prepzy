@@ -371,3 +371,38 @@ def test_checklist_evaluation_is_transparent():
     ratings = {c["criterion"]: c["rating"] for c in weak["criteria"]}
     assert ratings["States time/space complexity"] == "not_met"
     assert ratings["Describes a correct approach"] == "cannot_assess"  # never judges correctness
+
+
+# ------------------------------------------------------------------ AI provider rate limits
+def test_retry_after_parsing():
+    from elevate.services.llm import _retry_after_seconds as f
+    assert f({"retry-after": "7"}) == 7.0
+    assert f({"x-ratelimit-reset-tokens": "7.66s"}) == 7.66
+    assert f({"x-ratelimit-reset-requests": "2m59.5s"}) == 179.5
+    assert f({"retry-after": "300ms"}) == 0.5  # floor, never a busy loop
+    assert f({"retry-after": "soon"}) is None and f({}) is None
+
+
+def test_rate_limited_call_waits_once_then_succeeds(monkeypatch):
+    import httpx
+
+    from elevate.services import llm
+    calls = []
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def post(self, *a, **k):
+            calls.append(1)
+            if len(calls) == 1:
+                return httpx.Response(429, headers={"retry-after": "2"}, json={"error": "rate"})
+            return httpx.Response(200, json={"ok": True})
+
+    slept = []
+    monkeypatch.setattr(llm.httpx, "Client", FakeClient)
+    monkeypatch.setattr(llm.time, "sleep", lambda s: slept.append(s))
+    provider = llm.OpenAICompatProvider.__new__(llm.OpenAICompatProvider)
+    provider.base, provider.key, provider.timeout, provider.model = "https://x", "k", 5, "m"
+    assert provider._post({}) == {"ok": True}
+    assert slept == [2.0] and len(calls) == 2

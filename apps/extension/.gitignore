@@ -2,3 +2,4 @@ dist/
 dist-release/
 release/
 *.pem
+dist-hosted/

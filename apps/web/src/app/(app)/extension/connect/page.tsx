@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Plug, ShieldCheck } from "lucide-react";
+import { CheckCircle2, Download, Plug, ShieldCheck } from "lucide-react";
+import { HOSTED } from "@/lib/hosting";
 import { ApiError, sessionPost } from "@/lib/api";
 import { Button, ErrorState, Notice, PageHeader, SectionTitle } from "@/components/ui/primitives";
 
@@ -70,7 +71,7 @@ export default function ExtensionConnectPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Settings" title="Connect the browser extension"
+      <PageHeader eyebrow="Browser extension" title="Capture jobs in one click"
         description="The extension sends the job posting you are looking at to this Elevate installation, so you don't have to copy and paste." />
 
       <div className="grid gap-10 lg:grid-cols-[1fr_320px]">
@@ -80,7 +81,7 @@ export default function ExtensionConnectPage() {
             <ul className="flex flex-col gap-3 text-sm text-ink-2">
               {[
                 "Only the tab you click the extension on, and only at the moment you click it.",
-                "It reads that page's visible text and job metadata, and sends it to this local Elevate installation.",
+                `It reads that page's visible text and job metadata, and sends it to ${HOSTED ? "your Elevate account" : "this local Elevate installation"}.`,
                 "It does not read your browsing history, other tabs, or pages you have not clicked it on.",
                 "Connecting gives the extension its own sign-in, which you can revoke with “Sign out everywhere” in Settings.",
               ].map((t) => (
@@ -115,16 +116,28 @@ export default function ExtensionConnectPage() {
           </section>
         </div>
 
-        <aside aria-labelledby="install-h" className="rounded-lg border border-line bg-surface p-4 h-fit">
-          <h2 id="install-h" className="text-[15px] font-semibold mb-2">Installing the extension</h2>
-          <ol className="list-decimal pl-5 text-sm text-ink-2 flex flex-col gap-1.5">
-            <li>Build it from the project: <code className="font-mono text-[12px]">npm run build:extension</code>.</li>
-            <li>Open <code className="font-mono text-[12px]">chrome://extensions</code> and turn on Developer mode.</li>
-            <li>Choose “Load unpacked” and select the extension&apos;s build folder.</li>
-            <li>Come back here and click Connect extension.</li>
+        <aside aria-labelledby="install-h" className="rounded-xl border border-accent/30 bg-accent-soft p-5 h-fit">
+          <h2 id="install-h" className="text-[15px] font-semibold mb-1">Install it in about a minute</h2>
+          <p className="text-[13px] text-ink-2 mb-3">Works in Chrome, Edge, Brave and other Chromium browsers on a computer.</p>
+          {HOSTED ? (
+            <a href="/downloads/elevate-extension.zip" download
+              className="mb-4 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-accent px-4 text-sm font-medium text-accent-ink shadow-sm hover:brightness-110">
+              <Download aria-hidden className="size-4" />Download the extension (.zip)
+            </a>
+          ) : null}
+          <ol className="list-decimal pl-5 text-sm text-ink-2 flex flex-col gap-2">
+            {HOSTED ? (
+              <li>Download the file above and <strong>unzip</strong> it (right-click → Extract all / double-click on Mac).</li>
+            ) : (
+              <li>Build it from the project: <code className="font-mono text-[12px]">npm run build:extension</code>.</li>
+            )}
+            <li>Open <code className="font-mono text-[12px]">chrome://extensions</code> (or <code className="font-mono text-[12px]">edge://extensions</code>) and switch on <strong>Developer mode</strong> (top right).</li>
+            <li>Click <strong>Load unpacked</strong> and choose the unzipped folder (the one that contains <code className="font-mono text-[12px]">manifest.json</code>).</li>
+            <li>Pin it: click the puzzle icon in the toolbar, then the pin next to Elevate.</li>
+            <li>Come back to this page and click <strong>Connect extension</strong>.</li>
+            <li>Open any job posting and click the Elevate icon: the analysis starts by itself, then shows your match, a preparation plan and links to real interview experiences.</li>
           </ol>
-          <p className="mt-3 text-[13px] text-muted">Full instructions are in <code className="font-mono text-[12px]">docs/EXTENSION.md</code> in the project.</p>
-          <p className="mt-2 text-[12px] text-muted break-all">Expected extension ID: {EXTENSION_ID}</p>
+          <p className="mt-3 text-[12px] text-muted break-all">Expected extension ID: {EXTENSION_ID}</p>
         </aside>
       </div>
     </>

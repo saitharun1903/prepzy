@@ -2,9 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { CheckCircle2, CircleSlash, Download, Monitor, Moon, Plug, Sun } from "lucide-react";
+import { CheckCircle2, CircleSlash, Download, Plug } from "lucide-react";
 import { ApiError, apiFetch, downloadFile, sessionPost } from "@/lib/api";
-import { getThemePref, setThemePref, type ThemePref } from "@/lib/theme";
 import type { Profile } from "@/lib/types";
 import { useSession } from "@/components/shell/session";
 import { profilePayload } from "@/components/profile-form";
@@ -26,34 +25,6 @@ const OPTIONAL_FEATURES: { key: keyof NonNullable<ReturnType<typeof useSession>[
   { key: "code_execution", label: "Running code answers" },
   { key: "voice_interviews", label: "Voice interviews" },
 ];
-
-function ThemeSection() {
-  const [pref, setPref] = useState<ThemePref>("system");
-  useEffect(() => setPref(getThemePref()), []);
-  const opts: { id: ThemePref; label: string; icon: typeof Sun }[] = [
-    { id: "system", label: "Match system", icon: Monitor },
-    { id: "light", label: "Light", icon: Sun },
-    { id: "dark", label: "Dark", icon: Moon },
-  ];
-  return (
-    <section aria-labelledby="theme-h">
-      <SectionTitle id="theme-h">Appearance</SectionTitle>
-      <div role="radiogroup" aria-labelledby="theme-h" className="flex flex-wrap gap-2">
-        {opts.map((o) => {
-          const Icon = o.icon;
-          const on = pref === o.id;
-          return (
-            <button key={o.id} type="button" role="radio" aria-checked={on} onClick={() => { setThemePref(o.id); setPref(o.id); }}
-              className={cx("h-10 rounded-md border px-4 text-sm inline-flex items-center gap-2", on ? "border-accent bg-accent-soft" : "border-line-strong bg-surface hover:bg-surface-2")}>
-              <Icon aria-hidden className="size-4" />{o.label}
-            </button>
-          );
-        })}
-      </div>
-      <p className="mt-2 text-[13px] text-muted">Saved in this browser.</p>
-    </section>
-  );
-}
 
 function TimezoneSection() {
   const { me, reloadMe } = useSession();
@@ -203,7 +174,6 @@ export default function SettingsPage() {
     <>
       <PageHeader title="Settings" description={me ? <>Signed in as <span className="font-medium text-ink">{me.user.email}</span></> : undefined} />
       <div className="flex flex-col gap-12">
-        <ThemeSection />
         <TimezoneSection />
 
         <section aria-labelledby="ext-h">

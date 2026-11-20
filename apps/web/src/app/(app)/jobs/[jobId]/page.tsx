@@ -18,15 +18,16 @@ import { InterviewTab } from "./interview-tab";
 import { AskTab } from "./ask-tab";
 import { ApplicationTab } from "./application-tab";
 
+// Ordered by what people do: see the match, close gaps, practise, apply. Reference tabs come last.
 const TABS = [
-  { id: "overview", label: "Overview" },
+  { id: "match", label: "Your match" },
   { id: "requirements", label: "Requirements" },
-  { id: "original", label: "Original text" },
-  { id: "match", label: "Match" },
-  { id: "guidance", label: "Resume guidance" },
-  { id: "interview", label: "Interview prep" },
-  { id: "ask", label: "Ask" },
+  { id: "guidance", label: "Improve resume" },
+  { id: "interview", label: "Practice" },
+  { id: "ask", label: "Ask AI" },
   { id: "application", label: "Application" },
+  { id: "overview", label: "Job details" },
+  { id: "original", label: "Original posting" },
 ];
 
 function Workspace({ jobId }: { jobId: string }) {
@@ -34,7 +35,7 @@ function Workspace({ jobId }: { jobId: string }) {
   const pathname = usePathname();
   const sp = useSearchParams();
   const tabParam = sp.get("tab");
-  const [tab, setTab] = useState(TABS.some((t) => t.id === tabParam) ? (tabParam as string) : "overview");
+  const [tab, setTab] = useState(TABS.some((t) => t.id === tabParam) ? (tabParam as string) : "match");
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const detail = useApi<JobDetail>(`jobs/${jobId}`, analysisId ? { analysis_id: analysisId } : undefined);
 
@@ -87,7 +88,7 @@ function Workspace({ jobId }: { jobId: string }) {
         {tab === "original" ? <OriginalTab detail={d} /> : null}
         {tab === "match" ? <MatchTab jobId={jobId} hasAnalysis={Boolean(d.analysis)} onJobChanged={detail.reload} /> : null}
         {tab === "guidance" ? <GuidanceTab jobId={jobId} /> : null}
-        {tab === "interview" ? <InterviewTab jobId={jobId} /> : null}
+        {tab === "interview" ? <InterviewTab jobId={jobId} company={company} title={d.analysis?.result.fields.title?.value || d.job.title} /> : null}
         {tab === "ask" ? <AskTab jobId={jobId} /> : null}
         {tab === "application" ? <ApplicationTab jobId={jobId} /> : null}
       </TabPanel>

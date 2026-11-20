@@ -4,26 +4,28 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  Bell, Briefcase, CalendarCheck, FileText, Home, LogOut, MailWarning, Menu, MessagesSquare, Route, Settings, ShieldCheck, UserRound, X,
+  Bell, Briefcase, CalendarCheck, FileText, Home, LogOut, MailWarning, Menu, MessagesSquare, Puzzle, Route, Settings, ShieldCheck, UserRound, X,
 } from "lucide-react";
 import { sessionPost } from "@/lib/api";
 import { ResendVerification, cx } from "@/components/ui/primitives";
 import { Dialog } from "@/components/ui/dialog";
 import { SessionProvider, useSession } from "./session";
 
-type NavItem = { href: string; label: string; icon: typeof Home; badge?: "unread" };
+type NavItem = { href: string; label: string; short?: string; icon: typeof Home; badge?: "unread"; step?: number; group: "main" | "steps" | "account" };
+// Ordered as the user's journey: add evidence, analyze a job, prepare, practise, apply.
 const NAV: NavItem[] = [
-  { href: "/", label: "Home", icon: Home },
-  { href: "/jobs", label: "Jobs", icon: Briefcase },
-  { href: "/preparation", label: "Preparation", icon: Route },
-  { href: "/interviews", label: "Interviews", icon: MessagesSquare },
-  { href: "/applications", label: "Applications", icon: CalendarCheck },
-  { href: "/resumes", label: "Resumes", icon: FileText },
-  { href: "/profile", label: "Career profile", icon: UserRound },
-  { href: "/notifications", label: "Notifications", icon: Bell, badge: "unread" },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/", label: "Home", icon: Home, group: "main" },
+  { href: "/resumes", label: "My resume", short: "Resume", icon: FileText, step: 1, group: "steps" },
+  { href: "/jobs", label: "Jobs & match", short: "Jobs", icon: Briefcase, step: 2, group: "steps" },
+  { href: "/preparation", label: "Study plan", short: "Plan", icon: Route, step: 3, group: "steps" },
+  { href: "/interviews", label: "Practice interviews", short: "Practice", icon: MessagesSquare, step: 4, group: "steps" },
+  { href: "/applications", label: "Applications", short: "Apply", icon: CalendarCheck, step: 5, group: "steps" },
+  { href: "/extension/connect", label: "Browser extension", icon: Puzzle, group: "account" },
+  { href: "/profile", label: "Career profile", icon: UserRound, group: "account" },
+  { href: "/notifications", label: "Notifications", icon: Bell, badge: "unread", group: "account" },
+  { href: "/settings", label: "Settings", icon: Settings, group: "account" },
 ];
-const BOTTOM = ["/", "/jobs", "/preparation", "/applications"];
+const BOTTOM = ["/", "/resumes", "/jobs", "/interviews"];
 
 function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
@@ -32,9 +34,14 @@ function isActive(pathname: string, href: string) {
 function Wordmark() {
   return (
     <Link href="/" className="inline-flex items-center gap-2 text-ink" aria-label="Elevate home">
-      <svg aria-hidden viewBox="0 0 32 32" className="size-6">
-        <rect width="32" height="32" rx="7" fill="var(--accent)" />
-        <path d="M10 22V10h12M10 16h9M10 22h12" stroke="var(--accent-ink)" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+      <svg aria-hidden viewBox="0 0 32 32" className="size-7 drop-shadow-[0_4px_8px_rgba(15,29,51,0.35)]">
+        <defs>
+          <linearGradient id="el-logo-app" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#2a4675" /><stop offset="1" stopColor="#0f1d33" /></linearGradient>
+          <linearGradient id="el-gloss-app" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff" stopOpacity="0.45" /><stop offset="0.55" stopColor="#fff" stopOpacity="0" /></linearGradient>
+        </defs>
+        <rect width="32" height="32" rx="9" fill="url(#el-logo-app)" />
+        <rect width="32" height="32" rx="9" fill="url(#el-gloss-app)" />
+        <path d="M10 22V10h12M10 16h9M10 22h12" stroke="#e4c77d" strokeWidth="2.6" fill="none" strokeLinecap="round" />
       </svg>
       <span className="serif text-xl tracking-tight">Elevate</span>
     </Link>
@@ -44,34 +51,44 @@ function Wordmark() {
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   const { unread, me } = useSession();
+  const item = (n: NavItem) => {
+    const active = isActive(pathname, n.href);
+    const Icon = n.icon;
+    return (
+      <li key={n.href}>
+        <Link
+          href={n.href}
+          onClick={onNavigate}
+          aria-current={active ? "page" : undefined}
+          className={cx(
+            "flex items-center gap-3 rounded-lg px-3 py-2 text-[14px] transition-colors",
+            active ? "bg-white text-accent font-medium shadow-[0_1px_2px_rgba(17,24,39,0.06),0_6px_16px_-8px_rgba(15,29,51,0.35)] ring-1 ring-accent/15" : "text-ink-2 hover:bg-white/70 hover:text-ink",
+          )}
+        >
+          {n.step ? (
+            <span aria-hidden className={cx("grid place-items-center size-5 rounded-full text-[11px] font-semibold",
+              active ? "icon-chip-solid" : "bg-white text-muted border border-line shadow-[inset_0_1px_0_#fff]")}>{n.step}</span>
+          ) : (
+            <span aria-hidden className={cx("grid place-items-center size-5", active ? "text-accent" : "text-muted")}><Icon className="size-4" /></span>
+          )}
+          <span className="flex-1">{n.step ? <span className="sr-only">Step {n.step}: </span> : null}{n.label}</span>
+          {n.badge === "unread" && unread > 0 ? (
+            <span className="rounded-full bg-accent text-accent-ink text-[11px] font-semibold px-1.5 min-w-5 text-center">
+              {unread}
+              <span className="sr-only"> unread</span>
+            </span>
+          ) : null}
+        </Link>
+      </li>
+    );
+  };
   return (
     <ul className="flex flex-col gap-0.5">
-      {NAV.map((n) => {
-        const active = isActive(pathname, n.href);
-        const Icon = n.icon;
-        return (
-          <li key={n.href}>
-            <Link
-              href={n.href}
-              onClick={onNavigate}
-              aria-current={active ? "page" : undefined}
-              className={cx(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-[14px]",
-                active ? "bg-surface-2 text-ink font-medium" : "text-ink-2 hover:bg-surface-2 hover:text-ink",
-              )}
-            >
-              <Icon aria-hidden className={cx("size-4", active ? "text-accent" : "text-muted")} />
-              <span className="flex-1">{n.label}</span>
-              {n.badge === "unread" && unread > 0 ? (
-                <span className="rounded-full bg-accent text-accent-ink text-[11px] font-semibold px-1.5 min-w-5 text-center">
-                  {unread}
-                  <span className="sr-only"> unread</span>
-                </span>
-              ) : null}
-            </Link>
-          </li>
-        );
-      })}
+      {NAV.filter((n) => n.group === "main").map(item)}
+      <li aria-hidden className="mt-4 mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted">Your steps</li>
+      {NAV.filter((n) => n.group === "steps").map(item)}
+      <li aria-hidden className="mt-4 mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted">Account</li>
+      {NAV.filter((n) => n.group === "account").map(item)}
       {me?.user.is_admin ? (
         <li>
           <Link href="/admin/knowledge" onClick={onNavigate} aria-current={isActive(pathname, "/admin") ? "page" : undefined}
@@ -161,7 +178,7 @@ function Shell({ children }: { children: ReactNode }) {
       <a href="#main" className="sr-only-focusable fixed left-3 top-3 z-[70] rounded-md bg-surface px-3 py-2 border border-line">Skip to content</a>
 
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex lg:flex-col sticky top-0 h-dvh border-r border-line bg-bg px-4 py-6">
+      <aside className="hidden lg:flex lg:flex-col sticky top-0 h-dvh border-r border-line glass px-4 py-6">
         <div className="px-2 mb-8"><Wordmark /></div>
         <nav aria-label="Main" className="flex-1 overflow-y-auto"><NavList /></nav>
         <div className="border-t border-line pt-3 mt-3">
@@ -210,7 +227,7 @@ function Shell({ children }: { children: ReactNode }) {
                 <Link href={n.href} aria-current={active ? "page" : undefined}
                   className={cx("flex flex-col items-center gap-0.5 py-2 text-[11px]", active ? "text-accent font-medium" : "text-muted")}>
                   <Icon aria-hidden className="size-5" />
-                  {n.label}
+                  {n.short ?? n.label}
                 </Link>
               </li>
             );

@@ -7,13 +7,16 @@ import { fileURLToPath } from "node:url";
 import { crc32, deflateRawSync, inflateRawSync } from "node:zlib";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const src = join(ROOT, "dist-release");
+// --hosted: zip dist-hosted/ (fixed dev ID, live URLs) for people to download and load unpacked.
+const hosted = process.argv.includes("--hosted");
+const srcName = hosted ? "dist-hosted" : "dist-release";
+const src = join(ROOT, srcName);
 if (!existsSync(join(src, "manifest.json"))) {
-  console.error("FAIL: dist-release/ is missing. Run `npm run build:release` first.");
+  console.error(`FAIL: ${srcName}/ is missing. Run \`npm run ${hosted ? "build:hosted" : "build:release"}\` first.`);
   process.exit(1);
 }
-// Refuse to package anything that fails release validation (e.g. a manifest "key" or key material).
-execFileSync(process.execPath, [join(ROOT, "scripts/validate.mjs"), "dist-release", "--release"], { stdio: "inherit" });
+// Refuse to package anything that fails validation (store build: no "key"; hosted build: the public dev key).
+execFileSync(process.execPath, [join(ROOT, "scripts/validate.mjs"), srcName, ...(hosted ? [] : ["--release"])], { stdio: "inherit" });
 
 const manifest = JSON.parse(readFileSync(join(src, "manifest.json"), "utf8"));
 const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
@@ -114,8 +117,8 @@ const zip = Buffer.concat(chunks);
   }
 }
 
-const outDir = join(ROOT, "release");
+const outDir = hosted ? join(ROOT, "..", "web", "public", "downloads") : join(ROOT, "release");
 mkdirSync(outDir, { recursive: true });
-const out = join(outDir, `elevate-extension-${pkg.version}.zip`);
+const out = join(outDir, hosted ? "elevate-extension.zip" : `elevate-extension-${pkg.version}.zip`);
 writeFileSync(out, zip);
 console.log(`Packaged ${entries.length} files -> ${out} (${(zip.length / 1024).toFixed(1)} KiB, verified)`);

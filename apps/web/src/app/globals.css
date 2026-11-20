@@ -3,63 +3,42 @@
 /* ------------------------------------------------------------------ design tokens
    "Cobalt": cool neutrals, one confident accent, semantic colour only where it carries
    meaning (on your resume / partly / missing). Geist for UI, Geist Mono for numbers.
-   Light is default; dark applies via [data-theme="dark"] (set before paint). */
+   Light theme only. */
 :root {
-  --bg: #f6f7f9;
+  /* "Midnight & Gold": warm ivory canvas, white cards, deep navy for action and headings,
+     champagne gold for highlights only. Every text pair meets WCAG AA. */
+  --bg: #f8f6f1;
   --surface: #ffffff;
-  --surface-2: #f0f2f5;
-  --ink: #0d1117;
-  --ink-2: #3a4252;
-  --muted: #667085;
-  --border: #e4e7ec;
-  --border-strong: #d0d5dd;
-  --accent: #2f5bea;
+  --surface-2: #f3f0e8;
+  --ink: #0f1d33;
+  --ink-2: #3b4659;
+  --muted: #6a6e78;
+  --border: #e9e4d9;
+  --border-strong: #d8d0bf;
+  --accent: #1b2f52;
   --accent-ink: #ffffff;
-  --accent-soft: #edf1ff;
-  --ok: #067a52;
-  --ok-soft: #e6f6ef;
-  --warn: #b25e09;
-  --warn-soft: #fdf2e3;
-  --danger: #d1372c;
-  --danger-soft: #fdecea;
-  --info: #2f5bea;
-  --info-soft: #edf1ff;
-  --focus: #2f5bea;
-  --radius-sm: 7px;
-  --radius: 10px;
-  --radius-lg: 14px;
-  --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.05);
-  --shadow-2: 0 1px 3px rgba(16, 24, 40, 0.06), 0 8px 24px -6px rgba(16, 24, 40, 0.08);
+  --accent-soft: #eef1f7;
+  --gold: #c9a24b;
+  --gold-soft: #f8f0da;
+  --gold-ink: #85651c;
+  --ok: #0f7a55;
+  --ok-soft: #eaf6f0;
+  --warn: #a8560b;
+  --warn-soft: #fdf4e4;
+  --danger: #b42318;
+  --danger-soft: #fdeceb;
+  --info: #1b2f52;
+  --info-soft: #eef1f7;
+  --focus: #1b2f52;
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --shadow-1: 0 1px 2px rgba(15, 29, 51, 0.05);
+  --shadow-2: 0 1px 3px rgba(15, 29, 51, 0.06), 0 12px 30px -10px rgba(15, 29, 51, 0.14);
   --dur-fast: 120ms;
   --dur: 200ms;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
   color-scheme: light;
-}
-
-[data-theme="dark"] {
-  --bg: #0b0d12;
-  --surface: #12151c;
-  --surface-2: #181c25;
-  --ink: #eef1f6;
-  --ink-2: #c3c9d4;
-  --muted: #8b93a7;
-  --border: #232835;
-  --border-strong: #323a4b;
-  --accent: #7d95ff;
-  --accent-ink: #0b0d12;
-  --accent-soft: #1a2142;
-  --ok: #45d39a;
-  --ok-soft: #0f2a20;
-  --warn: #f3b35b;
-  --warn-soft: #2b2112;
-  --danger: #ff7d73;
-  --danger-soft: #2e1618;
-  --info: #7d95ff;
-  --info-soft: #1a2142;
-  --focus: #9aaeff;
-  --shadow-1: none;
-  --shadow-2: 0 0 0 1px rgba(255, 255, 255, 0.02);
-  color-scheme: dark;
 }
 
 @theme inline {
@@ -74,6 +53,9 @@
   --color-accent: var(--accent);
   --color-accent-ink: var(--accent-ink);
   --color-accent-soft: var(--accent-soft);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-gold-ink: var(--gold-ink);
   --color-ok: var(--ok);
   --color-ok-soft: var(--ok-soft);
   --color-warn: var(--warn);
@@ -178,4 +160,114 @@ h1, h2, h3 {
 }
 .spin {
   animation: el-spin 0.9s linear infinite;
+}
+
+/* ------------------------------------------------------------------ premium finish
+   Glossy, layered surfaces in navy and champagne gold: a soft top highlight, a gentle
+   gradient and a warm shadow. Gold is used sparingly, for emphasis only. */
+:root {
+  --gloss: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 55%);
+  --brand-gradient: linear-gradient(140deg, #2a4675 0%, #1b2f52 45%, #0f1d33 100%);
+  --gold-gradient: linear-gradient(135deg, #e4c77d 0%, #c9a24b 48%, #a98232 100%);
+}
+
+body {
+  background:
+    radial-gradient(1100px 560px at 105% -12%, rgba(201, 162, 75, 0.12), transparent 60%),
+    radial-gradient(900px 520px at -12% -4%, rgba(27, 47, 82, 0.07), transparent 55%),
+    var(--bg);
+  background-attachment: fixed;
+}
+
+::selection { background: var(--gold-soft); color: var(--ink); }
+
+/* Primary button: deep navy gradient + glossy top highlight + warm lift. */
+.btn-gloss {
+  background-image: var(--gloss), var(--brand-gradient);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 1px 2px rgba(15, 29, 51, 0.2), 0 8px 18px -8px rgba(15, 29, 51, 0.55);
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur) var(--ease), filter var(--dur) var(--ease);
+}
+.btn-gloss:hover:not(:disabled) {
+  filter: brightness(1.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.26), inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 2px 4px rgba(15, 29, 51, 0.2), 0 12px 26px -10px rgba(15, 29, 51, 0.6), 0 0 0 1px rgba(201, 162, 75, 0.35);
+  transform: translateY(-1px);
+}
+.btn-gloss:active:not(:disabled) { transform: translateY(0); filter: brightness(0.96); }
+
+/* Gold button for the single most important call to action on a dark panel. */
+.btn-gold {
+  color: #1a1408;
+  background-image: var(--gloss), var(--gold-gradient);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 8px 20px -8px rgba(169, 130, 50, 0.7);
+}
+.btn-gold:hover { filter: brightness(1.05); }
+
+/* Secondary button: white with a faint warm sheen. */
+.btn-sheen {
+  background-image: linear-gradient(180deg, #ffffff 0%, #faf8f3 100%);
+  box-shadow: inset 0 1px 0 #ffffff, 0 1px 2px rgba(15, 29, 51, 0.06);
+}
+
+/* Cards and panels: hairline border, white sheen, warm depth. */
+.surface-premium {
+  background-image: linear-gradient(180deg, #ffffff 0%, #fdfcf9 100%);
+  box-shadow: inset 0 1px 0 #ffffff, 0 1px 2px rgba(15, 29, 51, 0.04), 0 14px 34px -16px rgba(15, 29, 51, 0.16);
+}
+.lift { transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease), border-color var(--dur) var(--ease); }
+.lift:hover {
+  transform: translateY(-2px);
+  border-color: rgba(201, 162, 75, 0.55);
+  box-shadow: inset 0 1px 0 #fff, 0 2px 4px rgba(15, 29, 51, 0.05), 0 20px 40px -18px rgba(15, 29, 51, 0.24);
+}
+
+/* Icon chip: small glossy champagne tile with a navy icon. */
+.icon-chip {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--accent);
+  background-image: var(--gloss), linear-gradient(135deg, #fdf8ea 0%, #f2e6c6 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(201, 162, 75, 0.35), 0 4px 10px -5px rgba(169, 130, 50, 0.45);
+}
+/* Solid navy disc with a gold ring: current step, active marker. */
+.icon-chip-solid {
+  display: inline-grid;
+  place-items: center;
+  color: #fff;
+  background-image: var(--gloss), var(--brand-gradient);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 0 0 2px #fff, 0 0 0 3.5px rgba(201, 162, 75, 0.8), 0 6px 14px -6px rgba(15, 29, 51, 0.6);
+}
+
+/* Frosted glass for sticky navigation. */
+.glass {
+  background: rgba(253, 252, 249, 0.74);
+  backdrop-filter: saturate(150%) blur(14px);
+  -webkit-backdrop-filter: saturate(150%) blur(14px);
+}
+
+/* Gold text for hero highlights (large text only). */
+.text-brand {
+  background-image: linear-gradient(120deg, #b88a2e 0%, #d6b25e 45%, #9c7424 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Progress bars: navy into gold with a sheen. */
+.bar-brand { background-image: var(--gloss), linear-gradient(90deg, #1b2f52 0%, #2a4675 55%, #c9a24b 100%); }
+
+/* Dark navy feature panel. */
+.panel-midnight {
+  color: #fff;
+  background-image:
+    radial-gradient(600px 240px at 90% 0%, rgba(201, 162, 75, 0.28), transparent 60%),
+    var(--gloss), var(--brand-gradient);
+  box-shadow: 0 28px 60px -28px rgba(15, 29, 51, 0.75);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-gloss, .lift { transition: none; }
+  .btn-gloss:hover:not(:disabled), .lift:hover { transform: none; }
 }
