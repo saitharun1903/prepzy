@@ -135,13 +135,19 @@ describe("looksLikeJobPage + interview research links", () => {
     expect(looksLikeJobPage("chrome://extensions")).toBe(false);
   });
 
-  it("builds encoded search links for company and role", async () => {
+  it("builds loose, encoded search links that work for small companies", async () => {
     const { interviewResearchLinks } = await import("../src/shared/research");
-    const links = interviewResearchLinks("Acme & Co", "Backend Engineer (Java)");
-    expect(links.map((l) => l.id)).toEqual(["glassdoor", "ambitionbox", "leetcode", "gfg", "reddit", "google"]);
+    const links = interviewResearchLinks("Scoutit & Co", "Java Developer (SE) - Hyderabad");
+    expect(links.map((l) => l.id)).toEqual(["glassdoor", "ambitionbox", "leetcode", "gfg", "reddit", "google", "role"]);
     for (const l of links) expect(l.url.startsWith("https://")).toBe(true);
-    expect(links[0]!.url).toContain(encodeURIComponent('"Acme & Co"'));
-    expect(links[0]!.url).not.toContain("(Java)");
+    expect(links[0]!.url).toBe("https://www.glassdoor.co.in/Search/results.htm?keyword=Scoutit%20%26%20Co");
+    for (const l of links) {
+      expect(decodeURIComponent(l.url)).not.toContain('"'); // no exact-match quotes
+      expect(decodeURIComponent(l.url)).not.toContain("site:"); // no stacked site filters
+      expect(decodeURIComponent(l.url)).not.toContain("Hyderabad");
+    }
+    expect(links.at(-1)!.label).toBe("Java Developer questions");
+    expect(interviewResearchLinks(null, "Data Analyst").map((l) => l.id)).toEqual(["role"]);
     expect(interviewResearchLinks(null, null)).toEqual([]);
   });
 });

@@ -39,7 +39,9 @@ def main() -> int:
         return code
     api = subprocess.Popen([
         "uvicorn", "elevate.main:app", "--host", "127.0.0.1", "--port", API_PORT,
-        "--proxy-headers", "--forwarded-allow-ips", "127.0.0.1", "--workers", "1", "--no-server-header",
+        # Loopback-only listener: only the web app in this container can reach it, and it sets a single
+        # edge-verified X-Forwarded-For, so trusting forwarded headers here is safe.
+        "--proxy-headers", "--forwarded-allow-ips", "*", "--workers", "1", "--no-server-header",
     ], cwd=os.environ.get("PREPZY_API_DIR", "/app/services/api"))
     if not wait_for_api():
         print("API did not become healthy in time", file=sys.stderr, flush=True)

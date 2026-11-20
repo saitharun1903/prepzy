@@ -105,7 +105,7 @@ export default function ResumesPage() {
       notify("ok", ok);
       resumes.reload();
     } catch (e) {
-      notify("error", (e as ApiError).message, (e as ApiError).requestId ? `Request ID ${(e as ApiError).requestId}` : undefined);
+      notify("error", (e as ApiError).message, undefined);
     }
   };
 

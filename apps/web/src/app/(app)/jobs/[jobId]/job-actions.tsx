@@ -28,7 +28,7 @@ export function JobActions({ detail, onChanged }: { detail: JobDetail; onChanged
     } catch (e) {
       const err = e as ApiError;
       if (err?.code === "email_unverified") setUnverified(err);
-      else notify("error", err.message, err.requestId ? `Request ID ${err.requestId}` : undefined);
+      else notify("error", err.message, undefined);
     } finally {
       setBusy(null);
     }

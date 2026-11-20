@@ -206,7 +206,7 @@ describe("popup UI flow", () => {
     expect(fit).toContain("Your preparation plan");
     expect(fit).toContain("Likely interview topics");
     expect(fit).toContain("Real interview experiences");
-    expect(app().querySelectorAll(".research-link").length).toBe(6);
+    expect(app().querySelectorAll(".research-link").length).toBe(7);
     expect(fit).not.toContain("Not a hiring prediction.Not"); // sanity: rendered once
     expect(document.getElementById("btn-applied")?.getAttribute("aria-pressed")).toBe("false");
     // no HTML from data is ever interpreted

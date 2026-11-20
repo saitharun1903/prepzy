@@ -50,7 +50,8 @@ def create_app() -> FastAPI:
         if stop is not None:
             stop.set()
 
-    app = FastAPI(title="Prepzy API", version="0.1.0", openapi_url="/api/v1/openapi.json",
+    # The machine-readable API description is a map for attackers; publish it only outside production.
+    app = FastAPI(title="Prepzy API", version="0.1.0", openapi_url="/api/v1/openapi.json" if s.env != "production" else None,
                   docs_url="/api/docs" if s.env != "production" else None, redoc_url=None, lifespan=lifespan)
 
     app.add_middleware(CORSMiddleware, allow_origins=s.cors_origins, allow_credentials=False,
@@ -116,7 +117,7 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     @app.get("/health/ready", tags=["health"])
-    def ready() -> JSONResponse:
+    def ready(request: Request) -> JSONResponse:
         from .services.llm import get_provider
         checks: dict[str, Any] = {}
         try:
@@ -142,7 +143,14 @@ def create_app() -> FastAPI:
         from .services.storage import get_storage
         checks["storage"] = get_storage().health()
         ok = checks["database"] == "ok"
-        return JSONResponse({"status": "ready" if ok else "not_ready", "checks": checks}, status_code=200 if ok else 503)
+        body: dict[str, Any] = {"status": "ready" if ok else "not_ready"}
+        # Component details (model, provider, queue) only for the operator: outside production, or with
+        # the metrics token. Uptime monitors only need the status and HTTP code.
+        import secrets as _secrets
+        auth = request.headers.get("authorization", "")
+        if s.env != "production" or (s.metrics_token and _secrets.compare_digest(auth, f"Bearer {s.metrics_token}")):
+            body["checks"] = checks
+        return JSONResponse(body, status_code=200 if ok else 503)
 
     @app.get("/metrics", tags=["health"], include_in_schema=False)
     def metrics(request: Request) -> Any:

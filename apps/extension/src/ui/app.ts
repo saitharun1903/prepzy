@@ -541,7 +541,6 @@ function banners(): (HTMLElement | null)[] {
           "div",
           { class: "banner banner-error", attrs: { role: "alert" } },
           h("p", { text: v.error.message }),
-          v.error.requestId ? h("p", { class: "meta" }, "Request ID: ", h("code", { text: v.error.requestId })) : null,
         )
       : null,
     v.notice ? h("div", { class: "banner banner-note", attrs: { role: "status" } }, h("p", { text: v.notice })) : null,
@@ -1184,7 +1183,6 @@ function renderResult(): HTMLElement[] {
             h("p", { class: "bubble-hi", id: "screen-title", text: r.state === "timed-out" ? "That took too long." : "I couldn't finish that one.", attrs: { tabindex: "-1" } }),
             h("p", { class: "bubble-verdict", text: r.error?.message ?? "The analysis did not finish." }),
             r.error?.code?.startsWith("model") ? h("p", { class: "bubble-advice", text: "The AI model may still be starting. Your job text is saved; retry in a minute." }) : null,
-            r.error?.requestId ? h("p", { class: "fine" }, "Request ID: ", h("code", { text: r.error.requestId })) : null,
           ),
         ),
         h(

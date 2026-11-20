@@ -3,6 +3,7 @@ import {
   ACCESS_COOKIE, REFRESH_COOKIE, apiBase, checkCsrf, clearSessionCookies, errorJson, refreshSession, setSessionCookies,
   type TokenOut,
 } from "@/lib/server/session";
+import { clientIpOf } from "@/lib/client-ip";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -39,6 +40,8 @@ async function forward(req: NextRequest, url: string, body: ArrayBuffer | null, 
     if (v) headers.set(h, v);
   }
   if (token) headers.set("Authorization", `Bearer ${token}`);
+  const ip = clientIpOf(req.headers);
+  if (ip) headers.set("X-Forwarded-For", ip);
   return fetch(url, { method: req.method, headers, body, cache: "no-store", redirect: "manual" });
 }
 

@@ -228,7 +228,6 @@ export function ErrorState({ error, onRetry, title = "Something went wrong" }: {
               ))}
             </ul>
           ) : null}
-          {e.requestId ? <p className="mt-1 text-[12px] text-muted">Request ID: <span className="font-mono select-all">{e.requestId}</span></p> : null}
           {onRetry ? (
             <Button size="sm" className="mt-2" onClick={onRetry}>Try again</Button>
           ) : null}
