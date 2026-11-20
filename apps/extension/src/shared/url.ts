@@ -48,7 +48,7 @@ export function classifyUrl(raw: string | null | undefined): PageAccess {
   if (typeof raw !== "string" || raw.length === 0) {
     return {
       kind: "unknown",
-      reason: "Elevate can only read a page after you click the Elevate toolbar button while that page is open.",
+      reason: "Prepzy can only read a page after you click the Prepzy toolbar button while that page is open.",
     };
   }
   let u: URL;

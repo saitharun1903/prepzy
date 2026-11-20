@@ -1,4 +1,4 @@
-// The ONLY module that talks to the Elevate API. Runs in the service worker.
+// The ONLY module that talks to the Prepzy API. Runs in the service worker.
 
 import type { components } from "@elevate/api-client";
 import { API_BASE } from "../config";
@@ -138,7 +138,7 @@ export function refreshSession(): Promise<StoredAuth> {
     } catch (e) {
       if (e instanceof AppError && e.status === 401 && SIGNED_OUT_CODES.has(e.code)) {
         await signOutLocal();
-        throw authRequired(e.code === "refresh_reused" ? "Your session was revoked. Connect again from the Elevate dashboard." : "Your session ended. Connect again from the Elevate dashboard.");
+        throw authRequired(e.code === "refresh_reused" ? "Your session was revoked. Connect again from the Prepzy dashboard." : "Your session ended. Connect again from the Prepzy dashboard.");
       }
       throw e;
     }

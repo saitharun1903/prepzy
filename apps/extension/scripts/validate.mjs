@@ -44,7 +44,7 @@ if (!existsSync(mpath)) {
 const m = JSON.parse(readFileSync(mpath, "utf8"));
 const expectPerms = ["activeTab", "scripting", "storage", "alarms", "sidePanel"];
 if (m.manifest_version !== 3) fail("manifest_version must be 3");
-if (m.name !== "Elevate") fail('name must be "Elevate"');
+if (m.name !== "Prepzy") fail('name must be "Prepzy"');
 if (m.minimum_chrome_version !== "120") fail('minimum_chrome_version must be "120"');
 if (!/^\d+(\.\d+){0,3}$/.test(m.version ?? "")) fail("version must be dotted numbers");
 const perms = m.permissions ?? [];

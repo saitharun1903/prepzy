@@ -206,7 +206,7 @@ async function loadLookup(seq: number): Promise<void> {
     if (handleAuthError(e)) return;
   }
   if (v.screen !== "main") return;
-  // One click: opening Elevate on a job page shows the saved result, or starts the analysis right away.
+  // One click: opening Prepzy on a job page shows the saved result, or starts the analysis right away.
   if (v.lookup?.latestAnalysisId) {
     viewExisting(v.lookup.id);
     return;
@@ -396,7 +396,7 @@ async function sendDraft(d: Draft, seq: number): Promise<void> {
 }
 
 const submit = () =>
-  run("Sending to Elevate", async () => {
+  run("Sending to Prepzy", async () => {
     const d = v.draft;
     if (!d) return;
     await sendDraft(d, v.seq);
@@ -521,7 +521,7 @@ function header(): HTMLElement {
   return h(
     "header",
     { class: "top" },
-    IS_PANEL ? h("span", { class: "brand" }) : h("div", { class: "brand" }, h("span", { class: "mark", attrs: { "aria-hidden": "true" }, text: "E" }), h("span", { class: "wordmark", text: "Elevate" })),
+    IS_PANEL ? h("span", { class: "brand" }) : h("div", { class: "brand" }, h("span", { class: "mark", attrs: { "aria-hidden": "true" }, text: "P" }), h("span", { class: "wordmark", text: "Prepzy" })),
     signedIn
       ? h(
           "div",
@@ -564,15 +564,15 @@ function pageCard(): HTMLElement {
 
 function renderSignedOut(): HTMLElement[] {
   return [
-    heading("Connect Elevate"),
+    heading("Connect Prepzy"),
     h(
       "div",
       { class: "prose" },
-      h("p", { text: "Elevate reads a job posting only when you ask it to, and sends it to your Elevate account for an evidence-based analysis." }),
+      h("p", { text: "Prepzy reads a job posting only when you ask it to, and sends it to your Prepzy account for an evidence-based analysis." }),
       h(
         "ol",
         { class: "steps" },
-        h("li", { text: "Open the Elevate dashboard and sign in." }),
+        h("li", { text: "Open the Prepzy dashboard and sign in." }),
         h("li", { text: "Approve the connection on the Connect extension page." }),
         h("li", { text: "Come back here. Your password is never shared with the extension." }),
       ),
@@ -713,7 +713,7 @@ function renderMain(): HTMLElement[] {
         ),
       );
     }
-    out.push(h("p", { class: "fine", text: "Elevate reads only this tab, only when you click. It never reads form fields, passwords or cookies." }));
+    out.push(h("p", { class: "fine", text: "Prepzy reads only this tab, only when you click. It never reads form fields, passwords or cookies." }));
   }
   const recent = recentList();
   if (recent) out.push(recent);
@@ -744,7 +744,7 @@ function renderPreview(): HTMLElement[] {
       ),
     );
   } else if (verdict?.kind === "insufficient") {
-    out.push(h("div", { class: "banner banner-warn", attrs: { role: "status" } }, h("p", { text: "Elevate could not find enough job text on this page. Select the posting text and choose Read again, or paste it below." })));
+    out.push(h("div", { class: "banner banner-warn", attrs: { role: "status" } }, h("p", { text: "Prepzy could not find enough job text on this page. Select the posting text and choose Read again, or paste it below." })));
   }
 
   if (ext) {
@@ -950,7 +950,7 @@ function renderProgress(): HTMLElement[] {
       button("Open in dashboard", () => openTab(dashboardUrl(r.jobId)), { kind: "quiet" }),
     ),
   );
-  out.push(h("p", { class: "fine", text: "You can close this window. Elevate keeps tracking the analysis and marks the toolbar icon when it finishes." }));
+  out.push(h("p", { class: "fine", text: "You can close this window. Prepzy keeps tracking the analysis and marks the toolbar icon when it finishes." }));
   return out;
 }
 
@@ -1263,7 +1263,7 @@ function prepareCard(job: JobView, items: ChecklistItem[]): HTMLElement {
   );
 }
 
-/** Real interview experiences, read by the user on each site (Elevate never scrapes them). */
+/** Real interview experiences, read by the user on each site (Prepzy never scrapes them). */
 function researchCard(job: JobView): HTMLElement | null {
   const f = job.analysis?.fields;
   const links = interviewResearchLinks(f?.company.value ?? job.job.company, f?.title.value ?? job.job.title);
@@ -1272,7 +1272,7 @@ function researchCard(job: JobView): HTMLElement | null {
     "details",
     { class: "fold research", attrs: { open: "" } },
     h("summary", { text: "Real interview experiences" }),
-    h("p", { class: "meta", text: "Opens searches on each site in a new tab, for this company and role. Elevate doesn't copy or summarise these sites." }),
+    h("p", { class: "meta", text: "Opens searches on each site in a new tab, for this company and role. Prepzy doesn't copy or summarise these sites." }),
     h("ul", { class: "research-list" }, links.map((l) =>
       h("li", {}, h("button", { class: "research-link", type: "button", attrs: { "data-id": l.id }, on: { click: () => openTab(l.url) } },
         h("span", { class: "research-name", text: l.label }), h("span", { class: "research-hint", text: l.hint }), h("span", { attrs: { "aria-hidden": "true" }, text: "↗" }))))),

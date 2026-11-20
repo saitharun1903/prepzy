@@ -118,7 +118,7 @@ function Admin() {
           <Field label="Text" required className="sm:col-span-2" hint="At least 200 characters. Plain text." error={error?.fields?.text}>
             {(p) => <Textarea id={p.id} rows={10} value={form.text} onChange={f("text")} aria-describedby={p.describedBy} aria-invalid={p.invalid} />}
           </Field>
-          <Field label="Licence basis" required className="sm:col-span-2" hint="Why Elevate may use this text: licence, permission, or your own work." error={error?.fields?.license_basis}>
+          <Field label="Licence basis" required className="sm:col-span-2" hint="Why Prepzy may use this text: licence, permission, or your own work." error={error?.fields?.license_basis}>
             {(p) => <Textarea id={p.id} rows={2} maxLength={1000} value={form.license_basis} onChange={f("license_basis")} aria-describedby={p.describedBy} aria-invalid={p.invalid} />}
           </Field>
           <Field label="Source URL (optional)" error={error?.fields?.source_url}>{(p) => <Input id={p.id} type="url" value={form.source_url} onChange={f("source_url")} aria-invalid={p.invalid} />}</Field>

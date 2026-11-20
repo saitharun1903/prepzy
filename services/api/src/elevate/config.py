@@ -82,7 +82,7 @@ class Settings(BaseSettings):
     # ---- email (verification + password reset)
     email_backend: Literal["console", "smtp", "brevo"] = "console"
     brevo_api_key: str = ""
-    email_from: str = "Elevate <no-reply@localhost>"
+    email_from: str = "Prepzy <no-reply@localhost>"
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_username: str = ""

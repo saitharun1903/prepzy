@@ -72,7 +72,7 @@ export default function ExtensionConnectPage() {
   return (
     <>
       <PageHeader eyebrow="Browser extension" title="Capture jobs in one click"
-        description="The extension sends the job posting you are looking at to this Elevate installation, so you don't have to copy and paste." />
+        description="The extension sends the job posting you are looking at to this Prepzy installation, so you don't have to copy and paste." />
 
       <div className="grid gap-10 lg:grid-cols-[1fr_320px]">
         <div className="flex flex-col gap-8">
@@ -81,7 +81,7 @@ export default function ExtensionConnectPage() {
             <ul className="flex flex-col gap-3 text-sm text-ink-2">
               {[
                 "Only the tab you click the extension on, and only at the moment you click it.",
-                `It reads that page's visible text and job metadata, and sends it to ${HOSTED ? "your Elevate account" : "this local Elevate installation"}.`,
+                `It reads that page's visible text and job metadata, and sends it to ${HOSTED ? "your Prepzy account" : "this local Prepzy installation"}.`,
                 "It does not read your browsing history, other tabs, or pages you have not clicked it on.",
                 "Connecting gives the extension its own sign-in, which you can revoke with “Sign out everywhere” in Settings.",
               ].map((t) => (
@@ -95,7 +95,7 @@ export default function ExtensionConnectPage() {
             <div aria-live="polite" className="flex flex-col gap-3">
               {state.kind === "connected" ? (
                 <Notice tone="ok" title="Extension connected">
-                  <span className="inline-flex items-center gap-1.5"><CheckCircle2 aria-hidden className="size-4" />The extension confirmed the connection. Open a job page and click the Elevate icon.</span>
+                  <span className="inline-flex items-center gap-1.5"><CheckCircle2 aria-hidden className="size-4" />The extension confirmed the connection. Open a job page and click the Prepzy icon.</span>
                 </Notice>
               ) : null}
               {state.kind === "missing" ? (
@@ -133,9 +133,9 @@ export default function ExtensionConnectPage() {
             )}
             <li>Open <code className="font-mono text-[12px]">chrome://extensions</code> (or <code className="font-mono text-[12px]">edge://extensions</code>) and switch on <strong>Developer mode</strong> (top right).</li>
             <li>Click <strong>Load unpacked</strong> and choose the unzipped folder (the one that contains <code className="font-mono text-[12px]">manifest.json</code>).</li>
-            <li>Pin it: click the puzzle icon in the toolbar, then the pin next to Elevate.</li>
+            <li>Pin it: click the puzzle icon in the toolbar, then the pin next to Prepzy.</li>
             <li>Come back to this page and click <strong>Connect extension</strong>.</li>
-            <li>Open any job posting and click the Elevate icon: the analysis starts by itself, then shows your match, a preparation plan and links to real interview experiences.</li>
+            <li>Open any job posting and click the Prepzy icon: the analysis starts by itself, then shows your match, a preparation plan and links to real interview experiences.</li>
           </ol>
           <p className="mt-3 text-[12px] text-muted break-all">Expected extension ID: {EXTENSION_ID}</p>
         </aside>

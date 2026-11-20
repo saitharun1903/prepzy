@@ -79,7 +79,7 @@ export function SkillPicker({ label, onPick, exclude = [], hint }: {
       />
       <p id={`${id}-status`} className="text-[13px] text-muted" aria-live="polite">
         {status === "loading" ? "Searching…" : status === "error" ? "Search failed. Try again." :
-          q.trim() && !hits.length ? "No matching skills in the taxonomy." : hint || "Only skills from Elevate's taxonomy can be added."}
+          q.trim() && !hits.length ? "No matching skills in the taxonomy." : hint || "Only skills from Prepzy's taxonomy can be added."}
       </p>
       {open && hits.length ? (
         <ul id={listId} role="listbox" aria-label={`${label} suggestions`}

@@ -38,7 +38,7 @@ export function InterviewTab({ jobId, company, title }: { jobId: string; company
       {links.length ? (
         <section aria-labelledby="research-h" className="rounded-xl border border-line bg-surface surface-premium p-4 sm:p-5">
           <SectionTitle id="research-h">Real interview experiences</SectionTitle>
-          <p className="text-sm text-ink-2 -mt-1 mb-3">Read what past candidates say about {company || "this company"}&apos;s interviews. Each link opens a search on that site in a new tab; Elevate doesn&apos;t copy or summarise these sites.</p>
+          <p className="text-sm text-ink-2 -mt-1 mb-3">Read what past candidates say about {company || "this company"}&apos;s interviews. Each link opens a search on that site in a new tab; Prepzy doesn&apos;t copy or summarise these sites.</p>
           <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {links.map((l) => (
               <li key={l.id}>

@@ -1,4 +1,4 @@
-"""Deterministic, explainable matching ("Elevate evidence coverage estimate").
+"""Deterministic, explainable matching ("Prepzy evidence coverage estimate").
 
 Scoring version score-1 (documented in docs/AI_EVALUATION.md#scoring):
   * Units: each non-removed, non-negated requirement after deduplication (same concepts+group+years
@@ -222,7 +222,7 @@ def compute(analysis_result: dict[str, Any], resume_text: str | None, resume_ext
                                        if weight == 2 else "low"})
     return {
         "scoring_version": SCORING_VERSION,
-        "label": "Elevate evidence coverage estimate",
+        "label": "Prepzy evidence coverage estimate",
         "disclaimer": "Estimates how much of this posting's stated requirements your supplied evidence covers. "
                       "It is not a hiring probability or an employer's ATS score.",
         "summary": {"required": req, "preferred": pref, "unclear": unclear, "score_status": status,

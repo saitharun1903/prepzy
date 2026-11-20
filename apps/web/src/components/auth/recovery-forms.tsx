@@ -75,7 +75,7 @@ export function ForgotPasswordForm() {
             </p>
             <p className="text-sm text-ink-2">
               If this server isn&apos;t set up to send email, no message will arrive. In that case, ask the person who runs
-              this Elevate installation to reset your password for you.
+              this Prepzy installation to reset your password for you.
             </p>
             <div className="flex flex-wrap gap-2">
               <ButtonLink href="/login" variant="primary">Back to sign in</ButtonLink>
@@ -86,7 +86,7 @@ export function ForgotPasswordForm() {
       </div>
       {!sent ? (
         <>
-          <p className="mt-2 text-ink-2 text-[15px]">Enter the email you use for Elevate and we&apos;ll send a link to choose a new password.</p>
+          <p className="mt-2 text-ink-2 text-[15px]">Enter the email you use for Prepzy and we&apos;ll send a link to choose a new password.</p>
           <form onSubmit={submit} noValidate className="mt-8 flex flex-col gap-4">
             <Field label="Email" error={localErr || error?.fields?.email || null} required>
               {(p) => (
@@ -234,7 +234,7 @@ export function VerifyEmail({ token }: { token: string }) {
               <MailCheck aria-hidden className="size-5 text-ok shrink-0 mt-0.5" />
               <span>Thanks — your email address is confirmed. AI analysis is available on your account.</span>
             </p>
-            <ButtonLink href="/" variant="primary" className="self-start">Continue to Elevate</ButtonLink>
+            <ButtonLink href="/" variant="primary" className="self-start">Continue to Prepzy</ButtonLink>
           </>
         ) : null}
         {state === "invalid" ? (

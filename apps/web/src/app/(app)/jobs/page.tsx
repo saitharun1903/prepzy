@@ -83,7 +83,7 @@ export default function JobsPage() {
           <EmptyState title="No jobs match">Try a different search or filter.</EmptyState>
         ) : (
           <EmptyState title="No jobs yet" action={<ButtonLink href="/jobs/new" variant="primary">Analyze a job</ButtonLink>}>
-            Paste a job posting here, or click the Elevate extension on a job page.
+            Paste a job posting here, or click the Prepzy extension on a job page.
           </EmptyState>
         )
       ) : null}

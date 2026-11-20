@@ -1,4 +1,4 @@
-// "Eli", Elevate's coach. An original inline-SVG character plus deterministic coaching copy.
+// "Eli", Prepzy's coach. An original inline-SVG character plus deterministic coaching copy.
 // Every sentence is derived from the analysis + match report; nothing is invented.
 
 import type { FitStatus, MatchView, RequirementView } from "../shared/jobview";

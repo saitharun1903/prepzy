@@ -105,7 +105,7 @@ function ApplicationPanel({ jobId }: { jobId: string }) {
 
       {!current ? (
         <div className="rounded-lg border border-line bg-surface p-4 flex flex-col gap-4 max-w-xl">
-          <p className="text-sm text-ink-2">Track your application for this job. Elevate does not submit anything; you record what you did.</p>
+          <p className="text-sm text-ink-2">Track your application for this job. Prepzy does not submit anything; you record what you did.</p>
           <Field label="Status">
             {(p) => (
               <Select id={p.id} value={createStatus} onChange={(e) => setCreateStatus(e.target.value as "planned" | "applied")}>
@@ -379,7 +379,7 @@ function RemindersPanel({ jobId }: { jobId: string }) {
   return (
     <section aria-labelledby="rem-h">
       <SectionTitle id="rem-h">Reminders</SectionTitle>
-      <p className="text-[13px] text-muted mb-3">Reminders appear in Elevate&apos;s notifications. Email and push delivery are not available in this version.</p>
+      <p className="text-[13px] text-muted mb-3">Reminders appear in Prepzy&apos;s notifications. Email and push delivery are not available in this version.</p>
       <div className="rounded-lg border border-line bg-surface p-4 grid gap-4 sm:grid-cols-2 max-w-2xl">
         <Field label="Reminder" className="sm:col-span-2" error={error?.fields?.title}>
           {(p) => <Input id={p.id} value={title} maxLength={300} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Follow up with recruiter" aria-invalid={p.invalid} />}

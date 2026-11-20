@@ -172,7 +172,7 @@ function TwoStep() {
 
   const download = (codes: string[]) => {
     const body = [
-      "Elevate recovery codes",
+      "Prepzy recovery codes",
       "Each code can be used once to sign in if you lose access to your authenticator app.",
       "",
       ...codes,
@@ -244,7 +244,7 @@ function TwoStep() {
         <div className="flex flex-col sm:flex-row gap-4 sm:items-start">
           {/* Server-generated SVG rendered as an image (never injected into the DOM). */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={`data:image/svg+xml;utf8,${encodeURIComponent(data.qr_svg)}`} alt="QR code to add Elevate to your authenticator app"
+          <img src={`data:image/svg+xml;utf8,${encodeURIComponent(data.qr_svg)}`} alt="QR code to add Prepzy to your authenticator app"
             width={192} height={192} className="size-48 shrink-0 rounded-md border border-line" />
           <div className="min-w-0 flex-1 flex flex-col gap-2">
             <p className="text-sm font-medium text-ink" id="mfa-secret-label">Setup key</p>

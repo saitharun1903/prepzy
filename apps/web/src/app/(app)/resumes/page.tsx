@@ -113,7 +113,7 @@ export default function ResumesPage() {
 
   return (
     <>
-      <PageHeader title="Resumes" description="Upload or paste your resume. Elevate extracts skills, dated experience and education as evidence, and keeps every version." />
+      <PageHeader title="Resumes" description="Upload or paste your resume. Prepzy extracts skills, dated experience and education as evidence, and keeps every version." />
 
       <section aria-labelledby="add-h" className="mb-12">
         <SectionTitle id="add-h">Add a resume or a new version</SectionTitle>

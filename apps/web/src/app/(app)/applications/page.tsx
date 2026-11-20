@@ -51,7 +51,7 @@ export default function ApplicationsPage() {
 
   return (
     <>
-      <PageHeader title="Applications" description="Applications you are tracking. Elevate records what you tell it; it never submits applications." />
+      <PageHeader title="Applications" description="Applications you are tracking. Prepzy records what you tell it; it never submits applications." />
 
       <div role="group" aria-label="Filter by status" className="flex flex-wrap gap-2 mb-4">
         <button type="button" aria-pressed={!statuses.length} onClick={() => setStatuses([])}

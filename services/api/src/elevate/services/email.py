@@ -51,7 +51,7 @@ def _send(to: str, subject: str, text_body: str) -> bool:
 def _send_brevo(to: str, subject: str, text_body: str) -> bool:
     s = get_settings()
     name, sender = parseaddr(s.email_from)
-    body = {"sender": {"name": name or "Elevate", "email": sender}, "to": [{"email": to}],
+    body = {"sender": {"name": name or "Prepzy", "email": sender}, "to": [{"email": to}],
             "subject": subject, "textContent": text_body}
     try:
         r = httpx.post("https://api.brevo.com/v3/smtp/email", json=body, timeout=15,
@@ -69,14 +69,14 @@ def _send_brevo(to: str, subject: str, text_body: str) -> bool:
 
 def send_verification(to: str, token: str) -> bool:
     link = f"{get_settings().web_url.rstrip('/')}/verify-email?token={token}"
-    return _send(to, "Confirm your Elevate email", (
-        "Welcome to Elevate.\n\nConfirm your email address by opening this link (valid for 48 hours):\n\n"
+    return _send(to, "Confirm your Prepzy email", (
+        "Welcome to Prepzy.\n\nConfirm your email address by opening this link (valid for 48 hours):\n\n"
         f"{link}\n\nIf you didn't create an account, you can ignore this email."))
 
 
 def send_password_reset(to: str, token: str) -> bool:
     link = f"{get_settings().web_url.rstrip('/')}/reset-password?token={token}"
-    return _send(to, "Reset your Elevate password", (
-        "Someone asked to reset the password for your Elevate account.\n\n"
+    return _send(to, "Reset your Prepzy password", (
+        "Someone asked to reset the password for your Prepzy account.\n\n"
         f"Open this link within 30 minutes to choose a new password:\n\n{link}\n\n"
         "If this wasn't you, ignore this email; your password stays the same."))

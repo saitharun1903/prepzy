@@ -88,7 +88,7 @@ export function AuthForm({ mode, next }: { mode: "login" | "register"; next?: st
     <div className="mx-auto w-full max-w-sm">
       <h1 ref={headingRef} tabIndex={-1} className="serif text-4xl leading-tight focus:outline-none">{reg ? "Create your account" : "Sign in"}</h1>
       <p className="mt-2 text-ink-2 text-[15px]">
-        {reg ? DATA_PROMISE : "Welcome back to Elevate."}
+        {reg ? DATA_PROMISE : "Welcome back to Prepzy."}
       </p>
       <div aria-live="polite">
         {restartNote ? (

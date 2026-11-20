@@ -105,7 +105,7 @@ def detect_language(text: str) -> dict[str, Any]:
     if latin > 0.9 and ratio > 0.03:
         return {"detected": "en", "supported": True, "mixed": True}
     return {"detected": "non-en", "supported": False,
-            "reason": "Elevate currently supports English postings only; analysis may be unreliable."}
+            "reason": "Prepzy currently supports English postings only; analysis may be unreliable."}
 
 
 def _field(value: str | None, quote: str | None, source: str, text: str, issues: list[dict[str, Any]],

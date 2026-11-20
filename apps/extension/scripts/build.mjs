@@ -91,18 +91,18 @@ const icons = Object.fromEntries(sizes.map((s) => [String(s), `icons/icon-${s}.p
 
 const manifest = {
   manifest_version: 3,
-  name: "Elevate",
-  short_name: "Elevate",
+  name: "Prepzy",
+  short_name: "Prepzy",
   version: pkg.version,
-  description: "Capture a job posting from the current tab and get an evidence-based analysis in your Elevate account.",
+  description: "Capture a job posting from the current tab and get an evidence-based analysis in your Prepzy account.",
   minimum_chrome_version: "120",
   permissions: ["activeTab", "scripting", "storage", "alarms", "sidePanel"],
   host_permissions: [`${apiBase}/*`],
   externally_connectable: { matches: connectOrigins.map((o) => `${o}/*`) },
-  action: { default_title: "Elevate", default_popup: "popup.html", default_icon: { 16: icons["16"], 32: icons["32"] } },
+  action: { default_title: "Prepzy", default_popup: "popup.html", default_icon: { 16: icons["16"], 32: icons["32"] } },
   side_panel: { default_path: "sidepanel.html" },
-  // Keyboard shortcut to open Elevate on the current tab (also grants activeTab, like a click).
-  commands: { _execute_action: { suggested_key: { default: "Alt+Shift+E", mac: "Alt+Shift+E" }, description: "Open Elevate on this job" } },
+  // Keyboard shortcut to open Prepzy on the current tab (also grants activeTab, like a click).
+  commands: { _execute_action: { suggested_key: { default: "Alt+Shift+P", mac: "Alt+Shift+P" }, description: "Open Prepzy on this job" } },
   background: { service_worker: "background.js", type: "module" },
   icons,
   content_security_policy: { extension_pages: "script-src 'self'; object-src 'self'" },

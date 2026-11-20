@@ -109,7 +109,7 @@ export async function apiFetch<T = unknown>(path: string, opts: ApiOptions = {})
     });
   } catch (e) {
     if ((e as Error)?.name === "AbortError") throw e;
-    throw new ApiError({ status: 0, code: "network_error", message: "Could not reach Elevate. Check your connection.", retryable: true });
+    throw new ApiError({ status: 0, code: "network_error", message: "Could not reach Prepzy. Check your connection.", retryable: true });
   }
   if (!res.ok) {
     const err = await toError(res);
@@ -136,7 +136,7 @@ export async function sessionPost<T = unknown>(path: string, body?: unknown): Pr
       cache: "no-store",
     });
   } catch {
-    throw new ApiError({ status: 0, code: "network_error", message: "Could not reach Elevate. Check your connection.", retryable: true });
+    throw new ApiError({ status: 0, code: "network_error", message: "Could not reach Prepzy. Check your connection.", retryable: true });
   }
   if (!res.ok) throw await toError(res);
   if (res.status === 204) return null as T;

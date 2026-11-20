@@ -55,7 +55,7 @@ def _stale(db: Any, owner: uuid.UUID, rep: MatchReport) -> list[str]:
     if cur["profile_revision"] != old.get("profile_revision"):
         reasons.append("Your profile skills changed since this report.")
     if cur["taxonomy_version"] != old.get("taxonomy_version") or cur["scoring_version"] != old.get("scoring_version"):
-        reasons.append("Elevate's taxonomy or scoring rules were updated.")
+        reasons.append("Prepzy's taxonomy or scoring rules were updated.")
     if version:
         newer = db.execute(select(ResumeVersion.id).where(ResumeVersion.resume_id == version.resume_id,
                                                           ResumeVersion.version > version.version,
