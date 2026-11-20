@@ -36,7 +36,7 @@ function Journey({ steps, loading }: { steps: Step[]; loading: boolean }) {
             <li key={st.key}>
               <Link href={st.href} aria-current={current ? "step" : undefined}
                 className={cx("group flex items-center gap-4 rounded-xl border p-3.5 sm:p-4 transition-colors",
-                  current ? "border-accent/40 bg-gradient-to-r from-accent-soft to-white shadow-[0_10px_28px_-14px_rgba(79,70,229,0.45)]" : "border-line bg-white lift hover:border-accent/30")}>
+                  current ? "border-gold/60 bg-gradient-to-r from-gold-soft to-white shadow-[0_10px_28px_-14px_rgba(15,29,51,0.45)]" : "border-line bg-white lift hover:border-accent/30")}>
                 <span aria-hidden className={cx("grid place-items-center size-9 shrink-0 rounded-full text-sm font-semibold",
                   st.done ? "bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.35),0_4px_10px_-4px_rgba(4,120,87,0.6)]" : current ? "icon-chip-solid" : "bg-white text-muted border border-line shadow-[inset_0_1px_0_#fff]")}>
                   {st.done ? <Check className="size-4" /> : i + 1}

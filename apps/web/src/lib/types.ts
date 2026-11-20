@@ -233,4 +233,5 @@ export type QAResult = {
   job_id: string; question: string; answer: string; sufficient_evidence: boolean;
   citations: { source: "job_posting" | "knowledge"; excerpt: string; title?: string; source_url?: string | null; review_state?: string; snapshot_id?: string }[];
   problems: string[]; model: string; note: string | null;
+  guidance?: string;
 };

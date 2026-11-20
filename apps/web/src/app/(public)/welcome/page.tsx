@@ -26,7 +26,7 @@ export default function WelcomePage() {
   return (
     <div className="mx-auto w-full max-w-5xl flex flex-col gap-16">
       <section className="flex flex-col items-start gap-5 max-w-3xl">
-        <p className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-white/70 px-3 py-1 text-[13px] font-medium text-accent shadow-sm"><span className="size-1.5 rounded-full bg-accent" />Evidence-based career preparation</p>
+        <p className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-white/70 px-3 py-1 text-[13px] font-medium text-gold-ink shadow-sm"><span className="size-1.5 rounded-full bg-gold" />Evidence-based career preparation</p>
         <h1 className="serif text-4xl sm:text-[56px] leading-[1.08] tracking-tight">Know exactly where you stand for <span className="text-brand">every job you apply to.</span></h1>
         <p className="text-lg text-ink-2">
           Elevate turns a job posting into a clear checklist of what you already have and what you&apos;re missing,
@@ -62,12 +62,12 @@ export default function WelcomePage() {
         ))}
       </section>
 
-      <section className="relative overflow-hidden rounded-2xl p-6 sm:p-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-white bg-[image:var(--gloss),var(--brand-gradient)] shadow-[0_24px_60px_-24px_rgba(79,70,229,0.7)]">
+      <section className="relative overflow-hidden rounded-2xl p-6 sm:p-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 panel-midnight">
         <div>
           <h2 className="serif text-2xl">Ready for your next application?</h2>
           <p className="text-white/85 mt-1">It takes about two minutes: add your resume, paste a job, see your match.</p>
         </div>
-        <ButtonLink href="/register" className="h-11 px-6 !bg-white !text-accent !border-white font-semibold shadow-lg">Get started</ButtonLink>
+        <ButtonLink href="/register" variant="ghost" className="h-11 px-6 btn-gold !text-[#1a1408] !border-transparent font-semibold">Get started</ButtonLink>
       </section>
     </div>
   );

@@ -8,16 +8,16 @@
 }
 
 :root {
-  --bg: #f7f8fc;
+  --bg: #f8f6f1;
   --surface: #ffffff;
-  --surface-2: #f1f3f9;
-  --ink: #111827;
-  --ink-2: #374151;
-  --muted: #6b7280;
-  --line: #e5e7ef;
-  --accent: #4f46e5;
+  --surface-2: #f3f0e8;
+  --ink: #0f1d33;
+  --ink-2: #3b4659;
+  --muted: #6a6e78;
+  --line: #e9e4d9;
+  --accent: #1b2f52;
   --accent-ink: #ffffff;
-  --accent-soft: #eef2ff;
+  --accent-soft: #eef1f7;
   --ok: #067a52;
   --ok-soft: #e6f6ef;
   --part: #b25e09;
@@ -29,7 +29,7 @@
   --error-bg: #fdecea;
   --error-line: #f5c2bd;
   --error-ink: #b42318;
-  --focus: #4f46e5;
+  --focus: #1b2f52;
   --radius: 12px;
   --radius-sm: 8px;
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 6px 18px -6px rgba(16, 24, 40, 0.08);
@@ -157,12 +157,12 @@ dl.facts dd.unknown { color: var(--muted); font-style: italic; }
 
 /* ---- coach (Eli) ---- */
 :root {
-  --coach-body: #4f46e5;
+  --coach-body: #1b2f52;
   --coach-face: #ffffff;
   --coach-ink: #0d1117;
   --coach-cheek: #ffc9c2;
-  --coach-spark: #ffb020;
-  --coach-panel: #eef2ff;
+  --coach-spark: #c9a24b;
+  --coach-panel: #f8f0da;
 }
 .coach { display: block; overflow: visible; }
 .coach-eye { transform-origin: center; transform-box: fill-box; animation: blink 5.5s infinite; }

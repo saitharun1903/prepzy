@@ -8,14 +8,14 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
     <div className="min-h-dvh flex flex-col">
       <header className="sticky top-0 z-30 glass px-4 sm:px-8 h-16 flex items-center justify-between border-b border-line">
         <Link href="/" className="inline-flex items-center gap-2 text-ink" aria-label="Elevate">
-          <svg aria-hidden viewBox="0 0 32 32" className="size-7 drop-shadow-[0_4px_8px_rgba(79,70,229,0.35)]">
+          <svg aria-hidden viewBox="0 0 32 32" className="size-7 drop-shadow-[0_4px_8px_rgba(15,29,51,0.35)]">
             <defs>
-              <linearGradient id="el-logo-pub" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#4f46e5" /><stop offset="1" stopColor="#7c3aed" /></linearGradient>
+              <linearGradient id="el-logo-pub" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#2a4675" /><stop offset="1" stopColor="#0f1d33" /></linearGradient>
               <linearGradient id="el-gloss-pub" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff" stopOpacity="0.45" /><stop offset="0.55" stopColor="#fff" stopOpacity="0" /></linearGradient>
             </defs>
             <rect width="32" height="32" rx="9" fill="url(#el-logo-pub)" />
             <rect width="32" height="32" rx="9" fill="url(#el-gloss-pub)" />
-            <path d="M10 22V10h12M10 16h9M10 22h12" stroke="#fff" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+            <path d="M10 22V10h12M10 16h9M10 22h12" stroke="#e4c77d" strokeWidth="2.6" fill="none" strokeLinecap="round" />
           </svg>
           <span className="serif text-xl tracking-tight">Elevate</span>
         </Link>
