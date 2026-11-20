@@ -27,6 +27,7 @@ const BUCKET_OF: Record<FitStatus, Bucket> = {
   not_evidenced: "missing",
   not_met_confirmed: "missing",
   unassessable: "check",
+  soft_skill: "check",
 };
 const SEVERITY: Record<Bucket, number> = { missing: 3, partly: 2, have: 1, check: 0 };
 

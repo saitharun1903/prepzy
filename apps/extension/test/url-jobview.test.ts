@@ -147,7 +147,11 @@ describe("looksLikeJobPage + interview research links", () => {
       expect(decodeURIComponent(l.url)).not.toContain("Hyderabad");
     }
     expect(links.at(-1)!.label).toBe("Java Developer questions");
-    expect(interviewResearchLinks(null, "Data Analyst").map((l) => l.id)).toEqual(["role"]);
+    expect(interviewResearchLinks(null, "Data Analyst").map((l) => l.id)).toEqual(["glassdoor", "gfg", "reddit", "role"]);
+    // A job board / recruiter name is not the employer: research the role instead.
+    const rec = interviewResearchLinks("Jobs4PanIndia", "Back End Developer Intern");
+    expect(rec.find((l) => l.id === "glassdoor")!.url).toContain("keyword=Back%20End%20Developer%20Intern");
+    expect(rec.some((l) => l.url.includes("Jobs4PanIndia"))).toBe(false);
     expect(interviewResearchLinks(null, null)).toEqual([]);
   });
 });

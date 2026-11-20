@@ -204,8 +204,8 @@ export function toApplicationView(json: unknown): ApplicationView | null {
 
 // ---------------------------------------------------------------- match report (fit summary)
 
-export type FitStatus = "supported" | "user_confirmed" | "partial" | "adjacent" | "not_evidenced" | "not_met_confirmed" | "unassessable";
-const FIT = new Set<FitStatus>(["supported", "user_confirmed", "partial", "adjacent", "not_evidenced", "not_met_confirmed", "unassessable"]);
+export type FitStatus = "supported" | "user_confirmed" | "partial" | "adjacent" | "not_evidenced" | "not_met_confirmed" | "unassessable" | "soft_skill";
+const FIT = new Set<FitStatus>(["supported", "user_confirmed", "partial", "adjacent", "not_evidenced", "not_met_confirmed", "unassessable", "soft_skill"]);
 
 export interface FitGroup {
   coverage: number | null;
