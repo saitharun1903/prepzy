@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ZapMark, ZapWordmark } from "@/components/brand/logo";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
@@ -34,16 +35,8 @@ function isActive(pathname: string, href: string) {
 function Wordmark() {
   return (
     <Link href="/" className="inline-flex items-center gap-2 text-ink" aria-label="Prepzy home">
-      <svg aria-hidden viewBox="0 0 32 32" className="size-7 drop-shadow-[0_4px_8px_rgba(15,29,51,0.35)]">
-        <defs>
-          <linearGradient id="el-logo-app" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#2a4675" /><stop offset="1" stopColor="#0f1d33" /></linearGradient>
-          <linearGradient id="el-gloss-app" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff" stopOpacity="0.45" /><stop offset="0.55" stopColor="#fff" stopOpacity="0" /></linearGradient>
-        </defs>
-        <rect width="32" height="32" rx="9" fill="url(#el-logo-app)" />
-        <rect width="32" height="32" rx="9" fill="url(#el-gloss-app)" />
-        <path d="M11.5 23.5V8.5h7a4.75 4.75 0 0 1 0 9.5h-7" stroke="#e4c77d" strokeWidth="2.8" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-      <span className="serif text-xl tracking-tight">Prepzy</span>
+      <ZapMark className="size-7" />
+      <ZapWordmark className="text-[22px]" />
     </Link>
   );
 }

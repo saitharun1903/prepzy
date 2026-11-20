@@ -34,7 +34,7 @@ export function encodePng(width, height, rgba) {
 }
 
 /**
- * Draw the Prepzy monogram: a navy rounded square with a geometric gold "P".
+ * Draw the Prepzy icon: a navy rounded square with a gold zap bolt.
  * Supersampled 4x for smooth edges.
  */
 export function monogramIcon(size) {
@@ -48,14 +48,15 @@ export function monogramIcon(size) {
     const cy = Math.min(Math.max(y, radius), N - radius);
     return (x - cx) ** 2 + (y - cy) ** 2 <= radius ** 2;
   };
-  // "P" geometry in unit coordinates: a stem plus a rounded bowl.
-  const left = 0.3, top = 0.22, bottom = 0.78, stroke = 0.12, bowlBottom = 0.58;
-  const cx = 0.52, cy = (top + bowlBottom) / 2, rOut = (bowlBottom - top) / 2, rIn = rOut - stroke;
+  // Zap bolt (brand option 07) in unit coordinates; point-in-polygon test.
+  const bolt = [[37, 10], [18, 37], [30, 37], [26, 54], [46, 26], [34, 26]].map(([x, y]) => [(32 + (x - 32) * 1.22) / 64, (32 + (y - 32) * 1.22) / 64]);
   const inE = (u, v) => {
-    if (u >= left && u <= left + stroke && v >= top && v <= bottom) return true; // stem
-    if (u >= left && u <= cx && ((v >= top && v <= top + stroke) || (v >= bowlBottom - stroke && v <= bowlBottom))) return true; // bowl bars
-    const d = Math.hypot(u - cx, v - cy);
-    return u >= cx && d <= rOut && d >= rIn; // bowl curve
+    let inside = false;
+    for (let i = 0, j = bolt.length - 1; i < bolt.length; j = i++) {
+      const [xi, yi] = bolt[i], [xj, yj] = bolt[j];
+      if ((yi > v) !== (yj > v) && u < ((xj - xi) * (v - yi)) / (yj - yi) + xi) inside = !inside;
+    }
+    return inside;
   };
   const out = new Uint8Array(size * size * 4);
   for (let py = 0; py < size; py++) {

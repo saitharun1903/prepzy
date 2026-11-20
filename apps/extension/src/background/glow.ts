@@ -70,7 +70,16 @@ export function applyGlow(mode: GlowMode, text: string): void {
     pill.title = "Dismiss";
     const mark = document.createElement("span");
     mark.className = "prepzy-mark";
-    mark.textContent = "P";
+    const NS = "http://www.w3.org/2000/svg";
+    const bolt = document.createElementNS(NS, "svg");
+    bolt.setAttribute("viewBox", "0 0 64 64");
+    bolt.setAttribute("width", "14");
+    bolt.setAttribute("height", "14");
+    const bp = document.createElementNS(NS, "path");
+    bp.setAttribute("d", "M37 10L18 37h12l-4 17 20-28H34z");
+    bp.setAttribute("fill", "#1b2f52");
+    bolt.append(bp);
+    mark.append(bolt);
     const label = document.createElement("span");
     label.className = "prepzy-text";
     pill.append(mark, label);

@@ -531,3 +531,8 @@ html[data-context="sidepanel"] .tabs { top: 51px; }
 @media (prefers-reduced-motion: reduce) {
   .working, .scanbar > span, .skel-icon, .skel-bar { animation: none; }
 }
+
+/* ---- brand: "prep⚡y" zap logo ---- */
+.mark .bolt { width: 86%; height: 86%; color: #e4c26e; display: block; }
+.wordmark { display: inline-flex; align-items: center; font: 700 17px/1 var(--display); letter-spacing: -0.04em; color: var(--ink); text-transform: lowercase; }
+.wordmark .zap { width: 0.68em; height: 1.08em; margin: 0 -0.04em 0 -0.02em; color: #c9a24b; flex: none; }
