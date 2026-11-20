@@ -30,7 +30,7 @@ fixed ID `bjhbbpnbmichlooillmiaeofcioofkni` that the dashboard connects to. Rebu
 extension or the hosted URLs change, then commit the zip:
 
 ```bash
-ELEVATE_EXT_API_URL=https://elevate-api-zwoc.onrender.com ELEVATE_EXT_WEB_URL=https://elevate-web-2z8t.onrender.com \
+ELEVATE_EXT_API_URL=https://prepzyai.onrender.com ELEVATE_EXT_WEB_URL=https://prepzyai.onrender.com \
   npm run build:hosted -w apps/extension
 npm run package:hosted -w apps/extension
 ```
