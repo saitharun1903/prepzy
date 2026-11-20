@@ -45,9 +45,11 @@ def main() -> int:
         print("API did not become healthy in time", file=sys.stderr, flush=True)
         api.terminate()
         return 1
-    env = {**os.environ, "ELEVATE_API_URL": f"http://127.0.0.1:{API_PORT}", "HOSTNAME": "0.0.0.0"}
+    # The web app is the container's only public listener; the API stays on loopback.
+    public = "0.0.0.0"  # noqa: S104 - intentional: the platform routes traffic to this port
+    env = {**os.environ, "ELEVATE_API_URL": f"http://127.0.0.1:{API_PORT}", "HOSTNAME": public}
     web = subprocess.Popen(["node", "node_modules/next/dist/bin/next", "start", "apps/web", "-p", os.environ.get("PORT", "3000"),
-                            "-H", "0.0.0.0"], cwd=WEB_DIR, env=env)
+                            "-H", public], cwd=WEB_DIR, env=env)
     procs = [api, web]
 
     def stop(*_: object) -> None:
