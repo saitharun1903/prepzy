@@ -20,7 +20,7 @@ ENV NEXT_TELEMETRY_DISABLED=1 \
     ELEVATE_COMBINED=1 \
     NEXT_PUBLIC_ELEVATE_HOSTED=1 \
     NEXT_PUBLIC_ELEVATE_AI_PROVIDER=Groq \
-    NEXT_PUBLIC_ELEVATE_EXTENSION_ID=bjhbbpnbmichlooillmiaeofcioofkni
+    NEXT_PUBLIC_ELEVATE_EXTENSION_IDS=lbickbinfaoflajnailipphnfkpikalf,bjhbbpnbmichlooillmiaeofcioofkni
 COPY package.json package-lock.json ./
 COPY apps/web/package.json apps/web/package.json
 COPY apps/extension/package.json apps/extension/package.json

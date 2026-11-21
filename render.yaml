@@ -51,8 +51,8 @@ services:
         value: brevo
       - key: ELEVATE_LOG_LEVEL
         value: INFO
-      - key: ELEVATE_EXTENSION_IDS
-        value: bjhbbpnbmichlooillmiaeofcioofkni
+      - key: ELEVATE_EXTENSION_IDS       # Chrome Web Store build, then the downloadable unpacked build
+        value: lbickbinfaoflajnailipphnfkpikalf,bjhbbpnbmichlooillmiaeofcioofkni
       - key: ELEVATE_OPENAI_API_KEY     # Groq API key (console.groq.com -> API Keys)
         sync: false
       - key: ELEVATE_DATABASE_URL       # postgresql+psycopg://elevate_app:<pw>@<neon-host>/<db>?sslmode=require

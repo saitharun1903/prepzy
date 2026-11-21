@@ -6,7 +6,27 @@ import { HOSTED } from "@/lib/hosting";
 import { ApiError, sessionPost } from "@/lib/api";
 import { Button, ErrorState, Notice, PageHeader, SectionTitle } from "@/components/ui/primitives";
 
-const EXTENSION_ID = process.env.NEXT_PUBLIC_ELEVATE_EXTENSION_ID || "bjhbbpnbmichlooillmiaeofcioofkni";
+// Chrome Web Store build first, then the downloadable (unpacked) build. Override with a comma-separated list.
+const EXTENSION_IDS = (process.env.NEXT_PUBLIC_ELEVATE_EXTENSION_IDS || process.env.NEXT_PUBLIC_ELEVATE_EXTENSION_ID
+  || "lbickbinfaoflajnailipphnfkpikalf,bjhbbpnbmichlooillmiaeofcioofkni").split(",").map((x) => x.trim()).filter((x) => /^[a-p]{32}$/.test(x));
+
+type Reply = { resp?: unknown; error?: string };
+/** Ask one extension ID; resolves with its reply, or an error when that extension isn't installed or doesn't answer. */
+function ask(rt: ChromeRuntime, id: string, msg: unknown): Promise<Reply> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve({ error: "The extension did not respond." }), 8000);
+    try {
+      rt.sendMessage(id, msg, (resp) => {
+        clearTimeout(timer);
+        const err = rt.lastError;
+        resolve(err ? { error: err.message || "Extension not found" } : { resp });
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      resolve({ error: (e as Error).message });
+    }
+  });
+}
 
 type ChromeRuntime = {
   sendMessage: (id: string, msg: unknown, cb: (resp: unknown) => void) => void;
@@ -44,29 +64,16 @@ export default function ExtensionConnectPage() {
       setState({ kind: "error", error: e as ApiError });
       return;
     }
-    let settled = false;
-    const timer = setTimeout(() => {
-      if (!settled) { settled = true; setState({ kind: "missing", detail: "The extension did not respond." }); }
-    }, 8000);
-    try {
-      rt.sendMessage(EXTENSION_ID, { type: "elevate.connect.v1", refresh_token: token }, (resp) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        const err = rt.lastError;
-        if (err) {
-          setState({ kind: "missing", detail: err.message });
-          return;
-        }
-        const r = resp as { ok?: boolean; error?: string } | undefined;
-        if (r && r.ok === true) setState({ kind: "connected" });
-        else setState({ kind: "rejected", detail: r?.error || "The extension did not confirm the connection." });
-      });
-    } catch (e) {
-      settled = true;
-      clearTimeout(timer);
-      setState({ kind: "missing", detail: (e as Error).message });
+    let lastError = "The extension was not found.";
+    for (const id of EXTENSION_IDS) {
+      const r = await ask(rt, id, { type: "elevate.connect.v1", refresh_token: token });
+      if (r.error) { lastError = r.error; continue; }  // not installed under this ID: try the next build
+      const reply = r.resp as { ok?: boolean; error?: string } | undefined;
+      if (reply && reply.ok === true) setState({ kind: "connected" });
+      else setState({ kind: "rejected", detail: reply?.error || "The extension did not confirm the connection." });
+      return;
     }
+    setState({ kind: "missing", detail: lastError });
   };
 
   return (
@@ -137,7 +144,7 @@ export default function ExtensionConnectPage() {
             <li>Come back to this page and click <strong>Connect extension</strong>.</li>
             <li>Open any job posting and click the Prepzy icon: the analysis starts by itself, then shows your match, a preparation plan and links to real interview experiences.</li>
           </ol>
-          <p className="mt-3 text-[12px] text-muted break-all">Expected extension ID: {EXTENSION_ID}</p>
+          <p className="mt-3 text-[12px] text-muted break-all">Extension IDs: {EXTENSION_IDS.join(", ")}</p>
         </aside>
       </div>
     </>
