@@ -111,7 +111,7 @@ export type CoverageSummary = {
 };
 export type MatchResult = {
   scoring_version: string; label: string; disclaimer: string;
-  summary: { required: CoverageSummary; preferred: CoverageSummary; unclear: CoverageSummary; score_status: "available" | "withheld"; withheld_reason: string | null };
+  summary: { required: CoverageSummary; preferred: CoverageSummary; unclear: CoverageSummary; score_status: "available" | "withheld"; withheld_reason: string | null; provisional?: boolean };
   requirements: MatchUnit[];
   conditions: (Omit<MatchUnit, "evidence" | "status"> & { user_confirmation: Requirement["user_confirmation"] | null; note: string })[];
   excluded: { key: string; text: string; importance: string; reason: string }[];

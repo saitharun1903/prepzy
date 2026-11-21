@@ -1,5 +1,6 @@
 "use client";
 
+import { LinkImport } from "@/components/link-import";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { Bookmark, Search } from "lucide-react";
@@ -54,7 +55,8 @@ export default function JobsPage() {
   return (
     <>
       <PageHeader title="Jobs" description="Postings you have captured or pasted, with their analysis."
-        actions={<ButtonLink href="/jobs/new" variant="primary">Analyze a job</ButtonLink>} />
+        actions={<ButtonLink href="/jobs/new" variant="secondary">Paste job text instead</ButtonLink>} />
+      <LinkImport className="mb-6" />
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <form role="search" onSubmit={onSearch} className="flex gap-2 flex-1">

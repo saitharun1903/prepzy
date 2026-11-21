@@ -1,5 +1,6 @@
 "use client";
 
+import { LinkImport } from "@/components/link-import";
 import Link from "next/link";
 import { ArrowRight, Bell, Briefcase, CalendarCheck, CalendarClock, Check, FileText, MessagesSquare, Route, UserRound } from "lucide-react";
 import { useApi } from "@/lib/hooks";
@@ -118,6 +119,8 @@ export default function HomePage() {
     <>
       <PageHeader title={name ? `Hello, ${name}` : "Home"} description="Follow the steps below. Prepzy shows you exactly where you stand for each job and helps you close the gaps." />
       {anyError ? <div className="mb-6"><ErrorState error={anyError} title="Some information could not be loaded" /></div> : null}
+
+      <LinkImport className="mb-8" title="Found a job? Paste its link" />
 
       <Journey steps={steps} loading={loading} />
 

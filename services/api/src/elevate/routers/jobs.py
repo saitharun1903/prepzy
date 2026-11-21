@@ -27,7 +27,7 @@ class CaptureSource(BaseModel):
 
 
 class CaptureIn(BaseModel):
-    method: Literal["extension", "manual"]
+    method: Literal["extension", "manual", "link"]
     text: str = Field(min_length=1)
     title: str | None = Field(default=None, max_length=300)
     company: str | None = Field(default=None, max_length=300)
@@ -60,6 +60,10 @@ def capture(body: CaptureIn, ctx: Authed, response: Response,
     """Accept job text (from the extension or manual entry), persist job+snapshot, and queue analysis.
     202 means *accepted*, not analysed. Poll status_url."""
     db, actor = ctx
+    return _capture(db, actor, body, response, idempotency_key)
+
+
+def _capture(db: Any, actor: Any, body: CaptureIn, response: Response, idempotency_key: str | None) -> CaptureOut:
     s = get_settings()
     text = jt.normalize_text(body.text)
     if len(text) < 80:
@@ -87,6 +91,28 @@ def capture(body: CaptureIn, ctx: Authed, response: Response,
     db.commit()
     return CaptureOut(job_id=str(job.id), snapshot_id=str(snap.id), operation_id=str(op.id), analysis_id=None,
                       reused_analysis=False, new_job=new_job, status_url=f"/api/v1/operations/{op.id}")
+
+
+class LinkIn(BaseModel):
+    url: str = Field(min_length=4, max_length=2000)
+    save: bool = True
+
+
+@router.post("/import-link", response_model=CaptureOut, status_code=202)
+def import_link(body: LinkIn, ctx: Authed, response: Response,
+                idempotency_key: str | None = Header(default=None, max_length=120)) -> CaptureOut:
+    """Fetch a public job posting from a link (LinkedIn, Naukri, Indeed, company/ATS pages), then capture and
+    analyse it exactly like pasted text. The fetch is SSRF-guarded; see services/link_import.py."""
+    from ..services.account_security import rate_limit
+    from ..services.link_import import import_link as fetch_link
+    db, actor = ctx
+    rate_limit(db, f"link-import:{actor.id}", limit=12, window_seconds=60)
+    db.commit()
+    got = fetch_link(body.url)
+    cap = CaptureIn(method="link", text=got.text[: get_settings().max_job_text_chars], title=got.title,
+                    company=got.company, save=body.save,
+                    source=CaptureSource(url=got.url, page_title=got.title, adapter=f"link:{got.source}"))
+    return _capture(db, actor, cap, response, idempotency_key)
 
 
 class JobSummary(BaseModel):
