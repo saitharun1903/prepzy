@@ -101,7 +101,7 @@ function Guidance({ jobId, pick }: { jobId: string; pick: NonNullable<VersionPic
     <>
       <section aria-labelledby="ats-h">
         <SectionTitle id="ats-h">Readability checks</SectionTitle>
-        <p className="text-[13px] text-muted mb-3">Explainable checks of structure and content. This is not a reproduction of any employer&apos;s ATS and has no single score.</p>
+        <p className="text-[13px] text-muted mb-3">Quick checks of structure and content. For a score the way the company&apos;s ATS reads it, use the <Link href="/ats" className="text-accent hover:underline underline-offset-4">ATS checker</Link>.</p>
         {findings.length ? (
           <ul className="divide-y divide-line border-y border-line">
             {findings.map((f) => (

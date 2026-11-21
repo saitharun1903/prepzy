@@ -14,7 +14,6 @@ import { RequirementsTab } from "./requirements-tab";
 import { OriginalTab } from "./original-tab";
 import { MatchTab } from "./match-tab";
 import { GuidanceTab } from "./guidance-tab";
-import { TailorTab } from "./tailor-tab";
 import { InterviewTab } from "./interview-tab";
 import { AskTab } from "./ask-tab";
 import { ApplicationTab } from "./application-tab";
@@ -24,7 +23,7 @@ import { ApplyKitTab } from "./apply-kit-tab";
 const TABS = [
   { id: "match", label: "Your match", hint: "How well you fit this job, and what to do next." },
   { id: "apply", label: "Apply kit", hint: "One click: tailored resume PDF, cover letter, LinkedIn note, referral request, cold email and ATS score." },
-  { id: "resume", label: "Resume", hint: "Get a one-page resume for this job, or fix lines in your current one." },
+  { id: "resume", label: "Resume tips", hint: "Line-by-line fixes for your resume. For a ready PDF, use Apply kit." },
   { id: "interview", label: "Interview prep", hint: "Practice questions and real interview experiences." },
   { id: "ask", label: "Ask AI", hint: "Ask anything about this job." },
   { id: "application", label: "Track", hint: "Note when you applied, interviews and follow-ups." },
@@ -32,10 +31,9 @@ const TABS = [
 ];
 // Old links (?tab=guidance, ?tab=requirements …) keep working.
 const LEGACY: Record<string, [string, string]> = {
-  guidance: ["resume", "fix"], requirements: ["details", "requirements"], overview: ["details", "summary"], original: ["details", "original"],
+  guidance: ["resume", ""], tailor: ["apply", ""], requirements: ["details", "requirements"], overview: ["details", "summary"], original: ["details", "original"],
 };
 const SUBVIEWS: Record<string, { id: string; label: string }[]> = {
-  resume: [{ id: "tailored", label: "Tailored resume" }, { id: "fix", label: "Fix my resume" }],
   details: [{ id: "summary", label: "Summary" }, { id: "requirements", label: "Requirements" }, { id: "original", label: "Original text" }],
 };
 
@@ -125,8 +123,7 @@ function Workspace({ jobId }: { jobId: string }) {
         {tab === "details" && view === "requirements" ? <RequirementsTab detail={d} reload={detail.reload} /> : null}
         {tab === "details" && view === "original" ? <OriginalTab detail={d} /> : null}
         {tab === "match" ? <MatchTab jobId={jobId} hasAnalysis={Boolean(d.analysis)} onJobChanged={detail.reload} onGoTo={changeTab} /> : null}
-        {tab === "resume" && view === "fix" ? <GuidanceTab jobId={jobId} /> : null}
-        {tab === "resume" && view === "tailored" ? <TailorTab jobId={jobId} jobTitle={d.analysis?.result.fields.title?.value || d.job.title || ""} /> : null}
+        {tab === "resume" ? <GuidanceTab jobId={jobId} /> : null}
         {tab === "interview" ? <InterviewTab jobId={jobId} company={company} title={d.analysis?.result.fields.title?.value || d.job.title} /> : null}
         {tab === "apply" ? <ApplyKitTab jobId={jobId} jobTitle={d.analysis?.result.fields.title?.value || d.job.title || ""} company={company} /> : null}
         {tab === "ask" ? <AskTab jobId={jobId} /> : null}

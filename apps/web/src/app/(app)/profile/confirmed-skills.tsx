@@ -7,7 +7,7 @@ import { useApi } from "@/lib/hooks";
 import { EVIDENCE_TYPES, formatDate } from "@/lib/format";
 import type { Fact, SkillHit } from "@/lib/types";
 import { SkillPicker } from "@/components/skill-picker";
-import { Badge, Button, EmptyState, ErrorState, Field, LoadingBlock, Notice, SectionTitle, Select, Textarea } from "@/components/ui/primitives";
+import { Badge, Button, EmptyState, ErrorState, Field, LoadingBlock, SectionTitle, Select, Textarea } from "@/components/ui/primitives";
 import { useToast } from "@/components/ui/toast";
 
 export function ConfirmedSkills() {
@@ -57,12 +57,7 @@ export function ConfirmedSkills() {
   return (
     <section aria-labelledby="confirmed-skills">
       <SectionTitle id="confirmed-skills">Confirmed skills</SectionTitle>
-      <Notice tone="info" className="mb-5">
-        <strong className="font-medium text-ink">Self-reported</strong> means you are telling Prepzy you have the skill, without
-        something to show for it. <strong className="font-medium text-ink">Evidenced</strong> types (project, course, professional
-        work, certification) say where the skill comes from — add a short detail so you can back it up. Both count towards job
-        comparisons and are labelled as coming from your profile, not your resume.
-      </Notice>
+      <p className="text-sm text-ink-2 mb-4">Skills you have that your resume doesn&apos;t show yet. They count in every job match.</p>
 
       <div className="grid gap-4 sm:grid-cols-[1fr_220px] items-start rounded-lg border border-line bg-surface p-4">
         <SkillPicker label="Skill" onPick={setSkill} exclude={skills.map((s) => s.concept_id || "")} />

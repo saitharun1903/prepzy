@@ -105,17 +105,17 @@ function ApplicationPanel({ jobId }: { jobId: string }) {
 
       {!current ? (
         <div className="rounded-lg border border-line bg-surface p-4 flex flex-col gap-4 max-w-xl">
-          <p className="text-sm text-ink-2">Track your application for this job. Prepzy does not submit anything; you record what you did.</p>
+          
           <Field label="Status">
             {(p) => (
               <Select id={p.id} value={createStatus} onChange={(e) => setCreateStatus(e.target.value as "planned" | "applied")}>
-                <option value="planned">Planned — {STATUS_HELP.planned}</option>
-                <option value="applied">Applied — {STATUS_HELP.applied}</option>
+                <option value="planned">Planning to apply</option>
+                <option value="applied">Already applied</option>
               </Select>
             )}
           </Field>
-          <ResumeVersionSelect value={createPick} onChange={setCreatePick} label="Resume version used (optional)" allowNone noneLabel="Not recorded" />
-          <div><Button variant="primary" loading={busy} onClick={() => create(false)}>Create application</Button></div>
+          <ResumeVersionSelect value={createPick} onChange={setCreatePick} label="Resume you sent (optional)" allowNone noneLabel="Not recorded" />
+          <div><Button variant="primary" loading={busy} onClick={() => create(false)}>Start tracking</Button></div>
         </div>
       ) : (
         <div className="flex flex-col gap-6">
