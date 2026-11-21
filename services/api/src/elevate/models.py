@@ -69,6 +69,8 @@ class User(Base):
     totp_secret_enc: Mapped[str | None] = mapped_column(Text)
     totp_enabled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     totp_last_step: Mapped[int | None] = mapped_column(BigInteger)
+    # Google account ID ("sub") when the user signs in with Google; Google's tokens are never stored.
+    google_sub: Mapped[str | None] = mapped_column(String(64), unique=True)
     __table_args__ = (Index("uq_users_email_lower", func.lower(email), unique=True),)
 
 

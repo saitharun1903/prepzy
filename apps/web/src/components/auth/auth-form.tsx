@@ -16,7 +16,47 @@ const toApiError = (err: unknown) =>
 
 type LoginResult = { user?: unknown; mfa_required?: boolean; mfa_token?: string; expires_in?: number };
 
-export function AuthForm({ mode, next }: { mode: "login" | "register"; next?: string }) {
+const GOOGLE_ERRORS: Record<string, string> = {
+  google_cancelled: "Google sign-in was cancelled.",
+  google_expired: "That Google sign-in took too long or was opened twice. Please try again.",
+  google_email_unverified: "Your Google account's email isn't verified, so it can't be used to sign in.",
+  google_conflict: "This email is already linked to a different Google account. Sign in with your password instead.",
+  google_disabled: "Google sign-in isn't available right now. Use your email and password.",
+  google_unreachable: "Couldn't reach Google. Please try again in a moment.",
+  account_locked: "Sign-in is temporarily locked after too many attempts. Wait a few minutes and try again.",
+  rate_limited: "Too many attempts. Wait a minute and try again.",
+};
+
+function GoogleG() {
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden className="size-5">
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.3-.4-3.5z" />
+      <path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+      <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.3-.4-3.5z" />
+    </svg>
+  );
+}
+
+function GoogleButton({ label }: { label: string }) {
+  const [busy, setBusy] = useState(false);
+  const go = () => {
+    setBusy(true);
+    let tz = "UTC";
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC"; } catch { /* keep UTC */ }
+    window.location.href = `/api/session/google/start?tz=${encodeURIComponent(tz)}`;
+  };
+  return (
+    <button type="button" onClick={go} disabled={busy}
+      className="w-full h-11 inline-flex items-center justify-center gap-3 rounded-md border border-line-strong bg-white px-4 text-[15px] font-medium text-[#1f1f1f] shadow-sm transition hover:bg-[#f7f8f8] disabled:opacity-60">
+      <GoogleG />{busy ? "Opening Google…" : label}
+    </button>
+  );
+}
+
+export function AuthForm({ mode, next, googleEnabled, googleError, googleMfa }: {
+  mode: "login" | "register"; next?: string; googleEnabled?: boolean; googleError?: string; googleMfa?: boolean;
+}) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -80,6 +120,10 @@ export function AuthForm({ mode, next }: { mode: "login" | "register"; next?: st
   if (challenge) {
     return <MfaStep token={challenge} onDone={finish} onRestart={restart} />;
   }
+  if (googleMfa && !restartNote) {
+    // Back from Google with two-step verification on: the challenge is held in an HttpOnly cookie.
+    return <MfaStep token="" onDone={() => { router.replace("/"); router.refresh(); }} onRestart={(expired) => { router.replace("/login"); restart(expired); }} />;
+  }
 
   const fieldErr = (k: string) => local[k] || error?.fields?.[k] || null;
   const locked = error?.code === "account_locked";
@@ -91,11 +135,22 @@ export function AuthForm({ mode, next }: { mode: "login" | "register"; next?: st
         {reg ? DATA_PROMISE : "Welcome back to Prepzy."}
       </p>
       <div aria-live="polite">
+        {googleError ? (
+          <Notice tone="danger" className="mt-6">{GOOGLE_ERRORS[googleError] || "Google sign-in didn't work. Please try again, or use your email and password."}</Notice>
+        ) : null}
         {restartNote ? (
           <Notice tone="info" className="mt-6">That sign-in took too long, so it was cancelled for your security. Enter your email and password again.</Notice>
         ) : null}
       </div>
-      <form onSubmit={submit} noValidate className="mt-8 flex flex-col gap-4" aria-describedby={error ? "auth-error" : undefined}>
+      {googleEnabled ? (
+        <div className="mt-8">
+          <GoogleButton label={reg ? "Sign up with Google" : "Continue with Google"} />
+          <div className="mt-6 flex items-center gap-3 text-[13px] text-muted" aria-hidden>
+            <span className="h-px flex-1 bg-line" />or with email<span className="h-px flex-1 bg-line" />
+          </div>
+        </div>
+      ) : null}
+      <form onSubmit={submit} noValidate className={googleEnabled ? "mt-6 flex flex-col gap-4" : "mt-8 flex flex-col gap-4"} aria-describedby={error ? "auth-error" : undefined}>
         {reg ? (
           <Field label="Name (optional)">
             {(p) => <Input id={p.id} value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoComplete="name" maxLength={120} />}

@@ -58,9 +58,13 @@ export async function completeMfa(req: NextRequest): Promise<NextResponse> {
   if (blocked) return blocked;
   const body = await readBody(req);
   if (body instanceof NextResponse) return body;
-  const { status, json } = await callAuth("login/mfa", { mfa_token: str(body.mfa_token), code: str(body.code).trim() });
+  // After "Continue with Google" the challenge waits in an HttpOnly cookie instead of the page.
+  const token = str(body.mfa_token) || req.cookies.get("el_mfa")?.value || "";
+  const { status, json } = await callAuth("login/mfa", { mfa_token: token, code: str(body.code).trim() });
   if (status < 200 || status >= 300) return passError(status, json, "Sign-in failed.");
-  return signedIn(json as TokenOut);
+  const res = signedIn(json as TokenOut);
+  res.cookies.set("el_mfa", "", { httpOnly: true, sameSite: "strict", secure: process.env.NODE_ENV === "production", path: "/api/session", maxAge: 0 });
+  return res;
 }
 
 /** Unauthenticated account-recovery calls (forgot/reset password, verify email). Only the named

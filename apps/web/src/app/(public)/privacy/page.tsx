@@ -48,6 +48,10 @@ export default function PrivacyPage() {
             Deletion removes your records and schedules removal of stored files.</p>
         </section>
         <section>
+          <h2 className="text-ink font-semibold mb-1">Sign in with Google</h2>
+          <p className="mb-4">If you choose &ldquo;Continue with Google&rdquo;, Google shares only your name, email address and a
+            Google account ID with Prepzy. Prepzy doesn&apos;t receive your Google password and doesn&apos;t keep any Google
+            access to your account, mail, contacts or files.</p>
           <h2 className="text-ink font-semibold mb-1">Browser extension</h2>
           <ul className="list-disc pl-5 flex flex-col gap-1">
             <li>It acts only when you click the Prepzy icon, and only on that tab. It never reads your browsing history,

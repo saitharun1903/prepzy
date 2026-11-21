@@ -377,3 +377,101 @@ def mfa_disable(body: MfaDisableIn, ctx: Authed) -> None:
     db.execute(text("delete from mfa_recovery_codes where user_id = :u"), {"u": u.id})
     db.add(AuditEvent(user_id=u.id, action="auth.mfa_disabled"))
     db.commit()
+
+
+# ------------------------------------------------------------------ Sign in with Google
+class GoogleStartIn(BaseModel):
+    redirect_uri: str = Field(max_length=500)
+
+
+class GoogleStartOut(BaseModel):
+    url: str
+    state: str
+    nonce: str
+    verifier: str
+
+
+def _google_redirect_ok(uri: str) -> str:
+    """Only our own callback may receive Google's code (no open redirect)."""
+    s = get_settings()
+    origins = {o.strip().rstrip("/") for o in [s.web_url, *s.allowed_origins.split(",")] if o.strip()}
+    if uri not in {o + "/api/session/google/callback" for o in origins}:
+        raise ValidationFailed("Invalid redirect address.", code="google_bad_redirect")
+    return uri
+
+
+@router.get("/google/enabled")
+def google_enabled() -> dict[str, bool]:
+    from ..services import google_auth
+    return {"enabled": google_auth.enabled()}
+
+
+@router.post("/google/start", response_model=GoogleStartOut, dependencies=[Depends(auth_rate_limit)])
+def google_start(body: GoogleStartIn) -> GoogleStartOut:
+    from ..services import google_auth
+    st = google_auth.start(_google_redirect_ok(body.redirect_uri))
+    return GoogleStartOut(url=st.url, state=st.state, nonce=st.nonce, verifier=st.verifier)
+
+
+class GoogleCallbackIn(BaseModel):
+    code: str = Field(min_length=10, max_length=2000)
+    verifier: str = Field(min_length=32, max_length=200)
+    nonce: str = Field(min_length=16, max_length=200)
+    redirect_uri: str = Field(max_length=500)
+    client: Literal["web"] = "web"
+    timezone: str = Field(default="UTC", max_length=64)
+
+    @field_validator("timezone")
+    @classmethod
+    def _tz(cls, v: str) -> str:
+        try:
+            return _valid_tz(v)
+        except ValueError:
+            return "UTC"
+
+
+@router.post("/google/callback", response_model=TokenOut | MfaChallengeOut, dependencies=[Depends(auth_rate_limit)])
+def google_callback(body: GoogleCallbackIn, db: PublicDb) -> TokenOut | MfaChallengeOut:
+    """Finish Google sign-in: verify Google's ID token, then sign in, link or create the account."""
+    import secrets as _secrets
+
+    from ..services import google_auth
+    g = google_auth.exchange(body.code, body.verifier, _google_redirect_ok(body.redirect_uri), body.nonce)
+    sec.rate_limit(db, f"login-email:{g.email}", 20, 3600)
+    user = db.execute(select(User).where(User.google_sub == g.sub).with_for_update()).scalar_one_or_none()
+    created = False
+    if user is None:
+        user = db.execute(select(User).where(func.lower(User.email) == g.email).with_for_update()).scalar_one_or_none()
+        if user is not None and user.deleted_at is None:
+            if user.google_sub and user.google_sub != g.sub:
+                raise Conflict("This email is linked to a different Google account.", code="google_conflict")
+            if user.email_verified_at is None:
+                # Someone may have registered this address without owning it: Google has now proved who owns
+                # it, so the unproven password and any sessions it created stop working.
+                user.password_hash = hash_password(_secrets.token_urlsafe(32))
+                user.token_version += 1
+                db.execute(update(RefreshToken).where(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None))
+                           .values(revoked_at=datetime.now(UTC)))
+                user.email_verified_at = datetime.now(UTC)
+            user.google_sub = g.sub
+            db.add(AuditEvent(user_id=user.id, action="auth.google_linked"))
+    if user is None:
+        user = User(email=g.email, password_hash=hash_password(_secrets.token_urlsafe(32)), display_name=g.name,
+                    timezone=body.timezone, google_sub=g.sub, email_verified_at=datetime.now(UTC),
+                    is_admin=g.email in get_settings().admin_email_set)
+        db.add(user)
+        db.flush()
+        db.add(Profile(user_id=user.id))
+        db.add(AuditEvent(user_id=user.id, action="account.registered", meta={"method": "google"}))
+        created = True
+    if user.deleted_at is not None:
+        raise Unauthorized("This account was deleted.", code="invalid_credentials")
+    sec.check_not_locked(user)
+    sec.record_success(user)
+    if user.totp_enabled_at:
+        db.commit()
+        token, exp = issue_mfa_token(user, body.client)
+        return MfaChallengeOut(mfa_token=token, expires_in=exp)
+    if not created:
+        db.add(AuditEvent(user_id=user.id, action="auth.login", meta={"client": body.client, "method": "google"}))
+    return _tokens(db, user, body.client)
