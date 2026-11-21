@@ -52,7 +52,7 @@ export default function ApplicationsPage() {
 
   return (
     <>
-      <PageHeader title="Applications" description="Applications you are tracking. Prepzy records what you tell it; it never submits applications." />
+      <PageHeader title="Applications" description="Keep track of every job you apply to." />
       <LinkImport className="mb-6" redirectTab="application" title="Track a job you applied to — paste its link" />
 
       <div role="group" aria-label="Filter by status" className="flex flex-wrap gap-2 mb-4">

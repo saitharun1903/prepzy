@@ -31,7 +31,12 @@ services:
       - key: ELEVATE_OPERATION_DEADLINE_MINUTES
         value: "30"
       - key: ELEVATE_DB_POOL_SIZE
-        value: "4"
+        value: "6"
+      # Many users at once: run up to 3 AI jobs in parallel (they wait on the AI provider, not the CPU).
+      - key: ELEVATE_WORKER_CONCURRENCY
+        value: "3"
+      - key: ELEVATE_LLM_CONCURRENCY
+        value: "3"
       - key: ELEVATE_AUTH_RATE_PER_MINUTE
         value: "60"
       - key: ELEVATE_JWT_SECRET

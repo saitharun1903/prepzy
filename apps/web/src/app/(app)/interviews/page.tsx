@@ -10,7 +10,6 @@ import type { InterviewSessionSummary } from "@/lib/types";
 import { Badge, Button, ButtonLink, EmptyState, ErrorState, LoadingBlock, PageHeader } from "@/components/ui/primitives";
 import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
-import { MODEL } from "@/lib/hosting";
 
 export default function InterviewsPage() {
   const { notify } = useToast();
@@ -19,7 +18,7 @@ export default function InterviewsPage() {
 
   return (
     <>
-      <PageHeader title="Interview practice" description={`Generated practice questions with rubric-based feedback from ${MODEL}. These are not real company questions, and code is never executed.`}
+      <PageHeader title="Interview practice" description="Answer practice questions and get instant feedback."
         actions={<ButtonLink href="/interviews/new" variant="primary">New session</ButtonLink>} />
       {s.loading && !s.data ? <LoadingBlock rows={3} label="Loading sessions" /> : null}
       {s.error ? <ErrorState error={s.error} onRetry={s.reload} title="Could not load sessions" /> : null}

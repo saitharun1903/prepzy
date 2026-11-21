@@ -19,38 +19,70 @@ import { InterviewTab } from "./interview-tab";
 import { AskTab } from "./ask-tab";
 import { ApplicationTab } from "./application-tab";
 
-// Ordered by what people do: see the match, close gaps, practise, apply. Reference tabs come last.
+// Six tabs, in the order people use them. Related screens share a tab with a small switch inside.
 const TABS = [
-  { id: "match", label: "Your match", hint: "How well your resume fits this job, and what to do next." },
-  { id: "guidance", label: "Improve resume", hint: "Fixes and wording suggestions for your resume, based on this job." },
-  { id: "resume", label: "Tailored resume", hint: "Generate a one-page resume for this job in a professional template — PDF or LaTeX." },
-  { id: "interview", label: "Interview prep", hint: "Practice questions for this role and what past candidates were asked." },
-  { id: "ask", label: "Ask AI", hint: "Ask anything about this job — answers use the posting and your resume." },
-  { id: "application", label: "Track application", hint: "Record when you applied, interviews and follow-ups." },
-  { id: "requirements", label: "Requirements", hint: "Every requirement Prepzy found in the posting. Fix anything it got wrong." },
-  { id: "overview", label: "Job details", hint: "Salary, location, experience and other details from the posting." },
-  { id: "original", label: "Original posting", hint: "The job text exactly as it was captured." },
+  { id: "match", label: "Your match", hint: "How well you fit this job, and what to do next." },
+  { id: "resume", label: "Resume", hint: "Get a one-page resume for this job, or fix lines in your current one." },
+  { id: "interview", label: "Interview prep", hint: "Practice questions and real interview experiences." },
+  { id: "ask", label: "Ask AI", hint: "Ask anything about this job." },
+  { id: "application", label: "Track", hint: "Note when you applied, interviews and follow-ups." },
+  { id: "details", label: "Details", hint: "What Prepzy read from the posting. Fix anything it got wrong." },
 ];
+// Old links (?tab=guidance, ?tab=requirements …) keep working.
+const LEGACY: Record<string, [string, string]> = {
+  guidance: ["resume", "fix"], requirements: ["details", "requirements"], overview: ["details", "summary"], original: ["details", "original"],
+};
+const SUBVIEWS: Record<string, { id: string; label: string }[]> = {
+  resume: [{ id: "tailored", label: "Tailored resume" }, { id: "fix", label: "Fix my resume" }],
+  details: [{ id: "summary", label: "Summary" }, { id: "requirements", label: "Requirements" }, { id: "original", label: "Original text" }],
+};
+
+function SubNav({ tab, value, onChange }: { tab: string; value: string; onChange: (v: string) => void }) {
+  const items = SUBVIEWS[tab];
+  if (!items) return null;
+  return (
+    <div role="tablist" aria-label="View" className="mb-6 inline-flex rounded-xl bg-surface-2 p-1 gap-1">
+      {items.map((it) => (
+        <button key={it.id} type="button" role="tab" aria-selected={value === it.id} onClick={() => onChange(it.id)}
+          className={"rounded-lg px-3.5 py-1.5 text-sm font-medium transition " + (value === it.id ? "bg-surface text-ink shadow-sm" : "text-ink-2 hover:text-ink")}>
+          {it.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function Workspace({ jobId }: { jobId: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const sp = useSearchParams();
-  const tabParam = sp.get("tab");
+  const rawTab = sp.get("tab") ?? "";
+  const [tabParam, legacyView] = LEGACY[rawTab] ?? [rawTab, null];
+  const viewParam = sp.get("view") ?? legacyView;
   const [tab, setTab] = useState(TABS.some((t) => t.id === tabParam) ? (tabParam as string) : "match");
+  const defaultView = (t: string) => SUBVIEWS[t]?.[0]?.id ?? "";
+  const [view, setView] = useState<string>(viewParam && SUBVIEWS[tab]?.some((v) => v.id === viewParam) ? viewParam : defaultView(tab));
   const [analysisId, setAnalysisId] = useState<string | null>(null);
   const detail = useApi<JobDetail>(`jobs/${jobId}`, analysisId ? { analysis_id: analysisId } : undefined);
 
   useEffect(() => {
-    if (tabParam && TABS.some((t) => t.id === tabParam)) setTab(tabParam);
-  }, [tabParam]);
+    if (tabParam && TABS.some((t) => t.id === tabParam)) {
+      setTab(tabParam);
+      setView(viewParam && SUBVIEWS[tabParam]?.some((v) => v.id === viewParam) ? viewParam : (SUBVIEWS[tabParam]?.[0]?.id ?? ""));
+    }
+  }, [tabParam, viewParam]);
 
-  const changeTab = useCallback((id: string) => {
-    setTab(id);
+  const navigate = useCallback((id: string, v?: string) => {
+    const [t, lv] = LEGACY[id] ?? [id, null];
+    const nextView = v ?? lv ?? SUBVIEWS[t]?.[0]?.id ?? "";
+    setTab(t);
+    setView(nextView);
     const q = new URLSearchParams(sp.toString());
-    q.set("tab", id);
+    q.set("tab", t);
+    if (SUBVIEWS[t]) q.set("view", nextView); else q.delete("view");
     router.replace(`${pathname}?${q.toString()}`, { scroll: false });
   }, [pathname, router, sp]);
+  const changeTab = useCallback((id: string) => navigate(id), [navigate]);
 
   if (detail.loading && !detail.data) return <LoadingBlock rows={5} label="Loading job" />;
   if (detail.error && !detail.data) {
@@ -84,14 +116,15 @@ function Workspace({ jobId }: { jobId: string }) {
       />
       {detail.error ? <div className="mb-4"><ErrorState error={detail.error} onRetry={detail.reload} title="Could not refresh this job" /></div> : null}
       <Tabs label="Job workspace" tabs={TABS} value={tab} onChange={changeTab} />
-      <p className="mt-3 mb-6 text-[13.5px] text-muted">{TABS.find((t) => t.id === tab)?.hint}</p>
+      <p className="mt-3 mb-5 text-[13.5px] text-muted">{TABS.find((t) => t.id === tab)?.hint}</p>
       <TabPanel id={tab}>
-        {tab === "overview" ? <OverviewTab detail={d} reload={detail.reload} analysisId={analysisId} setAnalysisId={setAnalysisId} /> : null}
-        {tab === "requirements" ? <RequirementsTab detail={d} reload={detail.reload} /> : null}
-        {tab === "original" ? <OriginalTab detail={d} /> : null}
+        <SubNav tab={tab} value={view} onChange={(v) => navigate(tab, v)} />
+        {tab === "details" && view === "summary" ? <OverviewTab detail={d} reload={detail.reload} analysisId={analysisId} setAnalysisId={setAnalysisId} /> : null}
+        {tab === "details" && view === "requirements" ? <RequirementsTab detail={d} reload={detail.reload} /> : null}
+        {tab === "details" && view === "original" ? <OriginalTab detail={d} /> : null}
         {tab === "match" ? <MatchTab jobId={jobId} hasAnalysis={Boolean(d.analysis)} onJobChanged={detail.reload} onGoTo={changeTab} /> : null}
-        {tab === "guidance" ? <GuidanceTab jobId={jobId} /> : null}
-        {tab === "resume" ? <TailorTab jobId={jobId} jobTitle={d.analysis?.result.fields.title?.value || d.job.title || ""} /> : null}
+        {tab === "resume" && view === "fix" ? <GuidanceTab jobId={jobId} /> : null}
+        {tab === "resume" && view === "tailored" ? <TailorTab jobId={jobId} jobTitle={d.analysis?.result.fields.title?.value || d.job.title || ""} /> : null}
         {tab === "interview" ? <InterviewTab jobId={jobId} company={company} title={d.analysis?.result.fields.title?.value || d.job.title} /> : null}
         {tab === "ask" ? <AskTab jobId={jobId} /> : null}
         {tab === "application" ? <ApplicationTab jobId={jobId} /> : null}

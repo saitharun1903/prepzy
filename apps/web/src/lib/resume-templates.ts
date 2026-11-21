@@ -22,9 +22,9 @@ export type TailorResult = {
 };
 
 export const TEMPLATES: { id: TemplateId; name: string; tagline: string }[] = [
-  { id: "classic", name: "Classic", tagline: "Centered name, blue small-caps headings — the Overleaf look" },
-  { id: "modern", name: "Modern", tagline: "Bold navy name, gold accent rule, clean sans-serif" },
-  { id: "ats", name: "ATS Simple", tagline: "Plain black serif, single column — safest for applicant tracking systems" },
+  { id: "classic", name: "Classic", tagline: "The classic Overleaf look" },
+  { id: "modern", name: "Modern", tagline: "Clean and modern" },
+  { id: "ats", name: "ATS Simple", tagline: "Plain — safest for job portals" },
 ];
 
 /** "**Java** and SQL" -> segments for rendering bold runs. */
