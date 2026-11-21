@@ -1,5 +1,6 @@
 "use client";
 
+import { LinkImport } from "@/components/link-import";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type FormEvent } from "react";
 import { ApiError, apiFetch, newIdempotencyKey } from "@/lib/api";
@@ -61,7 +62,7 @@ export default function NewJobPage() {
 
   return (
     <>
-      <PageHeader eyebrow="Jobs" title="Analyze a job" description="Paste the full text of one job posting. Prepzy extracts requirements and quotes the exact wording it relied on. English postings only." />
+      <PageHeader eyebrow="Jobs" title="Analyze a job" description="Paste a job link, or the full text of one posting. Prepzy extracts requirements and quotes the exact wording it relied on. English postings only." />
 
       {captured?.operation_id ? (
         <div className="flex flex-col gap-4 max-w-2xl">
@@ -77,7 +78,10 @@ export default function NewJobPage() {
           </div>
         </div>
       ) : (
-        <form onSubmit={submit} noValidate className="flex flex-col gap-5 max-w-3xl">
+        <div className="flex flex-col gap-6 max-w-3xl">
+        <LinkImport />
+        <p className="text-sm text-muted text-center">— or paste the job text —</p>
+        <form onSubmit={submit} noValidate className="flex flex-col gap-5">
           <Field label="Job posting text" required error={error?.fields?.text ? (error.message || error.fields.text) : null}
             hint={`Paste the whole posting, including requirements.${max ? ` Up to ${max.toLocaleString()} characters.` : ""} Your draft is kept in this tab until you submit.`}>
             {(p) => (
@@ -89,7 +93,7 @@ export default function NewJobPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Job title (optional)">{(p) => <Input id={p.id} value={title} maxLength={300} onChange={(e) => setTitle(e.target.value)} />}</Field>
             <Field label="Company (optional)">{(p) => <Input id={p.id} value={company} maxLength={300} onChange={(e) => setCompany(e.target.value)} />}</Field>
-            <Field label="Posting URL (optional)" className="sm:col-span-2" error={error?.fields?.["source.url"]} hint="Only http(s) links. Prepzy does not fetch the page.">
+            <Field label="Posting URL (optional)" className="sm:col-span-2" error={error?.fields?.["source.url"]} hint="Only http(s) links. Stored with the job for reference.">
               {(p) => <Input id={p.id} type="url" value={url} maxLength={4000} onChange={(e) => setUrl(e.target.value)} aria-invalid={p.invalid} aria-describedby={p.describedBy} />}
             </Field>
           </div>
@@ -100,6 +104,7 @@ export default function NewJobPage() {
             {text ? <Button variant="ghost" onClick={() => { if (window.confirm("Clear the pasted text?")) clearText(); }}>Clear text</Button> : null}
           </div>
         </form>
+        </div>
       )}
     </>
   );

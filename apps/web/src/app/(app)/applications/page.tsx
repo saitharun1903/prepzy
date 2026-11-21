@@ -1,5 +1,6 @@
 "use client";
 
+import { LinkImport } from "@/components/link-import";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { CheckCircle2, Search } from "lucide-react";
@@ -52,6 +53,7 @@ export default function ApplicationsPage() {
   return (
     <>
       <PageHeader title="Applications" description="Applications you are tracking. Prepzy records what you tell it; it never submits applications." />
+      <LinkImport className="mb-6" redirectTab="application" title="Track a job you applied to — paste its link" />
 
       <div role="group" aria-label="Filter by status" className="flex flex-wrap gap-2 mb-4">
         <button type="button" aria-pressed={!statuses.length} onClick={() => setStatuses([])}
@@ -93,7 +95,7 @@ export default function ApplicationsPage() {
       {loading ? <LoadingBlock rows={4} label="Loading applications" /> : null}
       {!loading && !error && !items.length ? (
         totalAll ? <EmptyState title="No applications match">Change the filters or search.</EmptyState> : (
-          <EmptyState title="No applications yet">Open a job and use its Application tab to start tracking.</EmptyState>
+          <EmptyState title="No applications yet">Paste a job link above, or open a job and use its Track application tab.</EmptyState>
         )
       ) : null}
 

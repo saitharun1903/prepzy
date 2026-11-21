@@ -206,6 +206,11 @@ export function MatchTab({ jobId, hasAnalysis, onJobChanged, onGoTo }: {
                 <p className="text-[12px] font-semibold uppercase tracking-[0.12em] text-muted">Your match score</p>
                 <h2 id="score-h" className="serif text-3xl sm:text-[34px] leading-tight mt-1">{v.title}</h2>
                 <p className="mt-2 text-[15px] text-ink-2 max-w-xl">{withheld ? r.summary.withheld_reason : v.text}</p>
+                {!withheld && r.summary.provisional ? (
+                  <p className="mt-2 inline-flex items-start gap-1.5 rounded-lg bg-warn-soft px-2.5 py-1.5 text-[13px] text-ink-2 max-w-xl">
+                    <CircleHelp aria-hidden className="size-4 shrink-0 mt-0.5 text-warn" /><span><b>Provisional.</b> {r.summary.withheld_reason}</span>
+                  </p>
+                ) : null}
                 <ul className="mt-4 flex flex-wrap gap-2" aria-label="Summary">
                   <li><Badge tone="ok" icon={<CheckCircle2 aria-hidden className="size-3.5" />}>{count("have")} you have</Badge></li>
                   {count("partly") ? <li><Badge tone="warn" icon={<CircleMinus aria-hidden className="size-3.5" />}>{count("partly")} partly</Badge></li> : null}

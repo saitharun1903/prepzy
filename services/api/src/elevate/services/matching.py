@@ -18,7 +18,8 @@ Scoring version score-2 (documented in docs/AI_EVALUATION.md#scoring):
       R7 broad families ("any programming language", "databases", "APIs", "backend"): any one family skill counts.
       R8 soft skills / attitudes (problem solving, willingness to learn …) without evidence: shown, never scored,
          and left out of totals so they cannot block the estimate.
-  * Score withheld when required units == 0, or completeness < 0.6, or assessable required units < min(2, total).
+  * Score withheld when there are no required units or none can be assessed; when completeness < 0.6 or fewer
+    than min(2, total) required units are assessable, the score is shown as provisional (summary.provisional).
 Keyword repetition never adds credit: evidence is per concept, boolean.
 """
 
@@ -30,7 +31,7 @@ from typing import Any
 from .resumes import effective_skills
 from .taxonomy import load_taxonomy
 
-SCORING_VERSION = "score-2"
+SCORING_VERSION = "score-3"
 ADJACENT_CREDIT = 0.25
 MIN_COMPLETENESS = 0.6
 MIN_ASSESSABLE = 2
@@ -250,15 +251,20 @@ def compute(analysis_result: dict[str, Any], resume_text: str | None, resume_ext
         }
 
     req, pref, unclear = summarize("required"), summarize("preferred"), summarize("unclear")
-    status, reason = "available", None
+    status, reason, provisional = "available", None, False
     if req["total"] == 0:
         status, reason = "withheld", ("This posting only lists soft skills or no checkable requirements, so there is "
                                       "nothing to score. Use the interview prep instead." if any(
                                           u["status"] == "soft_skill" for u in units) else
                                       "No required qualifications were identified; review the requirements.")
+    elif req["assessable"] == 0:
+        status, reason = "withheld", ("Prepzy can't check any of the required items automatically. Tick "
+                                      "\"I have this\" on the items below to get your score.")
     elif (req["completeness"] or 0) < MIN_COMPLETENESS or req["assessable"] < min(MIN_ASSESSABLE, req["total"]):
-        status, reason = "withheld", ("Prepzy can't check enough of the required items automatically yet. Tick "
-                                      "\"I meet this\" on the items below to get your score.")
+        # Show what we can measure, clearly labelled, instead of hiding the score entirely.
+        provisional = True
+        reason = (f"Based on the {req['assessable']} of {req['total']} required items Prepzy could check. Tick "
+                  "\"I have this\" on the rest to make it accurate.")
     if status == "withheld":
         req = {**req, "coverage": None}
 
@@ -279,7 +285,7 @@ def compute(analysis_result: dict[str, Any], resume_text: str | None, resume_ext
         "disclaimer": "Estimates how much of this posting's stated requirements your supplied evidence covers. "
                       "It is not a hiring probability or an employer's ATS score.",
         "summary": {"required": req, "preferred": pref, "unclear": unclear, "score_status": status,
-                    "withheld_reason": reason},
+                    "withheld_reason": reason, "provisional": provisional},
         "requirements": units,
         "conditions": conditions,
         "excluded": excluded,
