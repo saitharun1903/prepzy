@@ -54,7 +54,7 @@ export default function JobsPage() {
 
   return (
     <>
-      <PageHeader title="Jobs" description="Postings you have captured or pasted, with their analysis."
+      <PageHeader title="Jobs" description="Every job you've checked, with your match."
         actions={<ButtonLink href="/jobs/new" variant="secondary">Paste job text instead</ButtonLink>} />
       <LinkImport className="mb-6" />
 

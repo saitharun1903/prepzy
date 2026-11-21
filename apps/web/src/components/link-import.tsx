@@ -55,7 +55,7 @@ export function LinkImport({ redirectTab = "match", title = "Analyse a job from 
         <span className="grid place-items-center size-10 shrink-0 rounded-xl bg-accent-soft text-accent"><Link2 aria-hidden className="size-5" /></span>
         <div className="min-w-0 flex-1">
           <h2 id="link-h" className="font-semibold text-ink text-[17px]">{title}</h2>
-          <p className="text-[13.5px] text-ink-2 mt-0.5">Paste the job&apos;s link. Prepzy reads the posting and shows your match, gaps and interview prep.</p>
+          <p className="text-[13.5px] text-ink-2 mt-0.5">See your match, gaps and interview prep in seconds.</p>
         </div>
       </div>
 
@@ -81,7 +81,7 @@ export function LinkImport({ redirectTab = "match", title = "Analyse a job from 
               <Sparkles aria-hidden className="size-4" />Analyse
             </Button>
           </div>
-          <p className="text-[12.5px] text-muted">Works with <b className="font-medium text-ink-2">LinkedIn</b>, company careers pages and job boards like Greenhouse, Lever, Workday and Wellfound. For <b className="font-medium text-ink-2">Naukri</b> and <b className="font-medium text-ink-2">Indeed</b>, open the job and click the Prepzy extension (they don&apos;t share postings by link).</p>
+          <p className="text-[12.5px] text-muted">Works with LinkedIn and most career sites. Naukri or Indeed? Open the job and click the Prepzy extension.</p>
           {error ? <ErrorState error={error} title="Couldn't read that link" /> : null}
         </form>
       )}

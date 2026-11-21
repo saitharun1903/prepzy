@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { ApiError, apiFetch } from "@/lib/api";
 import { useApi } from "@/lib/hooks";
 import { formatDate, humanize, jobTitle, todayISO } from "@/lib/format";
@@ -17,7 +17,12 @@ export default function PreparationPage() {
   const jobs = useApi<{ items: JobSummary[] }>("jobs", { limit: 100 });
   const profile = useApi<Profile>("profile");
   const [jobId, setJobId] = useState("");
-  const [hours, setHours] = useState("");
+  const pickedJob = useRef(false);
+  // Default to the most recent job: that's what students usually want a plan for.
+  useEffect(() => {
+    if (!pickedJob.current && jobs.data?.items[0]) { pickedJob.current = true; setJobId(jobs.data.items[0].id); }
+  }, [jobs.data]);
+  const [hours, setHours] = useState("6");
   const [target, setTarget] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
@@ -50,22 +55,22 @@ export default function PreparationPage() {
 
   return (
     <>
-      <PageHeader title="Preparation" description="Weekly plans built from the gaps in a job comparison, or a generic starter plan for your target domains." />
+      <PageHeader title="Study plan" description="A week-by-week plan to learn what a job needs." />
 
       <section aria-labelledby="new-h" className="mb-12">
         <SectionTitle id="new-h">Create a plan</SectionTitle>
         <form onSubmit={create} className="rounded-lg border border-line bg-surface p-4 grid gap-4 sm:grid-cols-3 max-w-3xl" noValidate>
-          <Field label="Job (optional)" className="sm:col-span-3"
-            hint="With a job, the plan targets the priorities from its latest comparison. Without one, a generic starter plan is built from your profile domains.">
+          <Field label="Plan for which job?" className="sm:col-span-3"
+            hint="Pick a job to focus on its missing skills.">
             {(p) => jobs.loading && !jobs.data ? <Skeleton className="h-10" /> : (
               <Select id={p.id} value={jobId} onChange={(e) => setJobId(e.target.value)} aria-describedby={p.describedBy}>
-                <option value="">No job — generic starter plan</option>
+                <option value="">No specific job — general plan</option>
                 {jobs.data?.items.map((j) => <option key={j.id} value={j.id}>{jobTitle(j)}{j.company ? ` — ${j.company}` : ""}</option>)}
               </Select>
             )}
           </Field>
-          <Field label="Weekly hours" error={error?.fields?.weekly_hours}
-            hint={profile.data?.weekly_hours ? `Leave empty to use your profile (${profile.data.weekly_hours} h).` : "Required unless set in your profile."}>
+          <Field label="Hours per week" error={error?.fields?.weekly_hours}
+            hint={profile.data?.weekly_hours ? `Leave empty to use your profile (${profile.data.weekly_hours} h).` : "Most students manage 5–10 hours a week."}>
             {(p) => <Input id={p.id} type="number" min={1} max={60} value={hours} onChange={(e) => setHours(e.target.value)} aria-describedby={p.describedBy} aria-invalid={p.invalid} />}
           </Field>
           <Field label="Target date (optional)" error={error?.fields?.target_date}

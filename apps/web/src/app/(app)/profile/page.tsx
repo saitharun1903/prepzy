@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Career profile" };
 export default function ProfilePage() {
   return (
     <>
-      <PageHeader title="Career profile" description="Your goals and the skills you confirm yourself. Prepzy uses these alongside your resume when comparing you with a job." />
+      <PageHeader title="Career profile" description="Your goals and skills. Used with your resume to match you to jobs." />
       <div className="flex flex-col gap-12">
         <ProfileForm mode="profile" />
         <ConfirmedSkills />

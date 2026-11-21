@@ -40,7 +40,7 @@ export default function NotificationsPage() {
 
   return (
     <>
-      <PageHeader title="Notifications" description="Reminders and updates inside Prepzy. Email and push delivery are not available in this version."
+      <PageHeader title="Notifications" description="Your reminders and updates."
         actions={list.data?.unread ? <Button size="sm" loading={busy === "all"} onClick={() => act("all", "notifications/read-all", "All marked as read")}><Check aria-hidden className="size-4" />Mark all read</Button> : null} />
       {list.loading && !list.data ? <LoadingBlock rows={3} label="Loading notifications" /> : null}
       {list.error ? <ErrorState error={list.error} onRetry={list.reload} title="Could not load notifications" /> : null}

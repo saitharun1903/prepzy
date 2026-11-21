@@ -22,7 +22,7 @@ function Journey({ steps, loading }: { steps: Step[]; loading: boolean }) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 id="journey-h" className="serif text-xl">Your path to the next job</h2>
-          <p className="text-sm text-ink-2 mt-1">{next ? "Five short steps. Do them in order; each one uses the last." : "All five steps done. Repeat steps 2–5 for every job you're interested in."}</p>
+          <p className="text-sm text-ink-2 mt-1">{next ? "Five steps. Each one builds on the last." : "All done! Repeat steps 2–5 for each new job."}</p>
         </div>
         <p className="text-sm text-muted"><span className="num text-ink font-semibold">{doneCount}</span> of {steps.length} done</p>
       </div>
@@ -117,7 +117,7 @@ export default function HomePage() {
 
   return (
     <>
-      <PageHeader title={name ? `Hello, ${name}` : "Home"} description="Follow the steps below. Prepzy shows you exactly where you stand for each job and helps you close the gaps." />
+      <PageHeader title={name ? `Hello, ${name}` : "Home"} description="Paste a job link to see how you match — or follow the steps below." />
       {anyError ? <div className="mb-6"><ErrorState error={anyError} title="Some information could not be loaded" /></div> : null}
 
       <LinkImport className="mb-8" title="Found a job? Paste its link" />
@@ -149,10 +149,11 @@ export default function HomePage() {
       </section>
       ) : null}
 
+      {reminders.data?.length || activePlans.length ? (
       <div className="grid gap-12 lg:grid-cols-2">
+        {reminders.data?.length ? (
         <section aria-labelledby="upcoming">
           <SectionTitle id="upcoming" actions={<ButtonLink href="/applications" size="sm" variant="ghost">Applications</ButtonLink>}>Upcoming reminders</SectionTitle>
-          {reminders.data && !reminders.data.length ? <p className="text-sm text-muted">No scheduled reminders.</p> : null}
           {reminders.data?.length ? (
             <ul className="divide-y divide-line border-y border-line">
               {reminders.data.map((r) => (
@@ -168,10 +169,11 @@ export default function HomePage() {
             </ul>
           ) : null}
         </section>
+        ) : null}
 
+        {activePlans.length ? (
         <section aria-labelledby="plans">
           <SectionTitle id="plans" actions={<ButtonLink href="/preparation" size="sm" variant="ghost">All plans</ButtonLink>}>Active preparation</SectionTitle>
-          {roadmaps.data && !activePlans.length ? <p className="text-sm text-muted">No active plans.</p> : null}
           {activePlans.length ? (
             <ul className="divide-y divide-line border-y border-line">
               {activePlans.slice(0, 4).map((r) => {
@@ -191,7 +193,9 @@ export default function HomePage() {
             </ul>
           ) : null}
         </section>
+        ) : null}
       </div>
+      ) : null}
 
       <section aria-labelledby="recent-jobs" className="mt-12">
         <SectionTitle id="recent-jobs" actions={<ButtonLink href="/jobs/new" size="sm" variant="primary">Analyze a job</ButtonLink>}>Recent jobs</SectionTitle>

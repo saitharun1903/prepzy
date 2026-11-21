@@ -10,7 +10,7 @@ export default function OnboardingPage() {
       <PageHeader
         eyebrow="Getting started"
         title="Tell Prepzy what you are preparing for"
-        description="Every field is optional and can be changed later in your career profile. These answers shape interview question types, starter plans and scheduling."
+        description="All optional — it helps Prepzy suggest the right practice. You can change it later."
       />
       <ProfileForm mode="onboarding" />
     </>

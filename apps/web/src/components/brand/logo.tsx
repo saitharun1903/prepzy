@@ -1,3 +1,7 @@
+"use client";
+
+import { useId } from "react";
+
 /** Prepzy brand (option 07, "zap"): the wordmark "prep⚡y" with a gold lightning-bolt z. */
 export function ZapWordmark({ className = "" }: { className?: string }) {
   return (
@@ -13,14 +17,17 @@ export function ZapWordmark({ className = "" }: { className?: string }) {
 
 /** App-icon tile: gold bolt on a glossy navy rounded square. */
 export function ZapMark({ className = "size-7" }: { className?: string }) {
+  // Unique gradient ids: the mark renders more than once per page (sidebar + mobile header), and a
+  // gradient defined inside a hidden copy can't be referenced by the visible one.
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   return (
     <svg aria-hidden viewBox="0 0 64 64" className={`${className} drop-shadow-[0_4px_8px_rgba(15,29,51,0.35)]`}>
       <defs>
-        <linearGradient id="zap-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#2a4675" /><stop offset="1" stopColor="#0f1d33" /></linearGradient>
-        <linearGradient id="zap-gloss" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff" stopOpacity="0.4" /><stop offset="0.55" stopColor="#fff" stopOpacity="0" /></linearGradient>
+        <linearGradient id={`zbg${uid}`} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#2a4675" /><stop offset="1" stopColor="#0f1d33" /></linearGradient>
+        <linearGradient id={`zgl${uid}`} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#fff" stopOpacity="0.4" /><stop offset="0.55" stopColor="#fff" stopOpacity="0" /></linearGradient>
       </defs>
-      <rect width="64" height="64" rx="16" fill="url(#zap-bg)" />
-      <rect width="64" height="64" rx="16" fill="url(#zap-gloss)" />
+      <rect width="64" height="64" rx="16" fill={`url(#zbg${uid})`} />
+      <rect width="64" height="64" rx="16" fill={`url(#zgl${uid})`} />
       <path d="M37 10L18 37h12l-4 17 20-28H34z" fill="#e4c26e" />
     </svg>
   );

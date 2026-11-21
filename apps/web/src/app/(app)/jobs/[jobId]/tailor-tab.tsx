@@ -28,7 +28,7 @@ function TemplateThumb({ id }: { id: TemplateId }) {
   const accent = id === "classic" ? "#4f7ea0" : id === "modern" ? "#1b2f52" : "#111";
   const left = id === "modern";
   return (
-    <svg viewBox="0 0 120 150" className="w-full h-auto rounded-md bg-white ring-1 ring-black/10" aria-hidden>
+    <svg viewBox="0 0 120 150" className="h-28 w-auto rounded-md bg-white ring-1 ring-black/10 shrink-0" aria-hidden>
       <rect x={left ? 12 : 30} y="14" width="60" height="8" rx="2" fill={accent} />
       {id === "modern" ? <rect x="12" y="26" width="34" height="4" rx="2" fill="#c9a24b" /> : null}
       <rect x={left ? 12 : 22} y={id === "modern" ? 34 : 28} width="76" height="3" rx="1.5" fill="#9aa3b2" />
@@ -95,21 +95,23 @@ export function TailorTab({ jobId, jobTitle }: { jobId: string; jobTitle: string
       <section aria-labelledby="tpl-h" className="flex flex-col gap-4">
         <div>
           <h2 id="tpl-h" className="serif text-2xl">1. Choose a template</h2>
-          <p className="text-sm text-ink-2 mt-1">All three are one-page, LaTeX-style layouts. You can switch templates after generating.</p>
+          <p className="text-sm text-ink-2 mt-1">You can switch anytime after generating.</p>
         </div>
         <div role="radiogroup" aria-label="Resume template" className="grid gap-3 sm:grid-cols-3">
           {TEMPLATES.map((t) => {
             const on = template === t.id;
             return (
               <button key={t.id} type="button" role="radio" aria-checked={on} onClick={() => setTemplate(t.id)}
-                className={cx("text-left rounded-2xl border p-3 flex flex-col gap-2 transition bg-surface",
+                className={cx("text-left rounded-2xl border p-3 flex flex-row items-center gap-3 transition bg-surface",
                   on ? "border-accent ring-2 ring-accent/30 shadow-[0_12px_30px_-20px_rgba(15,29,51,0.6)]" : "border-line hover:border-accent/40")}>
                 <TemplateThumb id={t.id} />
-                <span className="flex items-center justify-between gap-2">
-                  <span className="font-semibold text-ink">{t.name}</span>
-                  {on ? <span className="grid place-items-center size-5 rounded-full bg-accent text-white"><Check aria-hidden className="size-3.5" /></span> : null}
+                <span className="flex flex-col gap-1 min-w-0">
+                  <span className="flex items-center gap-2">
+                    <span className="font-semibold text-ink">{t.name}</span>
+                    {on ? <span className="grid place-items-center size-5 rounded-full bg-accent text-white"><Check aria-hidden className="size-3.5" /></span> : null}
+                  </span>
+                  <span className="text-[13px] text-ink-2">{t.tagline}</span>
                 </span>
-                <span className="text-[13px] text-ink-2">{t.tagline}</span>
               </button>
             );
           })}
