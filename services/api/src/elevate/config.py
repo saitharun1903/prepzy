@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     access_token_minutes: int = Field(15, ge=1, le=60)
     refresh_token_days: int = Field(30, ge=1, le=90)
     admin_emails: str = ""
+    # "Continue with Google" (OAuth 2.0 / OpenID Connect). Both empty = Google sign-in is off.
+    google_client_id: str = ""
+    google_client_secret: str = ""
 
     llm_provider: Literal["ollama", "openai", "disabled"] = "ollama"
     ollama_url: str = "http://127.0.0.1:11434"
