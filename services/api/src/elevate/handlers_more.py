@@ -204,6 +204,50 @@ def handle_resume_tailor(ctx: OpContext) -> None:
     ctx.commit_result(write)
 
 
+# ------------------------------------------------------------------ apply kit
+@handler("apply_kit")
+def handle_apply_kit(ctx: OpContext) -> None:
+    from .services import apply_kit as ak
+    vid = uuid.UUID(ctx.payload["version_id"])
+    job_id = uuid.UUID(ctx.payload["job_id"])
+    ctx.stage("loading")
+    with ctx.owner_db() as db:
+        v = db.execute(select(ResumeVersion).where(ResumeVersion.id == vid, ResumeVersion.owner_id == ctx.owner_id)
+                       ).scalar_one_or_none()
+        if v is None or not v.text:
+            raise NotFound("Resume version not found", retryable=False)
+        resume_text = v.text
+        a = db.execute(select(JobAnalysis).where(JobAnalysis.job_id == job_id).order_by(JobAnalysis.created_at.desc())
+                       .limit(1)).scalar_one_or_none()
+        if a is None:
+            raise NotFound("Analyse the job first", retryable=False)
+        eff = effective_analysis(a, active_corrections(db, job_id, a.id))
+        reqs = [r["text"] for r in eff.get("requirements", []) if not r.get("removed_by_user") and not r.get("negated")]
+        title = eff["fields"]["title"]["value"] or "this role"
+        company = eff["fields"].get("company", {}).get("value")
+        snap = db.execute(select(JobSnapshot).where(JobSnapshot.job_id == job_id).order_by(JobSnapshot.captured_at.desc())
+                          .limit(1)).scalar_one_or_none()
+        job_text = snap.text if snap else "\n".join(reqs)
+    name = (resume_text.strip().splitlines() or [""])[0].strip()[:80]
+    if len(name.split()) > 5 or "@" in name:
+        name = ""
+    ctx.stage("writing")
+    comp = get_provider().generate_json(ak.SYSTEM, ak.build_prompt(resume_text, name, title, company, reqs), ak.SCHEMA,
+                                        max_tokens=4096, cancel_check=ctx.cancelled)
+    try:
+        kit = ak.Kit.model_validate(comp.data)
+    except ValidationError as e:
+        raise ModelOutputInvalid("The model returned the apply kit in an unexpected format.") from e
+    ctx.stage("checking facts")
+    out, removed = ak.validate(kit, resume_text, job_text, name or None)
+
+    def write(_: Session) -> dict[str, Any]:
+        return {"job_id": str(job_id), "version_id": str(vid), "job_title": title, "company": company, "kit": out,
+                "removed": removed[:20], "model": comp.model, "prompt_version": ak.PROMPT_VERSION,
+                "note": "Written only from your resume. Sentences that claimed skills or numbers not in your resume were removed."}
+    ctx.commit_result(write)
+
+
 # ------------------------------------------------------------------ interviews
 @handler("interview_generate")
 def handle_interview_generate(ctx: OpContext) -> None:

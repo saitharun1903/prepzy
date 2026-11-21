@@ -399,3 +399,40 @@ def list_job_reports(job_id: uuid.UUID, ctx: Authed) -> list[dict[str, Any]]:
     rows = db.execute(select(MatchReport).where(MatchReport.job_id == job_id).order_by(MatchReport.created_at.desc())).scalars()
     return [{"id": str(r.id), "created_at": r.created_at, "resume_version_id": str(r.resume_version_id) if r.resume_version_id else None,
              "summary": r.result.get("summary")} for r in rows]
+
+
+# ------------------------------------------------------------------ apply kit
+class ApplyKitIn(BaseModel):
+    resume_version_id: uuid.UUID
+
+
+@router.post("/{job_id}/apply-kit", status_code=202)
+def start_apply_kit(job_id: uuid.UUID, body: ApplyKitIn, ctx: Authed,
+                    idempotency_key: str | None = Header(default=None, max_length=120)) -> dict[str, Any]:
+    """Write the cover letter, LinkedIn note, referral request and cold email for this job from the user's resume."""
+    from ..models import ResumeVersion
+    db, actor = ctx
+    jobsvc.get_job(db, actor.id, job_id)
+    v = db.execute(select(ResumeVersion).where(ResumeVersion.id == body.resume_version_id, ResumeVersion.owner_id == actor.id)
+                   ).scalar_one_or_none()
+    if v is None or v.parse_status != "parsed":
+        raise ValidationFailed("Choose a resume that has finished uploading.", fields={"resume_version_id": "Not ready"})
+    op, _ = ops.create(db, actor.id, "apply_kit", {"job_id": str(job_id), "version_id": str(v.id)}, idempotency_key)
+    db.commit()
+    return {"operation_id": str(op.id), "status_url": f"/api/v1/operations/{op.id}"}
+
+
+@router.get("/{job_id}/apply-kit")
+def latest_apply_kit(job_id: uuid.UUID, ctx: Authed) -> dict[str, Any]:
+    """The most recent finished apply kit and tailored resume for this job (so the page survives reloads)."""
+    from ..models import Operation
+    db, actor = ctx
+    jobsvc.get_job(db, actor.id, job_id)
+
+    def latest(kind: str) -> dict[str, Any] | None:
+        op = db.execute(select(Operation).where(Operation.owner_id == actor.id, Operation.kind == kind,
+                                                Operation.state.in_(("succeeded", "partially_succeeded")),
+                                                Operation.payload["job_id"].astext == str(job_id))
+                        .order_by(Operation.created_at.desc()).limit(1)).scalar_one_or_none()
+        return op.result if op else None
+    return {"kit": latest("apply_kit"), "resume": latest("resume_tailor")}

@@ -5,7 +5,7 @@ import { ZapMark, ZapWordmark } from "@/components/brand/logo";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  Bell, Briefcase, CalendarCheck, FileCode2, FileText, Home, LogOut, MailWarning, Menu, MessagesSquare, Puzzle, Route, Settings, ShieldCheck, UserRound, X,
+  Bell, Briefcase, CalendarCheck, FileCode2, FileText, Gauge, Home, LogOut, MailWarning, Menu, MessagesSquare, Puzzle, Route, Settings, ShieldCheck, UserRound, X,
 } from "lucide-react";
 import { sessionPost } from "@/lib/api";
 import { ResendVerification, cx } from "@/components/ui/primitives";
@@ -17,6 +17,7 @@ type NavItem = { href: string; label: string; short?: string; icon: typeof Home;
 const NAV: NavItem[] = [
   { href: "/", label: "Home", icon: Home, group: "main" },
   { href: "/resume-builder", label: "Resume builder", icon: FileCode2, group: "main" },
+  { href: "/ats", label: "ATS checker", icon: Gauge, group: "main" },
   { href: "/resumes", label: "My resume", short: "Resume", icon: FileText, step: 1, group: "steps" },
   { href: "/jobs", label: "Jobs & match", short: "Jobs", icon: Briefcase, step: 2, group: "steps" },
   { href: "/preparation", label: "Study plan", short: "Plan", icon: Route, step: 3, group: "steps" },

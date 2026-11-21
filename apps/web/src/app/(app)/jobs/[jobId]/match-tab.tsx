@@ -231,9 +231,9 @@ export function MatchTab({ jobId, hasAnalysis, onJobChanged, onGoTo }: {
           <section aria-labelledby="next-h">
             <h2 id="next-h" className="serif text-2xl">What to do next</h2>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              <NextCard n={1} icon={<Wand2 aria-hidden className="size-5" />} title="Get a tailored resume"
-                text="A one-page resume for this job in a professional template, as a PDF or LaTeX file."
-                action="Generate resume" onClick={() => onGoTo?.("resume")} />
+              <NextCard n={1} icon={<Wand2 aria-hidden className="size-5" />} title="Get your apply kit"
+                text="One click: tailored resume PDF, cover letter, LinkedIn note, referral request, cold email and ATS score."
+                action="Create apply kit" onClick={() => onGoTo?.("apply")} />
               <NextCard n={2} icon={<FileText aria-hidden className="size-5" />} title="Improve your resume"
                 text={missingSkills.length ? `Add proof of ${missingSkills.join(", ")} if you have it, and fix wording.` : "Tighten wording and make your skills easy to spot."}
                 action="Open resume tips" onClick={() => onGoTo?.("guidance")} />

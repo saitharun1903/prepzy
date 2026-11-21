@@ -271,7 +271,8 @@ def test_section_gap_fill_adds_missed_preferred_items():
     assert by[("docker", "kubernetes")]["importance"] == "preferred"
     assert by[("python", "r_lang")]["importance"] == "required" and by[("python", "r_lang")]["group"] == "any"
     assert ("java",) not in by  # "About us" section is not a requirement section
-    assert added == 2
+    assert by[("kafka",)]["importance"] == "preferred"
+    assert added == 3
 
 
 def test_transient_model_failure_raises_unless_final_attempt(monkeypatch):

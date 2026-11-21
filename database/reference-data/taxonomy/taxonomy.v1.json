@@ -141,6 +141,21 @@
     {"id": "communication", "label": "Communication", "domains": ["software_engineering", "data_analytics", "ai_ml", "cloud_devops", "cybersecurity", "digital_marketing", "business_analysis", "sales_cs", "hr_recruiting", "finance_ops"], "aliases": ["communication skills", "verbal communication", "written communication", "presentation skills"], "related": [], "prereqs": [], "kind": "soft"},
     {"id": "problem_solving", "label": "Problem solving", "domains": ["software_engineering", "data_analytics", "ai_ml", "cloud_devops", "cybersecurity", "digital_marketing", "business_analysis", "sales_cs", "hr_recruiting", "finance_ops"], "aliases": ["analytical thinking", "critical thinking", "analytical skills"], "related": [], "prereqs": [], "kind": "soft"},
     {"id": "teamwork", "label": "Teamwork & collaboration", "domains": ["software_engineering", "data_analytics", "ai_ml", "cloud_devops", "cybersecurity", "digital_marketing", "business_analysis", "sales_cs", "hr_recruiting", "finance_ops"], "aliases": ["collaboration", "team player", "cross-functional collaboration"], "related": [], "prereqs": [], "kind": "soft"},
-    {"id": "leadership", "label": "Leadership", "domains": ["software_engineering", "data_analytics", "ai_ml", "cloud_devops", "cybersecurity", "digital_marketing", "business_analysis", "sales_cs", "hr_recruiting", "finance_ops"], "aliases": ["team leadership", "people management", "mentoring"], "related": [], "prereqs": [], "kind": "soft"}
+    {"id": "leadership", "label": "Leadership", "domains": ["software_engineering", "data_analytics", "ai_ml", "cloud_devops", "cybersecurity", "digital_marketing", "business_analysis", "sales_cs", "hr_recruiting", "finance_ops"], "aliases": ["team leadership", "people management", "mentoring"], "related": [], "prereqs": [], "kind": "soft"},
+    {"id": "kafka", "label": "Apache Kafka", "domains": ["software_engineering", "cloud_devops"], "aliases": ["kafka"], "related": [], "prereqs": [], "kind": "tool"},
+    {"id": "rabbitmq", "label": "RabbitMQ", "domains": ["software_engineering", "cloud_devops"], "aliases": [], "related": [], "prereqs": [], "kind": "tool"},
+    {"id": "elasticsearch", "label": "Elasticsearch", "domains": ["software_engineering", "cloud_devops"], "aliases": ["elastic search", "opensearch"], "related": [], "prereqs": [], "kind": "tool"},
+    {"id": "jenkins", "label": "Jenkins", "domains": ["cloud_devops"], "aliases": [], "related": ["ci_cd"], "prereqs": [], "kind": "tool"},
+    {"id": "github_actions", "label": "GitHub Actions", "domains": ["cloud_devops"], "aliases": [], "related": ["ci_cd", "git"], "prereqs": [], "kind": "tool"},
+    {"id": "hadoop", "label": "Hadoop", "domains": ["data_analytics"], "aliases": ["hdfs"], "related": ["spark"], "prereqs": [], "kind": "tool"},
+    {"id": "airflow", "label": "Apache Airflow", "domains": ["data_analytics", "cloud_devops"], "aliases": ["airflow"], "related": [], "prereqs": [], "kind": "tool"},
+    {"id": "figma", "label": "Figma", "domains": ["software_engineering"], "aliases": [], "related": [], "prereqs": [], "kind": "tool"},
+    {"id": "flutter", "label": "Flutter", "domains": ["software_engineering"], "aliases": [], "related": [], "prereqs": [], "kind": "tool"},
+    {"id": "express", "label": "Express.js", "domains": ["software_engineering"], "aliases": ["expressjs", "express js"], "related": ["nodejs"], "prereqs": [], "kind": "tool"},
+    {"id": "numpy", "label": "NumPy", "domains": ["data_analytics", "ai_ml"], "aliases": [], "related": ["python", "pandas"], "prereqs": [], "kind": "tool"},
+    {"id": "redux", "label": "Redux", "domains": ["software_engineering"], "aliases": [], "related": ["react"], "prereqs": [], "kind": "tool"},
+    {"id": "snowflake", "label": "Snowflake", "domains": ["data_analytics"], "aliases": [], "related": ["sql"], "prereqs": [], "kind": "tool"},
+    {"id": "dbt", "label": "dbt", "domains": ["data_analytics"], "aliases": ["data build tool"], "related": ["sql"], "prereqs": [], "kind": "tool"},
+    {"id": "langchain", "label": "LangChain", "domains": ["ai_ml"], "aliases": [], "related": ["python"], "prereqs": [], "kind": "tool"}
   ]
 }

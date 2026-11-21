@@ -18,10 +18,12 @@ import { TailorTab } from "./tailor-tab";
 import { InterviewTab } from "./interview-tab";
 import { AskTab } from "./ask-tab";
 import { ApplicationTab } from "./application-tab";
+import { ApplyKitTab } from "./apply-kit-tab";
 
-// Six tabs, in the order people use them. Related screens share a tab with a small switch inside.
+// Seven tabs, in the order people use them. Related screens share a tab with a small switch inside.
 const TABS = [
   { id: "match", label: "Your match", hint: "How well you fit this job, and what to do next." },
+  { id: "apply", label: "Apply kit", hint: "One click: tailored resume PDF, cover letter, LinkedIn note, referral request, cold email and ATS score." },
   { id: "resume", label: "Resume", hint: "Get a one-page resume for this job, or fix lines in your current one." },
   { id: "interview", label: "Interview prep", hint: "Practice questions and real interview experiences." },
   { id: "ask", label: "Ask AI", hint: "Ask anything about this job." },
@@ -126,6 +128,7 @@ function Workspace({ jobId }: { jobId: string }) {
         {tab === "resume" && view === "fix" ? <GuidanceTab jobId={jobId} /> : null}
         {tab === "resume" && view === "tailored" ? <TailorTab jobId={jobId} jobTitle={d.analysis?.result.fields.title?.value || d.job.title || ""} /> : null}
         {tab === "interview" ? <InterviewTab jobId={jobId} company={company} title={d.analysis?.result.fields.title?.value || d.job.title} /> : null}
+        {tab === "apply" ? <ApplyKitTab jobId={jobId} jobTitle={d.analysis?.result.fields.title?.value || d.job.title || ""} company={company} /> : null}
         {tab === "ask" ? <AskTab jobId={jobId} /> : null}
         {tab === "application" ? <ApplicationTab jobId={jobId} /> : null}
       </TabPanel>
