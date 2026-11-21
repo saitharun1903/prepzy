@@ -72,7 +72,7 @@ export const config = {
     "/api/v1/:path*",
     "/health/:path*",
     {
-      source: "/((?!api|_next/static|_next/image|favicon.ico|icon.svg|downloads/|fonts/|templates/|health/|metrics$).*)",
+      source: "/((?!api|_next/static|_next/image|favicon.ico|icon.svg|downloads/|fonts/|templates/|landing/|health/|metrics$).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

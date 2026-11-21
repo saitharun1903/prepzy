@@ -49,8 +49,14 @@ export default function PrivacyPage() {
         </section>
         <section>
           <h2 className="text-ink font-semibold mb-1">Browser extension</h2>
-          <p>If you connect the extension, it reads only the tab you click it on, only when you click it, and sends that
-            page&apos;s text to {HOSTED ? "your Prepzy account" : "this local Prepzy installation"}.</p>
+          <ul className="list-disc pl-5 flex flex-col gap-1">
+            <li>It acts only when you click the Prepzy icon, and only on that tab. It never reads your browsing history,
+              other tabs, or pages you haven&apos;t clicked it on.</li>
+            <li>What it reads: the visible text, title and address of that job page. It sends them to {HOSTED ? "your Prepzy account" : "this local Prepzy installation"} to analyse the job. Nothing else is collected.</li>
+            <li>What it stores in your browser: your Prepzy sign-in token and the progress of the job you&apos;re analysing.
+              Signing out, or &ldquo;Sign out everywhere&rdquo; in Settings, removes access.</li>
+            <li>No ads, no tracking, no analytics, and your data is never sold or shared with third parties.</li>
+          </ul>
         </section>
       </div>
     </article>
