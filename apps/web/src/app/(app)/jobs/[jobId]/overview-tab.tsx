@@ -18,6 +18,7 @@ export function OverviewTab({ detail, reload, analysisId, setAnalysisId }: {
 }) {
   const { notify } = useToast();
   const a = detail.analysis;
+  const [showEmpty, setShowEmpty] = useState(false);
   const [editing, setEditing] = useState<{ key: string; field: AnalysisField } | null>(null);
   const [value, setValue] = useState("");
   const [note, setNote] = useState("");
@@ -99,7 +100,7 @@ export function OverviewTab({ detail, reload, analysisId, setAnalysisId }: {
           <section aria-labelledby="fields-h">
             <SectionTitle id="fields-h">Posting details</SectionTitle>
             <ul className="divide-y divide-line border-y border-line">
-              {Object.keys(FIELD_LABELS).map((key) => {
+              {Object.keys(FIELD_LABELS).filter((key) => showEmpty || a.result.fields[key]?.value).map((key) => {
                 const f = a.result.fields[key];
                 if (!f) return null;
                 return (
@@ -135,6 +136,11 @@ export function OverviewTab({ detail, reload, analysisId, setAnalysisId }: {
                 );
               })}
             </ul>
+            {Object.keys(FIELD_LABELS).some((k) => a.result.fields[k] && !a.result.fields[k]!.value) ? (
+              <button type="button" onClick={() => setShowEmpty((v) => !v)} className="mt-2 text-[13px] text-accent hover:underline underline-offset-4">
+                {showEmpty ? "Hide fields the posting doesn't state" : `Show fields the posting doesn't state (${Object.keys(FIELD_LABELS).filter((k) => a.result.fields[k] && !a.result.fields[k]!.value).length})`}
+              </button>
+            ) : null}
           </section>
 
           {a.result.responsibilities.length ? (
@@ -163,25 +169,26 @@ export function OverviewTab({ detail, reload, analysisId, setAnalysisId }: {
             </div>
           </section>
 
+          {a.issues.length ? (
           <section aria-labelledby="issues-h">
-            <SectionTitle id="issues-h">Issues ({a.issues.length})</SectionTitle>
+            <SectionTitle id="issues-h">Things to double-check ({a.issues.length})</SectionTitle>
             {a.issues.length ? (
               <ul className="flex flex-col gap-2">
                 {a.issues.map((i, n) => (
                   <li key={n} className="flex items-start gap-2 text-sm">
                     <AlertTriangle aria-hidden className="size-4 text-warn mt-0.5 shrink-0" />
                     <span className="min-w-0">
-                      <span className="font-mono text-[12px] text-muted mr-2">{i.code}</span>
                       <span className="text-ink-2 break-words">{i.message}</span>
                     </span>
                   </li>
                 ))}
               </ul>
-            ) : <p className="text-sm text-muted">No issues were recorded.</p>}
+            ) : null}
           </section>
+          ) : null}
 
-          <section aria-labelledby="meta-h">
-            <SectionTitle id="meta-h">Analysis details</SectionTitle>
+          <details className="group rounded-xl bg-surface-2 px-4 py-3">
+            <summary className="cursor-pointer list-none text-sm font-medium text-ink-2">Technical details</summary>
             <DefinitionList items={[
               { term: "Status", desc: humanize(a.status) },
               { term: "Created", desc: formatDateTime(a.created_at) },
@@ -206,7 +213,7 @@ export function OverviewTab({ detail, reload, analysisId, setAnalysisId }: {
                 </Field>
               </div>
             ) : null}
-          </section>
+          </details>
         </>
       )}
 

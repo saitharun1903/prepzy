@@ -100,3 +100,35 @@ def test_kit_guard_ignores_digits_inside_company_names():
     g = Guard("Asha\nBuilt REST APIs in Java with Spring Boot.", "Back End Developer Intern at Jobs4PanIndia")
     assert g.sentence_ok("I'm applying for the Back End Developer Intern role at Jobs4PanIndia.")
     assert not g.sentence_ok("I improved latency by 40% at my internship.")
+
+
+def test_ats_fix_renames_and_adds_only_confirmed_skills():
+    from elevate.services.ats_fix import apply_keywords
+    r = {"summary": "Backend student using Postgres.", "skills": [{"group": "Languages", "items": ["Java"]},
+                                                                  {"group": "Tools", "items": ["Postgres", "Git"]}],
+         "experience": [{"bullets": ["Built APIs on Postgres."], "tech": None}], "projects": []}
+    out, added, renamed = apply_keywords(r, ["Docker", "git", "\\input{x}"], [{"from_term": "Postgres", "to_term": "PostgreSQL"}])
+    assert out["skills"][1]["items"] == ["PostgreSQL", "Git", "Docker"]
+    assert out["summary"] == "Backend student using PostgreSQL." and "PostgreSQL" in out["experience"][0]["bullets"][0]
+    assert added == ["Docker"] and renamed == ["Postgres → PostgreSQL"]
+
+
+def test_kit_guard_catches_tools_credited_to_the_wrong_project():
+    from elevate.services.apply_kit import Guard, humanize
+    resume = ("Asha\nSKILLS\nJava, Spring Boot, React, Docker\nPROJECTS\nWriteCode - Online IDE (React, Docker)\n"
+              "- Built a live IDE with React and Docker\n- Reduced CPU from 58% to 7%\nACHIEVEMENTS\n- Hackathon winner 2025\n")
+    g = Guard(resume, "")
+    assert g.misattributed("WriteCode's back end uses Java and Spring Boot.") == ["WriteCode: Java", "WriteCode: Spring Boot"]
+    assert g.misattributed("WriteCode runs code in Docker with a React UI.") == []
+    assert g.misattributed("I work in Java and Spring Boot.") == []           # skills-section skills, no project named
+    assert g.vague_scale("It serves dozens of users.")
+    assert g.sentence_ok("I'd welcome a 15-minute call.")                    # call length is not a claimed number
+    assert humanize("I cut CPU from 58% to 7%, demonstrating strong skills. It aligns well with the role.") == \
+        "I cut CPU from 58% to 7%. It fits the role."
+
+
+def test_kit_guard_follows_the_project_reference():
+    from elevate.services.apply_kit import Guard
+    resume = "Asha\nPROJECTS\nElevate - Extension (REST APIs)\n- Built a browser extension with REST APIs\n- Added AI matching\n"
+    g = Guard(resume, "")
+    assert g.clean("I built Elevate, a browser extension. The project used a PostgreSQL database.") == "I built Elevate, a browser extension."

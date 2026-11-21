@@ -79,14 +79,15 @@ def test_totp_two_step_login_replay_and_recovery(client, outbox):
     totp = pyotp.TOTP(setup["secret"])
     bad = client.post("/api/v1/auth/mfa/enable", json={"code": "000000"}, headers=h)
     assert bad.status_code == 422
-    codes = client.post("/api/v1/auth/mfa/enable", json={"code": totp.now()}, headers=h).json()["recovery_codes"]
+    used = totp.now()  # keep this exact code: a new 30 s window could start before the replay below
+    codes = client.post("/api/v1/auth/mfa/enable", json={"code": used}, headers=h).json()["recovery_codes"]
     assert len(codes) == 10
     # enabling MFA revoked the old session's access token
     assert client.get("/api/v1/me", headers=h).status_code == 401
     step1 = client.post("/api/v1/auth/login", json={"email": em, "password": PW}).json()
     assert step1["mfa_required"] is True and "access_token" not in step1
     # the code used for enabling cannot be replayed
-    replay = client.post("/api/v1/auth/login/mfa", json={"mfa_token": step1["mfa_token"], "code": totp.now()})
+    replay = client.post("/api/v1/auth/login/mfa", json={"mfa_token": step1["mfa_token"], "code": used})
     assert replay.status_code == 401
     ok = client.post("/api/v1/auth/login/mfa", json={"mfa_token": step1["mfa_token"], "code": codes[0]})
     assert ok.status_code == 200 and ok.json()["access_token"]

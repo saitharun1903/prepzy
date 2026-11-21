@@ -37,7 +37,10 @@ FROM python:3.13-slim
 RUN set -e; apt-get update \
  && apt-get install -y --no-install-recommends texlive-latex-base texlive-latex-recommended texlive-latex-extra \
       texlive-fonts-recommended lmodern tex-gyre poppler-utils util-linux curl unzip ca-certificates \
- && curl -fsSL --retry 4 --retry-delay 3 -o /tmp/fa5.zip "https://mirrors.ctan.org/fonts/fontawesome5.zip" \
+ && for u in https://mirrors.ctan.org/fonts/fontawesome5.zip https://mirrors.mit.edu/CTAN/fonts/fontawesome5.zip \
+      https://ftp.math.utah.edu/pub/ctan/tex-archive/fonts/fontawesome5.zip https://mirror.ox.ac.uk/sites/ctan.org/fonts/fontawesome5.zip; do \
+      curl -fsSL --retry 3 --retry-delay 3 -o /tmp/fa5.zip "$u" && unzip -tq /tmp/fa5.zip >/dev/null && break; rm -f /tmp/fa5.zip; done \
+ && test -s /tmp/fa5.zip \
  && mkdir -p /tmp/fa5 && unzip -q /tmp/fa5.zip -d /tmp/fa5 \
  && T=/usr/local/share/texmf \
  && place() { mkdir -p "$T/$2"; find /tmp/fa5 -type f -name "$1" -not -path "*/doc/*" -exec cp {} "$T/$2/" \; ; } \

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { FileCode2, Sparkles, Trash2, Type } from "lucide-react";
+import { Code2, FileCode2, FileUp, Sparkles, Trash2, Type } from "lucide-react";
 import { ApiError, apiFetch, newIdempotencyKey } from "@/lib/api";
 import { useApi } from "@/lib/hooks";
 import { relativeTime } from "@/lib/format";
@@ -13,7 +13,7 @@ import { ResumeVersionSelect, type VersionPick } from "@/components/resume-versi
 import { OperationStatus } from "@/components/operation-status";
 import { TemplateGallery } from "@/components/resume/template-gallery";
 import { Dialog } from "@/components/ui/dialog";
-import { Button, EmptyState, ErrorState, LoadingBlock, PageHeader, cx } from "@/components/ui/primitives";
+import { Button, EmptyState, ErrorState, Input, LoadingBlock, PageHeader, Textarea, cx } from "@/components/ui/primitives";
 import { useToast } from "@/components/ui/toast";
 
 type DocSummary = { id: string; title: string; template: string; version: number; updated_at: string; job_id: string | null; has_data: boolean };
@@ -22,7 +22,9 @@ export default function ResumeBuilderPage() {
   const router = useRouter();
   const { notify } = useToast();
   const docs = useApi<{ items: DocSummary[] }>("latex/docs");
-  const [fill, setFill] = useState<"sample" | "mine">("sample");
+  const [fill, setFill] = useState<"sample" | "mine" | "code">("sample");
+  const [code, setCode] = useState("");
+  const [codeTitle, setCodeTitle] = useState("");
   const [pick, setPick] = useState<VersionPick>(null);
   const [creating, setCreating] = useState<string | null>(null);
   const [opId, setOpId] = useState<string | null>(null);
@@ -54,6 +56,24 @@ export default function ResumeBuilderPage() {
     }
   };
 
+  const createFromCode = async () => {
+    setCreating("custom");
+    try {
+      const d = await apiFetch<{ id: string }>("latex/docs", { method: "POST", body: { title: codeTitle.trim() || "My LaTeX resume", template: "custom", source: code } });
+      router.push(`/resume-builder/${d.id}`);
+    } catch (e) {
+      notify("error", (e as ApiError).message);
+      setCreating(null);
+    }
+  };
+
+  const loadTex = async (f: File | undefined) => {
+    if (!f) return;
+    if (f.size > 200_000) { notify("error", "That file is too large for a resume (max 200 KB)."); return; }
+    setCode(await f.text());
+    if (!codeTitle) setCodeTitle(f.name.replace(/\.tex$/i, "").slice(0, 120));
+  };
+
   const remove = async () => {
     if (!del) return;
     setBusy(true);
@@ -70,38 +90,59 @@ export default function ResumeBuilderPage() {
 
   return (
     <>
-      <PageHeader title="Resume builder" description="Professional LaTeX resumes with live preview — fill a form or edit the code, like Overleaf." />
+      <PageHeader title="Resume builder" description="Professional LaTeX resumes with a live PDF preview — like Overleaf, made simple." />
 
       <section aria-labelledby="tpl-h" className="mb-12">
         <h2 id="tpl-h" className="serif text-2xl">Start a new resume</h2>
-
-        <div className="mt-3 mb-5 rounded-2xl border border-line bg-surface p-4">
-          <p className="text-sm font-medium text-ink mb-2">Fill it with</p>
-          <div role="radiogroup" aria-label="Fill the template with" className="flex flex-wrap gap-2">
-            {([["sample", Type, "Sample text", "Replace it with your own details"], ["mine", Sparkles, "My uploaded resume", "AI copies your real details — nothing invented"]] as const).map(([id, Icon, t, d]) => (
-              <button key={id} type="button" role="radio" aria-checked={fill === id} onClick={() => setFill(id)}
-                className={cx("flex items-start gap-2.5 rounded-xl border px-3.5 py-2.5 text-left transition min-w-[15rem]", fill === id ? "border-accent bg-accent-soft" : "border-line hover:border-accent/40")}>
-                <Icon aria-hidden className="size-4.5 mt-0.5 text-accent shrink-0" />
-                <span><span className="block font-medium text-ink text-sm">{t}</span><span className="block text-[12.5px] text-ink-2">{d}</span></span>
-              </button>
-            ))}
-          </div>
-          {fill === "mine" ? <div className="mt-3 max-w-xl"><ResumeVersionSelect value={pick} onChange={setPick} label="Use this resume" autoSelect /></div> : null}
-          {opId ? (
-            <div className="mt-3">
-              <OperationStatus<TailorResult> opId={opId} label="Reading your resume" onDone={async (op) => {
-                setOpId(null);
-                if (op.result && "resume" in op.result && creating) {
-                  try { await createDoc(creating, op.result.resume, `${op.result.resume.name || "My"} resume (${latexTemplate(creating).label})`); }
-                  catch (e) { notify("error", (e as ApiError).message); setCreating(null); }
-                } else setCreating(null);
-              }} />
-            </div>
-          ) : null}
+        <div role="radiogroup" aria-label="How do you want to start?" className="mt-3 grid gap-3 sm:grid-cols-3">
+          {([
+            ["sample", Type, "Pick a template", "Start with sample text and replace it"],
+            ["mine", Sparkles, "Use my uploaded resume", "Your real details in any template"],
+            ["code", Code2, "Paste my LaTeX code", "Already have a .tex? Edit it here"],
+          ] as const).map(([id, Icon, t, d]) => (
+            <button key={id} type="button" role="radio" aria-checked={fill === id} onClick={() => setFill(id)}
+              className={cx("flex items-start gap-3 rounded-2xl border p-4 text-left transition bg-surface",
+                fill === id ? "border-accent ring-2 ring-accent/20" : "border-line hover:border-accent/40")}>
+              <span className={cx("grid place-items-center size-9 rounded-xl shrink-0", fill === id ? "bg-accent text-white" : "bg-accent-soft text-accent")}><Icon aria-hidden className="size-4.5" /></span>
+              <span><span className="block font-semibold text-ink">{t}</span><span className="block text-[13px] text-ink-2 mt-0.5">{d}</span></span>
+            </button>
+          ))}
         </div>
 
-        <p className="text-sm text-ink-2 mb-3">Pick a template — you can switch to any other one later without losing your content.</p>
-        <TemplateGallery onPick={start} busyId={creating} />
+        {fill === "code" ? (
+          <div className="mt-5 rounded-2xl border border-line bg-surface p-4 sm:p-5 flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <Input aria-label="Resume name" className="max-w-xs" value={codeTitle} maxLength={120} onChange={(e) => setCodeTitle(e.target.value)} placeholder="Resume name" />
+              <label className="inline-flex items-center gap-1.5 h-10 rounded-lg border border-line-strong px-3 text-sm cursor-pointer hover:bg-surface-2">
+                <FileUp aria-hidden className="size-4" />Open .tex file
+                <input type="file" accept=".tex,text/x-tex,text/plain" className="sr-only" onChange={(e) => void loadTex(e.target.files?.[0])} />
+              </label>
+            </div>
+            <Textarea aria-label="LaTeX code" rows={14} spellCheck={false} value={code} onChange={(e) => setCode(e.target.value)}
+              className="font-mono text-[12.5px]" placeholder={"\\documentclass{article}\n\\begin{document}\n...\n\\end{document}"} />
+            <div className="flex flex-wrap items-center gap-3">
+              <Button variant="primary" loading={creating === "custom"} disabled={!/\\begin\{document\}/.test(code)} onClick={createFromCode}>Open in editor</Button>
+              <span className="text-[13px] text-muted">Works with Overleaf code. Images and custom .cls files aren&apos;t supported.</span>
+            </div>
+          </div>
+        ) : (
+          <>
+            {fill === "mine" ? <div className="mt-4 max-w-xl"><ResumeVersionSelect value={pick} onChange={setPick} label="Use this resume" autoSelect /></div> : null}
+            {opId ? (
+              <div className="mt-3">
+                <OperationStatus<TailorResult> opId={opId} label="Reading your resume" onDone={async (op) => {
+                  setOpId(null);
+                  if (op.result && "resume" in op.result && creating) {
+                    try { await createDoc(creating, op.result.resume, `${op.result.resume.name || "My"} resume (${latexTemplate(creating).label})`); }
+                    catch (e) { notify("error", (e as ApiError).message); setCreating(null); }
+                  } else setCreating(null);
+                }} />
+              </div>
+            ) : null}
+            <p className="text-sm text-ink-2 mt-5 mb-3">Choose a template — you can switch later without losing anything.</p>
+            <TemplateGallery onPick={start} busyId={creating} />
+          </>
+        )}
       </section>
 
       <section aria-labelledby="docs-h">

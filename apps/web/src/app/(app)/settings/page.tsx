@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { CheckCircle2, CircleSlash, Download, Plug } from "lucide-react";
+import { Download, Plug } from "lucide-react";
 import { ApiError, apiFetch, downloadFile, sessionPost } from "@/lib/api";
 import type { Profile } from "@/lib/types";
 import { useSession } from "@/components/shell/session";
@@ -13,18 +13,8 @@ import {
 import { Dialog } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/toast";
 import { SecuritySection } from "./security-section";
-import { HOSTED, AI_PROVIDER, AI_NOTICE } from "@/lib/hosting";
+import { AI_NOTICE } from "@/lib/hosting";
 
-const OPTIONAL_FEATURES: { key: keyof NonNullable<ReturnType<typeof useSession>["me"]>["capabilities"]; label: string }[] = [
-  { key: "ai_analysis", label: HOSTED ? `AI analysis (${AI_PROVIDER})` : "Local AI analysis (Ollama model)" },
-  { key: "semantic_search", label: "Semantic search in the knowledge library" },
-  { key: "ocr", label: "OCR for scanned PDFs" },
-  { key: "email_delivery", label: "Email delivery of reminders" },
-  { key: "calendar_sync", label: "Calendar sync" },
-  { key: "push", label: "Push notifications" },
-  { key: "code_execution", label: "Running code answers" },
-  { key: "voice_interviews", label: "Voice interviews" },
-];
 
 function TimezoneSection() {
   const { me, reloadMe } = useSession();
@@ -182,26 +172,7 @@ export default function SettingsPage() {
           <ButtonLink href="/extension/connect"><Plug aria-hidden className="size-4" />Connect browser extension</ButtonLink>
         </section>
 
-        <section aria-labelledby="cap-h">
-          <SectionTitle id="cap-h">Features in this installation</SectionTitle>
-          {!me ? <Skeleton className="h-24 max-w-xl" /> : (
-            <ul className="divide-y divide-line border-y border-line max-w-2xl">
-              {OPTIONAL_FEATURES.map((f) => {
-                const on = me.capabilities[f.key];
-                return (
-                  <li key={f.key} className="py-2.5 flex items-center gap-3 text-sm">
-                    {on ? <CheckCircle2 aria-hidden className="size-4 text-ok" /> : <CircleSlash aria-hidden className="size-4 text-muted" />}
-                    <span className="flex-1">{f.label}</span>
-                    <span className={on ? "text-ok" : "text-muted"}>
-                      {on ? "Available" : f.key === "ai_analysis" || f.key === "semantic_search" ? (HOSTED ? "Unavailable right now (AI service not reachable)" : "Unavailable right now (local model not reachable or not installed)") : "Not available in this version"}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          <p className="mt-2 text-[13px] text-muted">{AI_NOTICE} Supported language: English.</p>
-        </section>
+        <p className="text-[13px] text-muted -mt-4">{AI_NOTICE}</p>
 
         <SecuritySection />
 

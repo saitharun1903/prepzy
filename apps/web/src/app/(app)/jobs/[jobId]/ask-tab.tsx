@@ -36,7 +36,7 @@ export function AskTab({ jobId }: { jobId: string }) {
   return (
     <div className="flex flex-col gap-8">
       <form onSubmit={ask} className="flex flex-col gap-3 max-w-2xl">
-        <Field label="Ask anything about this job" hint="You get two parts: what the posting itself says (with exact quotes), and practical guidance tailored to your match. Guidance is general advice, never a claim about the company.">
+        <Field label="Ask anything about this job" hint="Answers quote the posting where it says something, then give advice for your match.">
           {(p) => <Textarea id={p.id} rows={3} maxLength={1000} value={question} onChange={(e) => setQuestion(e.target.value)} aria-describedby={p.describedBy} placeholder="e.g. How should I prepare for this role in two weeks?" />}
         </Field>
         <div className="flex flex-wrap gap-2">

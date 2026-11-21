@@ -204,6 +204,33 @@ def handle_resume_tailor(ctx: OpContext) -> None:
     ctx.commit_result(write)
 
 
+# ------------------------------------------------------------------ ATS one-click fix
+@handler("ats_fix")
+def handle_ats_fix(ctx: OpContext) -> None:
+    from .services import tailor
+    from .services.ats_fix import apply_keywords
+    p = ctx.payload
+    resume_text = str(p["resume_text"])
+    ctx.stage("rebuilding your resume")
+    comp = get_provider().generate_json(tailor.SYSTEM, tailor.build_prompt(resume_text, p.get("job_title") or "this role",
+                                                                           p.get("company"), p.get("requirements") or [], []),
+                                        tailor.SCHEMA, max_tokens=4096, cancel_check=ctx.cancelled)
+    try:
+        data = tailor.Tailored.model_validate(comp.data)
+    except ValidationError as e:
+        raise ModelOutputInvalid("The model returned the resume in an unexpected format.") from e
+    ctx.stage("adding keywords")
+    resume, dropped = tailor.validate(data, resume_text)
+    resume, added, renamed = apply_keywords(resume, p.get("add_skills") or [], p.get("renames") or [])
+
+    def write(_: Session) -> dict[str, Any]:
+        return {"version_id": None, "job_id": p.get("job_id"), "template": p.get("template") or "classic",
+                "job_title": p.get("job_title"), "company": p.get("company"), "resume": resume, "dropped": dropped[:20],
+                "added": added, "renamed": renamed, "model": comp.model, "prompt_version": tailor.PROMPT_VERSION,
+                "note": "Your own resume, rebuilt. Only the skills you confirmed were added."}
+    ctx.commit_result(write)
+
+
 # ------------------------------------------------------------------ apply kit
 @handler("apply_kit")
 def handle_apply_kit(ctx: OpContext) -> None:
@@ -229,17 +256,19 @@ def handle_apply_kit(ctx: OpContext) -> None:
                           .limit(1)).scalar_one_or_none()
         job_text = snap.text if snap else "\n".join(reqs)
     name = (resume_text.strip().splitlines() or [""])[0].strip()[:80]
-    if len(name.split()) > 5 or "@" in name:
+    if len(name.split()) > 5 or "@" in name or any(c.isdigit() for c in name):
         name = ""
-    ctx.stage("writing")
-    comp = get_provider().generate_json(ak.SYSTEM, ak.build_prompt(resume_text, name, title, company, reqs), ak.SCHEMA,
-                                        max_tokens=4096, cancel_check=ctx.cancelled)
+    if name.isupper():
+        name = name.title()  # "SAI THARUN" -> "Sai Tharun" for sign-offs
+    prompt = ak.build_prompt(resume_text, name, title, company, reqs, job_text)
+
+    def generate(user: str) -> Any:
+        return get_provider().generate_json(ak.SYSTEM, user, ak.SCHEMA, max_tokens=6000, cancel_check=ctx.cancelled)
+    ctx.stage("writing and checking facts")
     try:
-        kit = ak.Kit.model_validate(comp.data)
-    except ValidationError as e:
+        out, removed, comp = ak.write_kit(generate, resume_text, job_text, name or None, prompt)
+    except ValueError as e:
         raise ModelOutputInvalid("The model returned the apply kit in an unexpected format.") from e
-    ctx.stage("checking facts")
-    out, removed = ak.validate(kit, resume_text, job_text, name or None)
 
     def write(_: Session) -> dict[str, Any]:
         return {"job_id": str(job_id), "version_id": str(vid), "job_title": title, "company": company, "kit": out,

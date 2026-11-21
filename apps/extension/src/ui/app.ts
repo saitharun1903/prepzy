@@ -1345,9 +1345,9 @@ function prepareCard(job: JobView, items: ChecklistItem[]): HTMLElement {
       button("Build my study plan", () => runCoachAction("plan", job), { kind: "primary", id: "btn-plan" }),
       button("Practise interview", () => runCoachAction("practice", job), { kind: "secondary", id: "btn-practice" }),
     ),
-    button("✦ Tailored resume for this job ↗", () => {
+    button("✦ Apply kit: resume PDF, cover letter & messages ↗", () => {
       const u = dashboardUrl(job.job.id);
-      openTab(u ? `${u}?tab=resume` : null);
+      openTab(u ? `${u}?tab=apply` : null);
     }, { kind: "quiet", id: "btn-tailor" }),
   );
 }
