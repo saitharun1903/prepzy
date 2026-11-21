@@ -23,7 +23,7 @@ from ..config import get_settings
 from ..errors import Conflict, Forbidden, NotFound, TooManyRequests
 from ..models import Operation
 
-AI_KINDS = {"job_analysis", "resume_suggest", "resume_tailor", "apply_kit", "interview_generate", "answer_evaluate", "job_qa", "knowledge_ingest"}
+AI_KINDS = {"job_analysis", "resume_suggest", "resume_tailor", "apply_kit", "ats_fix", "interview_generate", "answer_evaluate", "job_qa", "knowledge_ingest"}
 TERMINAL = {"succeeded", "partially_succeeded", "failed", "timed_out", "cancelled"}
 ACTIVE = {"queued", "running", "cancellation_requested"}
 

@@ -100,3 +100,14 @@ def test_kit_guard_ignores_digits_inside_company_names():
     g = Guard("Asha\nBuilt REST APIs in Java with Spring Boot.", "Back End Developer Intern at Jobs4PanIndia")
     assert g.sentence_ok("I'm applying for the Back End Developer Intern role at Jobs4PanIndia.")
     assert not g.sentence_ok("I improved latency by 40% at my internship.")
+
+
+def test_ats_fix_renames_and_adds_only_confirmed_skills():
+    from elevate.services.ats_fix import apply_keywords
+    r = {"summary": "Backend student using Postgres.", "skills": [{"group": "Languages", "items": ["Java"]},
+                                                                  {"group": "Tools", "items": ["Postgres", "Git"]}],
+         "experience": [{"bullets": ["Built APIs on Postgres."], "tech": None}], "projects": []}
+    out, added, renamed = apply_keywords(r, ["Docker", "git", "\\input{x}"], [{"from_term": "Postgres", "to_term": "PostgreSQL"}])
+    assert out["skills"][1]["items"] == ["PostgreSQL", "Git", "Docker"]
+    assert out["summary"] == "Backend student using PostgreSQL." and "PostgreSQL" in out["experience"][0]["bullets"][0]
+    assert added == ["Docker"] and renamed == ["Postgres → PostgreSQL"]

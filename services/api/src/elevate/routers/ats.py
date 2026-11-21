@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Annotated, Any
 
-from fastapi import APIRouter, File, Form, Response, UploadFile
+from fastapi import APIRouter, File, Form, Header, Response, UploadFile
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from ..config import get_settings
@@ -16,6 +17,11 @@ from ..services import ats as atsvc
 from ..services import resumes as rs
 
 router = APIRouter(prefix="/api/v1/ats", tags=["ats"])
+
+
+class Rename(BaseModel):
+    from_term: str = Field(min_length=1, max_length=60)
+    to_term: str = Field(min_length=1, max_length=60)
 
 
 @router.get("/systems")
@@ -87,7 +93,61 @@ async def check(ctx: Authed, response: Response,
         raise ValidationFailed("Add the job: choose a saved job, paste the job description, or paste its link.",
                                fields={"job": "Required"})
     try:
-        return atsvc.check(data=data, kind=kind, resume_text=resume_text, job_text=text, job_url=url,
-                           requirements=requirements, ats=ats, job_title=title)
+        out = atsvc.check(data=data, kind=kind, resume_text=resume_text, job_text=text, job_url=url,
+                          requirements=requirements, ats=ats, job_title=title)
     except ValueError as e:
         raise ValidationFailed(str(e), code="unreadable_file") from e
+    # What the one-click fix needs to rebuild this exact resume for this exact job.
+    out["job"] = {"id": str(job_id) if job_id else None, "title": title, "url": url,
+                  "text": None if job_id else text[:30_000]}
+    return out
+
+
+class FixIn(BaseModel):
+    resume_version_id: uuid.UUID | None = None
+    resume_text: str | None = Field(default=None, min_length=100, max_length=30_000)
+    job_id: uuid.UUID | None = None
+    job_text: str | None = Field(default=None, max_length=30_000)
+    job_title: str | None = Field(default=None, max_length=300)
+    add_skills: list[Annotated[str, Field(min_length=1, max_length=60)]] = Field(default_factory=list, max_length=25)
+    renames: list[Rename] = Field(default_factory=list, max_length=25)
+    template: str = Field(default="classic", pattern="^[a-z0-9_-]{1,40}$")
+
+
+@router.post("/fix", status_code=202)
+def fix(body: FixIn, ctx: Authed, idempotency_key: str | None = Header(default=None, max_length=120)) -> dict[str, Any]:
+    """One click: rebuild the user's own resume as a LaTeX-ready resume for this job, using the job's exact words for
+    skills the resume already has, and adding only the skills the user confirmed they have."""
+    from ..services import operations as ops
+    from ..services.account_security import rate_limit
+    db, actor = ctx
+    rate_limit(db, f"atsfix:{actor.id}", limit=10, window_seconds=300)
+    resume_text = body.resume_text
+    if body.resume_version_id:
+        v = db.execute(select(ResumeVersion).where(ResumeVersion.id == body.resume_version_id,
+                                                   ResumeVersion.owner_id == actor.id)).scalar_one_or_none()
+        if v is None or not v.text:
+            raise ValidationFailed("That resume wasn't found.", fields={"resume": "Not found"})
+        resume_text = v.text
+    if not resume_text:
+        raise ValidationFailed("Check a resume first.", fields={"resume": "Required"})
+    title, company, reqs = body.job_title or "this role", None, []
+    if body.job_id:
+        from ..services.jobs import active_corrections, effective_analysis, get_job
+        job = get_job(db, actor.id, body.job_id)
+        title = job.title or title
+        a = db.execute(select(JobAnalysis).where(JobAnalysis.job_id == body.job_id).order_by(JobAnalysis.created_at.desc())
+                       .limit(1)).scalar_one_or_none()
+        if a:
+            eff = effective_analysis(a, active_corrections(db, body.job_id, a.id))
+            reqs = [r["text"] for r in eff.get("requirements", []) if not r.get("removed_by_user") and not r.get("negated")]
+            title = eff["fields"]["title"]["value"] or title
+            company = eff["fields"].get("company", {}).get("value")
+    elif body.job_text:
+        reqs = [r["text"] for r in atsvc._text_requirements(body.job_text)]
+    payload = {"resume_text": resume_text, "job_title": title[:300], "company": company, "requirements": reqs[:40],
+               "add_skills": body.add_skills, "renames": [r.model_dump() for r in body.renames], "template": body.template,
+               "job_id": str(body.job_id) if body.job_id else None}
+    op, _ = ops.create(db, actor.id, "ats_fix", payload, idempotency_key)
+    db.commit()
+    return {"operation_id": str(op.id), "status_url": f"/api/v1/operations/{op.id}"}

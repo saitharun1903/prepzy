@@ -302,7 +302,8 @@ def check(*, data: bytes | None, kind: str | None, resume_text: str | None, job_
             term = k.get("job_term") or k["label"]
             exact = re.search(r"(?<![A-Za-z0-9])" + re.escape(term) + r"(?![A-Za-z0-9])", text, re.IGNORECASE) is not None
             used_in = sorted({s["name"] for s in ev["sections"] for a, b in have[k["id"]] if s["start"] <= a < s["end"]})
-            row = {**k, "exact": exact, "sections": used_in}
+            a0, b0 = have[k["id"]][0]
+            row = {**k, "exact": exact, "sections": used_in, "resume_term": text[a0:b0]}
             (matched if exact or not prof.exact_keywords else alias_only).append(row)
         else:
             missing.append(k)
