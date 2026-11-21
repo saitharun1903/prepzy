@@ -185,14 +185,20 @@ def handle_resume_tailor(ctx: OpContext) -> None:
                              .limit(1)).scalar_one_or_none()
             gaps = [p["label"] for p in (rep.result.get("priorities", []) if rep else [])]
     ctx.stage("generating")
-    comp = get_provider().generate_json(tailor.SYSTEM, tailor.build_prompt(resume_text, title, company, reqs, gaps),
-                                        tailor.SCHEMA, max_tokens=4096, cancel_check=ctx.cancelled)
+    if job_id:
+        comp = get_provider().generate_json(tailor.SYSTEM, tailor.build_prompt(resume_text, title, company, reqs, gaps),
+                                            tailor.SCHEMA, max_tokens=6000, cancel_check=ctx.cancelled)
+    else:  # resume builder import: copy the resume exactly as written
+        comp = get_provider().generate_json(tailor.FAITHFUL_SYSTEM, tailor.build_faithful_prompt(resume_text),
+                                            tailor.SCHEMA, max_tokens=6000, cancel_check=ctx.cancelled)
     try:
         data = tailor.Tailored.model_validate(comp.data)
     except ValidationError as e:
         raise ModelOutputInvalid("The model returned the resume in an unexpected format.") from e
     ctx.stage("validating")
     resume, dropped = tailor.validate(data, resume_text)
+    if not job_id:
+        resume = tailor.snap_to_original(resume, resume_text)
     template = str(ctx.payload.get("template") or "classic")[:40]
 
     def write(_: Session) -> dict[str, Any]:
@@ -212,15 +218,16 @@ def handle_ats_fix(ctx: OpContext) -> None:
     p = ctx.payload
     resume_text = str(p["resume_text"])
     ctx.stage("rebuilding your resume")
-    comp = get_provider().generate_json(tailor.SYSTEM, tailor.build_prompt(resume_text, p.get("job_title") or "this role",
-                                                                           p.get("company"), p.get("requirements") or [], []),
-                                        tailor.SCHEMA, max_tokens=4096, cancel_check=ctx.cancelled)
+    # Copy the resume as written (no rewording); the only changes are the keywords the user approved.
+    comp = get_provider().generate_json(tailor.FAITHFUL_SYSTEM, tailor.build_faithful_prompt(resume_text),
+                                        tailor.SCHEMA, max_tokens=6000, cancel_check=ctx.cancelled)
     try:
         data = tailor.Tailored.model_validate(comp.data)
     except ValidationError as e:
         raise ModelOutputInvalid("The model returned the resume in an unexpected format.") from e
     ctx.stage("adding keywords")
     resume, dropped = tailor.validate(data, resume_text)
+    resume = tailor.snap_to_original(resume, resume_text)
     resume, added, renamed = apply_keywords(resume, p.get("add_skills") or [], p.get("renames") or [])
 
     def write(_: Session) -> dict[str, Any]:

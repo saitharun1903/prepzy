@@ -109,7 +109,7 @@ def test_ats_fix_renames_and_adds_only_confirmed_skills():
          "experience": [{"bullets": ["Built APIs on Postgres."], "tech": None}], "projects": []}
     out, added, renamed = apply_keywords(r, ["Docker", "git", "\\input{x}"], [{"from_term": "Postgres", "to_term": "PostgreSQL"}])
     assert out["skills"][1]["items"] == ["PostgreSQL", "Git", "Docker"]
-    assert out["summary"] == "Backend student using PostgreSQL." and "PostgreSQL" in out["experience"][0]["bullets"][0]
+    assert out["summary"] == "Backend student using Postgres." and out["experience"][0]["bullets"][0] == "Built APIs on Postgres."
     assert added == ["Docker"] and renamed == ["Postgres → PostgreSQL"]
 
 
@@ -132,3 +132,12 @@ def test_kit_guard_follows_the_project_reference():
     resume = "Asha\nPROJECTS\nElevate - Extension (REST APIs)\n- Built a browser extension with REST APIs\n- Added AI matching\n"
     g = Guard(resume, "")
     assert g.clean("I built Elevate, a browser extension. The project used a PostgreSQL database.") == "I built Elevate, a browser extension."
+
+
+def test_ats_fix_never_renames_to_generic_words():
+    from elevate.services.ats_fix import apply_keywords, rename_ok
+    assert rename_ok("React", "ReactJS") and rename_ok("Postgres", "PostgreSQL")
+    assert not rename_ok("Docker", "containers") and not rename_ok("REST APIs", "REST API design")
+    r = {"summary": "Uses Docker.", "skills": [{"group": "Tools", "items": ["Docker", "Git"]}], "experience": [], "projects": []}
+    out, _, renamed = apply_keywords(r, [], [{"from_term": "Docker", "to_term": "containers"}])
+    assert out["skills"][0]["items"] == ["Docker", "Git"] and renamed == []

@@ -7,7 +7,7 @@ import { ApiError, apiFetch, newIdempotencyKey } from "@/lib/api";
 import { useApi } from "@/lib/hooks";
 import type { Accepted } from "@/lib/types";
 import { LATEX_TEMPLATE_LIST, latexTemplate, toLatex, type TailorResult } from "@/lib/resume-templates";
-import { LINKEDIN_LIMIT, b64ToBlob, downloadBlob, letterLatex, letterText, safeFile, type CompileOut, type Kit, type KitResult } from "@/lib/apply-kit";
+import { LINKEDIN_LIMIT, b64ToBlob, downloadBlob, fitToPage, letterLatex, letterText, safeFile, type CompileOut, type Kit, type KitResult } from "@/lib/apply-kit";
 import { ResumeVersionSelect, type VersionPick } from "@/components/resume-version-select";
 import { OperationStatus } from "@/components/operation-status";
 import { AtsReport, type AtsResult } from "@/components/ats-report";
@@ -64,6 +64,7 @@ export function ApplyKitTab({ jobId, jobTitle, company }: { jobId: string; jobTi
   const [resume, setResume] = useState<TailorResult | null>(null);
 
   const [pdf, setPdf] = useState<CompileOut | null>(null);
+  const [fitted, setFitted] = useState<string | null>(null);
   const [compiling, setCompiling] = useState(false);
   const [ats, setAts] = useState<AtsResult | null>(null);
   const [atsBusy, setAtsBusy] = useState(false);
@@ -107,9 +108,10 @@ export function ApplyKitTab({ jobId, jobTitle, company }: { jobId: string; jobTi
     const seq = ++compileSeq.current;
     setCompiling(true);
     try {
-      const out = await apiFetch<CompileOut>("latex/compile", { method: "POST", body: { source: toLatex(res.resume, tpl) } });
+      const { source, out } = await fitToPage(res.resume, tpl, (src) => apiFetch<CompileOut>("latex/compile", { method: "POST", body: { source: src } }));
       if (seq !== compileSeq.current) return;
       setPdf(out);
+      setFitted(source);
       if (out.ok && out.pdf) {
         setAtsBusy(true);
         try {
@@ -160,7 +162,7 @@ export function ApplyKitTab({ jobId, jobTitle, company }: { jobId: string; jobTi
     try {
       const d = await apiFetch<{ id: string }>("latex/docs", { method: "POST", body: {
         title: `${resume.resume.name} — ${resume.job_title ?? jobTitle}`.slice(0, 120), template, job_id: jobId,
-        data: resume.resume, source: toLatex(resume.resume, template) } });
+        data: resume.resume, source: fitted ?? toLatex(resume.resume, template) } });
       router.push(`/resume-builder/${d.id}`);
     } catch (e) { notify("error", (e as ApiError).message); setOpening(false); }
   };

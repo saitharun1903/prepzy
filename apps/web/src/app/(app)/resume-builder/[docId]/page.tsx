@@ -3,14 +3,15 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { use, useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Cloud, CloudOff, Code2, Download, Eye, FileCode2, LayoutTemplate, ListChecks, Loader2, Play, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Cloud, CloudOff, Code2, Download, Eye, FileCode2, LayoutTemplate, ListChecks, Loader2, Maximize2, Play, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { ApiError, apiFetch } from "@/lib/api";
 import { useBeforeUnload } from "@/lib/hooks";
 import type { LatexEditorHandle } from "@/components/resume/latex-editor";
 import { ResumeForm } from "@/components/resume/resume-form";
 import { TemplateGallery } from "@/components/resume/template-gallery";
 import { Dialog } from "@/components/ui/dialog";
-import { latexTemplate, toLatex, type TailoredResume } from "@/lib/resume-templates";
+import { latexTemplate, toLatex, type LatexOptions, type TailoredResume } from "@/lib/resume-templates";
+import { fitToPage } from "@/lib/apply-kit";
 import { Button, ErrorState, LoadingBlock, cx } from "@/components/ui/primitives";
 import { useToast } from "@/components/ui/toast";
 
@@ -127,19 +128,39 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
 
   // The form and template switcher rebuild the LaTeX from the structured content. If the code was edited by
   // hand, they ask before replacing it.
-  const generated = data ? toLatex(data, template) : null;
+  // Layout options (font size, stretched to fill the page) are read back from the code itself.
+  const layout: LatexOptions = { size: /\\documentclass\[11pt/.test(source) ? "11pt" : "10pt", fill: source.includes("[s]{\\linewidth}") };
+  const editLayout: LatexOptions = { size: layout.size };  // editing drops the stretch: new text could overflow the page
+  const generated = data ? toLatex(data, template, layout) : null;
   const inSync = generated !== null && generated === source;
-  const onForm = (nd: TailoredResume) => { setData(nd); setSource(toLatex(nd, template)); };
+  const onForm = (nd: TailoredResume) => { setData(nd); setSource(toLatex(nd, template, editLayout)); };
   const rebuildFromForm = () => {
     if (!data) return;
     if (!window.confirm("Replace the code with the form content? Your manual code edits will be lost.")) return;
-    setSource(toLatex(data, template));
+    setSource(toLatex(data, template, editLayout));
+  };
+  const [fitting, setFitting] = useState(false);
+  const fitPage = async () => {
+    if (!data) return;
+    if (!inSync && !window.confirm("Fit to page rebuilds the code from the form. Your manual code edits will be replaced.")) return;
+    setFitting(true);
+    try {
+      const { source: src, out } = await fitToPage(data, template, (x) => apiFetch<CompileOut>("latex/compile", { method: "POST", body: { source: x } }));
+      setSource(src);
+      setResult(out as CompileOut);
+      setCompiledSource(src);
+      void persist({ source: src, data });
+    } catch (e) {
+      notify("error", (e as ApiError).message);
+    } finally {
+      setFitting(false);
+    }
   };
   const changeTemplate = (id: string) => {
     setGallery(false);
     if (!data) return;
     if (!inSync && !window.confirm("Switch template? Your manual code edits will be replaced (your form content is kept).")) return;
-    const src = toLatex(data, id);
+    const src = toLatex(data, id, editLayout);
     setTemplate(id);
     setSource(src);
     void persist({ template: id, source: src, data });
@@ -195,6 +216,11 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
           title={data ? "Choose another template" : "This resume is hand-written LaTeX, so templates can't be switched"}>
           <LayoutTemplate aria-hidden className="size-4" />{data ? latexTemplate(template).label : "Template"}
         </Button>
+        {data ? (
+          <Button variant="secondary" loading={fitting} onClick={() => void fitPage()} title="Largest text size that fits one page, with spacing stretched to fill it">
+            <Maximize2 aria-hidden className="size-4" />Fit to page
+          </Button>
+        ) : null}
         <Button variant="primary" loading={compiling} onClick={() => void compile()} title="Recompile (Ctrl/⌘ + Enter)">
           <Play aria-hidden className="size-4" />Recompile
         </Button>

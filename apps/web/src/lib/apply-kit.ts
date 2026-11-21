@@ -1,5 +1,5 @@
 /** Apply kit: types, the cover-letter LaTeX document and small file helpers. */
-import { tex, type TailoredResume } from "@/lib/resume-templates";
+import { tex, toLatex, type TailoredResume } from "@/lib/resume-templates";
 
 export type CoverLetter = { greeting: string; paragraphs: string[]; closing: string };
 export type Kit = {
@@ -69,4 +69,23 @@ ${tex(l.closing)}\\par
 ${r?.name ? tex(r.name) : ""}
 \\end{document}
 `;
+}
+
+/** Build the resume PDF so it fills one page like a hand-made resume: 11pt if it fits on one page (else 10pt), then
+ * the same size with stretched spacing so there's no empty band at the bottom. Two pages stay two pages. */
+export async function fitToPage(
+  r: TailoredResume, template: string, compile: (source: string) => Promise<CompileOut>,
+): Promise<{ source: string; out: CompileOut }> {
+  for (const size of ["11pt", "10pt"] as const) {
+    const plainSrc = toLatex(r, template, { size });
+    const plain = await compile(plainSrc);
+    if (!plain.ok) return { source: plainSrc, out: plain };
+    if (plain.page_count > 1 && size === "11pt") continue;
+    if (plain.page_count > 1) return { source: plainSrc, out: plain };
+    const fillSrc = toLatex(r, template, { size, fill: true });
+    const filled = await compile(fillSrc);
+    return filled.ok && filled.page_count === 1 ? { source: fillSrc, out: filled } : { source: plainSrc, out: plain };
+  }
+  const src = toLatex(r, template);
+  return { source: src, out: await compile(src) };
 }
