@@ -81,18 +81,26 @@ function texEntries(items: TailoredEntry[]): string {
   }).join("\n\n");
 }
 
-export function toLatex(r: TailoredResume, t: TemplateId): string {
+/** LaTeX styles: the three on-screen templates plus "compact", the popular one-page student layout. */
+export type LatexStyle = TemplateId | "compact";
+
+export function toLatex(r: TailoredResume, t: LatexStyle): string {
   const classic = t === "classic";
+  const compact = t === "compact";
   const accent = classic ? "\\definecolor{accent}{rgb}{0.36,0.54,0.66} % airforceblue"
     : t === "modern" ? "\\definecolor{accent}{RGB}{27,47,82}\\definecolor{gold}{RGB}{201,162,75}" : "\\definecolor{accent}{RGB}{0,0,0}";
-  const font = classic ? "\\usepackage{lmodern}" : t === "modern" ? "\\usepackage[default]{lato}" : "\\usepackage{mathptmx}";
+  const font = classic || compact ? "\\usepackage{lmodern}" : t === "modern" ? "\\usepackage[default]{lato}" : "\\usepackage{mathptmx}";
   const heading = classic
     ? "\\titleformat{\\section}{\\fontfamily{ppl}\\selectfont\\large\\color{accent}}{}{0em}{\\MakeUppercase}[\\color{black}\\titlerule]"
+    : compact
+      ? "\\titleformat{\\section}{\\scshape\\raggedright\\large\\bfseries}{}{0em}{}[\\titlerule]"
     : t === "modern"
       ? "\\titleformat{\\section}{\\color{accent}\\bfseries\\normalsize}{}{0em}{\\MakeUppercase}[{\\color{gold}\\titlerule[1.2pt]}]"
       : "\\titleformat{\\section}{\\bfseries\\normalsize}{}{0em}{\\MakeUppercase}[\\titlerule]";
   const nameLine = classic
     ? `{\\fontfamily{ppl}\\selectfont\\Huge\\bfseries\\color{accent}\\MakeUppercase{${tex(r.name)}}}\\\\[6pt]`
+    : compact
+      ? `{\\Huge\\scshape ${tex(r.name)}}\\\\[5pt]`
     : t === "modern"
       ? `{\\color{accent}\\fontsize{26}{30}\\selectfont\\bfseries ${tex(r.name)}}\\\\[2pt]${r.headline ? `\n{\\large\\color{gold} ${tex(r.headline)}}\\\\[4pt]` : ""}`
       : `{\\Huge\\bfseries ${tex(r.name)}}\\\\[6pt]`;
@@ -122,7 +130,7 @@ export function toLatex(r: TailoredResume, t: TemplateId): string {
     "\\begin{document}",
     t === "modern" ? "" : "\\begin{center}",
     nameLine,
-    `{\\small ${texContact(r, " \\quad ")}}`,
+    `{\\small ${texContact(r, compact ? " $|$ " : " \\quad ")}}`,
     t === "modern" ? "\\vspace{2pt}" : "\\end{center}",
   ];
   const section = (title: string, body: string[]) => out.push("", `\\section{${title}}`, ...open, ...body, ...close);
@@ -169,3 +177,36 @@ export function toPlainText(r: TailoredResume): string {
   if (r.achievements.length) { sec("Achievements & certifications"); for (const a of r.achievements) lines.push(`- ${stripBold(a)}`); }
   return lines.join("\n");
 }
+
+// ------------------------------------------------------------------ resume builder starters
+export const LATEX_TEMPLATES: { id: LatexStyle; name: string; tagline: string }[] = [
+  { id: "classic", name: "Classic", tagline: "The Overleaf look — Palatino name, blue headings" },
+  { id: "compact", name: "Compact", tagline: "Dense one-page student layout, small caps" },
+  { id: "modern", name: "Modern", tagline: "Clean sans-serif, navy and gold" },
+  { id: "ats", name: "ATS Simple", tagline: "Plain Times — safest for job portals" },
+];
+
+/** Placeholder content for a new resume: obviously fictional, so nobody ships it by mistake. */
+export const SAMPLE_RESUME: TailoredResume = {
+  name: "Your Name",
+  headline: "Software Engineer",
+  contact: { phone: "+91 90000 00000", email: "you@example.com", linkedin: "linkedin.com/in/your-profile", github: "github.com/your-handle", website: null, location: "City, Country" },
+  summary: "Final-year **Computer Science** student who builds web applications with **Java**, **Spring Boot** and **React**. Replace this with two or three lines about what you do best and the role you want.",
+  education: [
+    { school: "Your University", degree: "B.Tech in Computer Science", location: "City", dates: "2023 -- 2027", score: "CGPA: 9.0" },
+  ],
+  skills: [
+    { group: "Languages", items: ["Java", "Python", "JavaScript", "SQL"] },
+    { group: "Frameworks", items: ["Spring Boot", "React", "Node.js"] },
+    { group: "Tools", items: ["Git", "Docker", "Postman", "VS Code"] },
+  ],
+  experience: [
+    { title: "Software Engineering Intern", org: "Company Name", link: null, tech: null, location: null, dates: "May 2026 -- Jul 2026",
+      bullets: ["Built **REST APIs** with Spring Boot used by the internal dashboard.", "Wrote unit tests that raised coverage from **40% to 75%**."] },
+  ],
+  projects: [
+    { title: "Project Name", org: null, link: "github.com/your-handle/project", tech: "React, Node.js, MongoDB", location: null, dates: null,
+      bullets: ["Describe what it does and who uses it.", "Mention one result: users, speed-up, or what you learned."] },
+  ],
+  achievements: ["Solved **300+** problems on LeetCode.", "Certificate or award -- Issuer"],
+};

@@ -441,6 +441,20 @@ class Note(Base):
     updated_at: Mapped[datetime] = created()
 
 
+# --------------------------------------------------------------------------- resume builder (LaTeX projects)
+class ResumeDoc(Base):
+    __tablename__ = "resume_docs"
+    id: Mapped[uuid.UUID] = pk()
+    owner_id: Mapped[uuid.UUID] = owner_fk()
+    title: Mapped[str] = mapped_column(String(120))
+    template: Mapped[str] = mapped_column(String(40))
+    source: Mapped[str] = mapped_column(Text)
+    job_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("jobs.id", ondelete="SET NULL"))
+    version: Mapped[int] = mapped_column(Integer, server_default=text("1"))
+    created_at: Mapped[datetime] = created()
+    updated_at: Mapped[datetime] = created()
+
+
 # --------------------------------------------------------------------------- reminders
 class Reminder(Base):
     __tablename__ = "reminders"

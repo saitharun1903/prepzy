@@ -1,14 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
-import { Check, Copy, FileCode2, FileDown, Info, RefreshCw, Sparkles, Wand2 } from "lucide-react";
+import { Check, Copy, FileCode2, FileDown, Info, PenLine, RefreshCw, Sparkles, Wand2 } from "lucide-react";
 import { ApiError, apiFetch, newIdempotencyKey } from "@/lib/api";
 import type { Accepted } from "@/lib/types";
 import { TEMPLATES, toLatex, toPlainText, type TailorResult, type TemplateId } from "@/lib/resume-templates";
 import { ResumeVersionSelect, type VersionPick } from "@/components/resume-version-select";
 import { OperationStatus } from "@/components/operation-status";
 import { ResumeSheet, ScaledSheet } from "@/components/resume/resume-sheet";
+import { TemplateThumb } from "@/components/resume/template-thumb";
 import { Button, ErrorState, Notice, cx } from "@/components/ui/primitives";
 import { useToast } from "@/components/ui/toast";
 
@@ -23,28 +25,6 @@ function download(name: string, text: string, type: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** Small visual thumbnail so people can pick a template by eye. */
-function TemplateThumb({ id }: { id: TemplateId }) {
-  const accent = id === "classic" ? "#4f7ea0" : id === "modern" ? "#1b2f52" : "#111";
-  const left = id === "modern";
-  return (
-    <svg viewBox="0 0 120 150" className="h-28 w-auto rounded-md bg-white ring-1 ring-black/10 shrink-0" aria-hidden>
-      <rect x={left ? 12 : 30} y="14" width="60" height="8" rx="2" fill={accent} />
-      {id === "modern" ? <rect x="12" y="26" width="34" height="4" rx="2" fill="#c9a24b" /> : null}
-      <rect x={left ? 12 : 22} y={id === "modern" ? 34 : 28} width="76" height="3" rx="1.5" fill="#9aa3b2" />
-      {[48, 82, 112].map((y, k) => (
-        <g key={k}>
-          <rect x="12" y={y} width="34" height="4" rx="1" fill={accent} />
-          <rect x="12" y={y + 6} width="96" height={id === "modern" && k === 0 ? 1.5 : 1} fill={id === "modern" ? "#c9a24b" : "#333"} />
-          <rect x="14" y={y + 11} width="90" height="2.4" rx="1" fill="#c7ccd6" />
-          <rect x="14" y={y + 16} width="80" height="2.4" rx="1" fill="#c7ccd6" />
-          <rect x="14" y={y + 21} width="86" height="2.4" rx="1" fill="#c7ccd6" />
-        </g>
-      ))}
-    </svg>
-  );
-}
-
 export function TailorTab({ jobId, jobTitle }: { jobId: string; jobTitle: string }) {
   const { notify } = useToast();
   const [pick, setPick] = useState<VersionPick>(null);
@@ -55,6 +35,8 @@ export function TailorTab({ jobId, jobTitle }: { jobId: string; jobTitle: string
   const [result, setResult] = useState<TailorResult | null>(null);
   const [copied, setCopied] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [opening, setOpening] = useState(false);
+  const router = useRouter();
 
   // Keep the last result for this browser tab only (sessionStorage is cleared when the tab closes).
   useEffect(() => {
@@ -153,7 +135,18 @@ export function TailorTab({ jobId, jobTitle }: { jobId: string; jobTitle: string
               <Button variant="primary" onClick={() => window.print()}>
                 <FileDown aria-hidden className="size-4" />Download PDF
               </Button>
-              <Button variant="secondary" onClick={() => download(`${fileBase}.tex`, toLatex(result.resume, template), "application/x-tex")}>
+              <Button variant="secondary" loading={opening} onClick={async () => {
+                setOpening(true);
+                try {
+                  const d = await apiFetch<{ id: string }>("latex/docs", { method: "POST", body: {
+                    title: `${result.resume.name} — ${result.job_title}`.slice(0, 120), template, job_id: jobId,
+                    source: toLatex(result.resume, template) } });
+                  router.push(`/resume-builder/${d.id}`);
+                } catch (e) { notify("error", (e as ApiError).message); setOpening(false); }
+              }}>
+                <PenLine aria-hidden className="size-4" />Edit in Resume builder
+              </Button>
+              <Button variant="ghost" onClick={() => download(`${fileBase}.tex`, toLatex(result.resume, template), "application/x-tex")}>
                 <FileCode2 aria-hidden className="size-4" />LaTeX (.tex)
               </Button>
               <Button variant="ghost" onClick={async () => {
@@ -166,7 +159,7 @@ export function TailorTab({ jobId, jobTitle }: { jobId: string; jobTitle: string
           </div>
           <p className="text-[13px] text-muted">
             <b>PDF:</b> in the print window choose <i>Save as PDF</i>, paper A4, margins <i>None</i>, and tick <i>Background graphics</i>.{" "}
-            <b>LaTeX:</b> open the .tex file in Overleaf (New project → Upload) and press Recompile.
+            <b>Edit:</b> open it in the Resume builder to change anything and recompile — or download the .tex for Overleaf.
           </p>
           {result.dropped.length ? (
             <Notice tone="info" title={`${result.dropped.length} AI suggestion${result.dropped.length === 1 ? " was" : "s were"} removed`}>
