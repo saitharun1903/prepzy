@@ -68,14 +68,17 @@ def wait_for_api(timeout: float = 90.0) -> bool:
 
 
 def main() -> int:
+    # Children run as `prepzy` with its own HOME: libpq (and node) read files under $HOME, and root's home is not
+    # readable by that user (e.g. libpq probes ~/.postgresql/postgresql.crt and fails with "Permission denied").
+    app_home = {"HOME": pwd.getpwnam("prepzy").pw_dir} if ROOT else {}
     if ROOT:  # run the bootstrap as the app user too, so anything it creates is owned by prepzy
-        code = subprocess.call([sys.executable, str(Path(__file__).resolve().parent / "db_bootstrap.py")], **as_user("prepzy"))
+        code = subprocess.call([sys.executable, str(Path(__file__).resolve().parent / "db_bootstrap.py")],
+                               env={**os.environ, **app_home}, **as_user("prepzy"))
     else:
         code = db_bootstrap.main()
     if code:
         return code
     runner, runner_env = start_latex_runner()
-    app_home = {"HOME": pwd.getpwnam("prepzy").pw_dir} if ROOT else {}
     api = subprocess.Popen([
         "uvicorn", "elevate.main:app", "--host", "127.0.0.1", "--port", API_PORT,
         # Loopback-only listener: only the web app in this container can reach it, and it sets a single

@@ -75,8 +75,26 @@ _SPLIT_CAP = re.compile(r"\b([B-HJ-Z]) ([a-z]{2,})\b")
 _SPLIT_GPA = re.compile(r"\b(CGP|SGP|GP) A\b")
 
 
+_HEADING_WORDS = ["professional summary", "summary", "profile", "objective", "work experience", "professional experience",
+                  "experience", "internships", "projects", "academic projects", "personal projects", "technical skills",
+                  "skills", "key skills", "education", "certifications", "achievements", "achievements & certifications",
+                  "achievements and certifications", "awards", "publications", "languages", "interests", "extracurricular activities"]
+_HEADING_BY_SQUASHED = {re.sub(r"[^a-z&]", "", h): h for h in _HEADING_WORDS}
+
+
+def _fix_heading(line: str) -> str:
+    """PDF letter-spacing splits capitalised headings ("EDUCA TION"); restore known section headings."""
+    t = line.strip()
+    if 3 <= len(t) <= 45 and t.upper() == t and any(c.isalpha() for c in t):
+        h = _HEADING_BY_SQUASHED.get(re.sub(r"[^a-z&]", "", t.lower()))
+        if h:
+            return h.upper()
+    return line
+
+
 def clean_pdf_text(text: str) -> str:
-    return _SPLIT_GPA.sub(r"\1A", _SPLIT_CAP.sub(r"\1\2", text))
+    text = _SPLIT_GPA.sub(r"\1A", _SPLIT_CAP.sub(r"\1\2", text))
+    return "\n".join(_fix_heading(ln) for ln in text.split("\n"))
 
 
 def extract_text(data: bytes, kind: str) -> tuple[str, list[str]]:

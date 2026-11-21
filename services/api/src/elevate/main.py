@@ -190,6 +190,7 @@ def create_app() -> FastAPI:
     from .routers import (
         account,
         applications,
+        ats,
         auth,
         capabilities,
         interviews,
@@ -204,7 +205,7 @@ def create_app() -> FastAPI:
         roadmaps,
     )
     for r in (auth, jobs, operations, profile, resumes, matching, interviews, roadmaps, applications, notifications,
-              knowledge, account, capabilities, latex):
+              knowledge, account, capabilities, latex, ats):
         app.include_router(r.router)
     return app
 

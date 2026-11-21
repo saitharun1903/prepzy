@@ -11,7 +11,7 @@ export const fetchCache = "force-no-store";
 /** Top-level API segments the browser may reach. Everything else is rejected before leaving this server. */
 const ALLOWED_TOP = new Set([
   "me", "jobs", "operations", "profile", "resumes", "match-reports", "interviews", "roadmaps", "applications",
-  "notes", "reminders", "notifications", "knowledge", "account", "taxonomy", "admin", "latex",
+  "notes", "reminders", "notifications", "knowledge", "account", "taxonomy", "admin", "latex", "ats",
 ]);
 const ALLOWED_AUTH = new Set(["extension-grant", "change-password", "logout-all", "resend-verification"]);
 /** Two-step verification endpoints: path under auth/ -> the only method allowed. */
