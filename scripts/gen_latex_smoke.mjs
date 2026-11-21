@@ -14,5 +14,8 @@ const { toLatex, SAMPLE_RESUME, LATEX_TEMPLATE_LIST } = await import(pathToFileU
 const dir = join(root, "infrastructure/render/latex-smoke");
 for (const f of readdirSync(dir)) if (f.endsWith(".tex")) rmSync(join(dir, f));
 for (const t of LATEX_TEMPLATE_LIST) writeFileSync(join(dir, `${t.id}.tex`), toLatex(SAMPLE_RESUME, t.id));
+// The "fit to page" layout (11pt, spacing stretched to fill the page) must compile too.
+writeFileSync(join(dir, "zz-fill-classic.tex"), toLatex(SAMPLE_RESUME, "classic", { size: "11pt", fill: true }));
+writeFileSync(join(dir, "zz-fill-tech.tex"), toLatex(SAMPLE_RESUME, "tech", { size: "10pt", fill: true }));
 rmSync(tmp, { recursive: true, force: true });
-console.log(`wrote ${LATEX_TEMPLATE_LIST.length} templates`);
+console.log(`wrote ${LATEX_TEMPLATE_LIST.length} templates + 2 fill layouts`);

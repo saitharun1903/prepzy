@@ -6,11 +6,18 @@ import { ArrowRight, Download, PenLine, Wand2 } from "lucide-react";
 import { ApiError, apiFetch, newIdempotencyKey } from "@/lib/api";
 import type { Accepted } from "@/lib/types";
 import { LATEX_TEMPLATE_LIST, latexTemplate, toLatex, type TailoredResume } from "@/lib/resume-templates";
-import { b64ToBlob, downloadBlob, safeFile, type CompileOut } from "@/lib/apply-kit";
+import { b64ToBlob, downloadBlob, fitToPage, safeFile, type CompileOut } from "@/lib/apply-kit";
 import { OperationStatus } from "@/components/operation-status";
 import { ScoreRing, type AtsResult } from "@/components/ats-report";
 import { Button, ErrorState, cx } from "@/components/ui/primitives";
 import { useToast } from "@/components/ui/toast";
+
+/** Same rule as the server: only swap one name of a tool for another (React -> ReactJS), never to a generic word. */
+function renameOk(src: string, dst: string): boolean {
+  const w = (x: string) => x.trim().split(/\s+/).length;
+  return src.toLowerCase() !== dst.toLowerCase() && /[A-Z0-9+#.]/.test(dst) && w(dst) <= 2 && w(dst) <= w(src) + 1
+    && !/\b(design|development|experience|skills?|knowledge|concepts?|systems?|pipelines?)\b/i.test(dst);
+}
 
 type FixResult = { resume: TailoredResume; added: string[]; renamed: string[]; dropped: string[]; job_title: string | null };
 
@@ -24,13 +31,14 @@ export function AtsFix({ before, versionId, picked }: { before: AtsResult; versi
   const [error, setError] = useState<ApiError | null>(null);
   const [fixed, setFixed] = useState<FixResult | null>(null);
   const [pdf, setPdf] = useState<CompileOut | null>(null);
+  const [fitted, setFitted] = useState<string | null>(null);
   const [after, setAfter] = useState<AtsResult | null>(null);
   const [working, setWorking] = useState(false);
   const [saving, setSaving] = useState(false);
   const seq = useRef(0);
 
   const renames = [...before.keywords.matched, ...before.keywords.alias_only]
-    .filter((k) => k.exact === false && k.resume_term && k.job_term)
+    .filter((k) => k.exact === false && k.resume_term && k.job_term && renameOk(k.resume_term, k.job_term))
     .map((k) => ({ from_term: k.resume_term!, to_term: k.job_term! }));
 
   const start = async () => {
@@ -58,9 +66,10 @@ export function AtsFix({ before, versionId, picked }: { before: AtsResult; versi
     const s = ++seq.current;
     setWorking(true);
     try {
-      const out = await apiFetch<CompileOut>("latex/compile", { method: "POST", body: { source: toLatex(res, tpl) } });
+      const { source, out } = await fitToPage(res, tpl, (src) => apiFetch<CompileOut>("latex/compile", { method: "POST", body: { source: src } }));
       if (s !== seq.current) return;
       setPdf(out);
+      setFitted(source);
       if (out.ok && out.pdf) {
         const fd = new FormData();
         fd.append("file", new File([b64ToBlob(out.pdf, "application/pdf")], "resume.pdf", { type: "application/pdf" }));
@@ -85,7 +94,7 @@ export function AtsFix({ before, versionId, picked }: { before: AtsResult; versi
     try {
       const d = await apiFetch<{ id: string }>("latex/docs", { method: "POST", body: {
         title: `${name} — ${fixed.job_title || before.job?.title || "ATS fixed"}`.slice(0, 120), template, data: fixed.resume,
-        source: toLatex(fixed.resume, template), job_id: before.job?.id ?? null } });
+        source: fitted ?? toLatex(fixed.resume, template), job_id: before.job?.id ?? null } });
       router.push(`/resume-builder/${d.id}`);
     } catch (e) { notify("error", (e as ApiError).message); setSaving(false); }
   };
@@ -94,9 +103,9 @@ export function AtsFix({ before, versionId, picked }: { before: AtsResult; versi
     <section aria-labelledby="fix-h" className="rounded-2xl border border-accent/30 bg-surface p-5 shadow-[0_18px_50px_-34px_rgba(15,29,51,0.55)]">
       <h2 id="fix-h" className="serif text-2xl">Fix my resume in one click</h2>
       <p className="text-[14px] text-ink-2 mt-1">
-        Your own resume, rebuilt as a clean LaTeX PDF with the job&apos;s exact keywords.
+        Your resume, word for word, as a clean one-page LaTeX PDF with the job&apos;s exact keywords.
         {picked.length ? <> Adds: <b>{picked.join(", ")}</b>.</> : <> Tap missing skills above that you really have to add them.</>}
-        {renames.length ? <> Rewords: {renames.slice(0, 3).map((r) => `${r.from_term} → ${r.to_term}`).join(", ")}.</> : null}
+        {renames.length ? <> In Skills, writes {renames.slice(0, 3).map((r) => `${r.from_term} as ${r.to_term}`).join(", ")}.</> : null}
         {" "}Nothing else is added.
       </p>
 

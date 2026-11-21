@@ -1,8 +1,8 @@
 """One-click ATS fix: put the job's exact keywords into the user's own (structured) resume.
 
 Two honest changes only:
-1. Renames: a skill the resume already shows in other words ("Postgres") is written the way the job writes it
-   ("PostgreSQL"), because strict ATSs match words literally.
+1. Renames (Skills section only): a tool the resume lists under another name ("Postgres") is written the way the
+   job writes it ("PostgreSQL"), because strict ATSs match words literally.
 2. Additions: skills the user ticked as "I have this" are added to the Skills section. Nothing else is added.
 """
 
@@ -22,27 +22,31 @@ def _clean(s: str) -> str:
     return re.sub(r"\s+", " ", re.sub(r"[\\{}$%#&^~<>]", "", s)).strip()[:60]
 
 
+def rename_ok(src: str, dst: str) -> bool:
+    """Only swap one name of a tool for another (React -> ReactJS, Postgres -> PostgreSQL): never for a generic word
+    ("containers") or a phrase ("REST API design")."""
+    if not src or not dst or src.lower() == dst.lower():
+        return False
+    if not re.search(r"[A-Z0-9+#.]", dst) or len(dst.split()) > 2 or len(dst.split()) > len(src.split()) + 1:
+        return False
+    return not re.search(r"\b(design|development|experience|skills?|knowledge|concepts?|systems?|pipelines?)\b", dst, re.IGNORECASE)
+
+
 def apply_keywords(resume: dict[str, Any], add_skills: list[str], renames: list[dict[str, str]]) -> tuple[dict[str, Any], list[str], list[str]]:
     """Returns (resume, added, renamed). Pure function; never invents beyond the user's confirmed list."""
     added: list[str] = []
     renamed: list[str] = []
     for r in renames:
         src, dst = _clean(r.get("from_term", "")), _clean(r.get("to_term", ""))
-        if not src or not dst or src.lower() == dst.lower():
+        if not rename_ok(src, dst):
             continue
-        pat, before = _word(src), repr(resume)
-
-        def sub(text: str | None, pat: re.Pattern[str] = pat, dst: str = dst) -> str | None:
-            return pat.sub(lambda _m: dst, text) if text else text
-
-        resume["summary"] = sub(resume.get("summary"))
-        for g in resume.get("skills", []):
-            g["items"] = [sub(i) or i for i in g.get("items", [])]
-        for sec in ("experience", "projects"):
-            for e in resume.get(sec, []):
-                e["bullets"] = [sub(b) or b for b in e.get("bullets", [])]
-                e["tech"] = sub(e.get("tech"))
-        if repr(resume) != before:
+        pat = _word(src)
+        hit = False
+        for g in resume.get("skills", []):  # only the Skills section: bullets and summary stay as the user wrote them
+            new = [pat.sub(lambda _m, d=dst: d, i) for i in g.get("items", [])]
+            hit = hit or new != g.get("items", [])
+            g["items"] = new
+        if hit:
             renamed.append(f"{src} → {dst}")
 
     groups = resume.setdefault("skills", [])

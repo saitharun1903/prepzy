@@ -153,7 +153,8 @@ def _pdf_facts(data: bytes) -> FileFacts:
         with contextlib.suppress(Exception):  # malformed image objects: count what we can
             images += len(page.images)
         left_starts.extend(x / w for x in starts if 0 <= x <= w)
-    text = clean_pdf_text("\n".join(texts))
+    from .resumes import poppler_text
+    text = poppler_text(data) or clean_pdf_text("\n".join(texts))
     facts = FileFacts(kind="pdf", text=text, pages=len(reader.pages), images=images)
     # Two-column layout: a substantial share of text runs start in the right half of the page.
     if len(left_starts) >= 10:

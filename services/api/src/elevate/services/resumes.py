@@ -97,6 +97,34 @@ def clean_pdf_text(text: str) -> str:
     return "\n".join(_fix_heading(ln) for ln in text.split("\n"))
 
 
+def poppler_text(data: bytes) -> str | None:
+    """Text via poppler's pdftotext when installed: it keeps the spaces around bold words that pypdf drops
+    ("a live online IDE where", not "alive online IDEwhere"). Runs with CPU/memory limits and a timeout."""
+    import shutil
+    import subprocess
+    import tempfile
+    exe = shutil.which("pdftotext")
+    if not exe:
+        return None
+
+    def limits() -> None:
+        import resource
+        resource.setrlimit(resource.RLIMIT_CPU, (10, 10))
+        resource.setrlimit(resource.RLIMIT_AS, (768 * 1024 * 1024, 768 * 1024 * 1024))
+
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "in.pdf"
+            src.write_bytes(data)
+            out = subprocess.run([exe, "-q", "-enc", "UTF-8", "-nopgbrk", "-l", str(get_settings().max_resume_pages),  # noqa: S603
+                                  str(src), "-"], capture_output=True, timeout=15, preexec_fn=limits, check=False)
+        text = out.stdout.decode("utf-8", "replace") if out.returncode == 0 else ""
+    except (OSError, subprocess.SubprocessError):
+        return None
+    text = re.sub(r"[ \t]+\n", "\n", text).replace("\x0c", "\n")
+    return text if len(re.sub(r"\s", "", text)) >= 100 else None
+
+
 def extract_text(data: bytes, kind: str) -> tuple[str, list[str]]:
     """Return (text, warnings). Raises ValidationFailed for unsupported content."""
     warnings: list[str] = []
@@ -114,7 +142,7 @@ def extract_text(data: bytes, kind: str) -> tuple[str, list[str]]:
             parts = [(p.extract_text() or "") for p in pages]
         except PdfReadError as e:
             raise ValidationFailed("The PDF could not be read (it may be damaged).", code="malformed_file") from e
-        text = clean_pdf_text("\n".join(parts))
+        text = poppler_text(data) or clean_pdf_text("\n".join(parts))
         if len(re.sub(r"\s", "", text)) < 100:
             raise ValidationFailed("This PDF has no extractable text (it may be scanned). OCR is not available; "
                                    "upload a text-based PDF/DOCX or paste your resume text.", code="no_text_layer")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import uuid
 from typing import Annotated, Any
 
@@ -129,6 +130,9 @@ def fix(body: FixIn, ctx: Authed, idempotency_key: str | None = Header(default=N
         if v is None or not v.text:
             raise ValidationFailed("That resume wasn't found.", fields={"resume": "Not found"})
         resume_text = v.text
+        if v.storage_name and v.mime == "application/pdf":  # re-read the original PDF with the better text extractor
+            with contextlib.suppress(Exception):  # fall back to the stored text
+                resume_text = rs.poppler_text(rs.read_file(actor.id, v.storage_name)) or resume_text
     if not resume_text:
         raise ValidationFailed("Check a resume first.", fields={"resume": "Required"})
     title, company, reqs = body.job_title or "this role", None, []
