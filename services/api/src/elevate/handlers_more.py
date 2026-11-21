@@ -161,25 +161,29 @@ def handle_resume_suggest(ctx: OpContext) -> None:
 def handle_resume_tailor(ctx: OpContext) -> None:
     from .services import tailor
     vid = uuid.UUID(ctx.payload["version_id"])
-    job_id = uuid.UUID(ctx.payload["job_id"])
+    job_id = uuid.UUID(ctx.payload["job_id"]) if ctx.payload.get("job_id") else None
     ctx.stage("loading")
+    reqs: list[str] = []
+    gaps: list[str] = []
+    title, company = "the candidate's target role (no specific job: keep the resume faithful, just well organised)", None
     with ctx.owner_db() as db:
         v = db.execute(select(ResumeVersion).where(ResumeVersion.id == vid, ResumeVersion.owner_id == ctx.owner_id)
                        ).scalar_one_or_none()
         if v is None or not v.text:
             raise NotFound("Resume version not found", retryable=False)
         resume_text = v.text
-        a = db.execute(select(JobAnalysis).where(JobAnalysis.job_id == job_id).order_by(JobAnalysis.created_at.desc())
-                       .limit(1)).scalar_one_or_none()
-        if a is None:
-            raise NotFound("Analyse the job first", retryable=False)
-        eff = effective_analysis(a, active_corrections(db, job_id, a.id))
-        reqs = [r["text"] for r in eff.get("requirements", []) if not r.get("removed_by_user") and not r.get("negated")]
-        title = eff["fields"]["title"]["value"] or "this role"
-        company = eff["fields"].get("company", {}).get("value")
-        rep = db.execute(select(MatchReport).where(MatchReport.job_id == job_id).order_by(MatchReport.created_at.desc())
-                         .limit(1)).scalar_one_or_none()
-        gaps = [p["label"] for p in (rep.result.get("priorities", []) if rep else [])]
+        if job_id:
+            a = db.execute(select(JobAnalysis).where(JobAnalysis.job_id == job_id).order_by(JobAnalysis.created_at.desc())
+                           .limit(1)).scalar_one_or_none()
+            if a is None:
+                raise NotFound("Analyse the job first", retryable=False)
+            eff = effective_analysis(a, active_corrections(db, job_id, a.id))
+            reqs = [r["text"] for r in eff.get("requirements", []) if not r.get("removed_by_user") and not r.get("negated")]
+            title = eff["fields"]["title"]["value"] or "this role"
+            company = eff["fields"].get("company", {}).get("value")
+            rep = db.execute(select(MatchReport).where(MatchReport.job_id == job_id).order_by(MatchReport.created_at.desc())
+                             .limit(1)).scalar_one_or_none()
+            gaps = [p["label"] for p in (rep.result.get("priorities", []) if rep else [])]
     ctx.stage("generating")
     comp = get_provider().generate_json(tailor.SYSTEM, tailor.build_prompt(resume_text, title, company, reqs, gaps),
                                         tailor.SCHEMA, max_tokens=4096, cancel_check=ctx.cancelled)
@@ -189,10 +193,11 @@ def handle_resume_tailor(ctx: OpContext) -> None:
         raise ModelOutputInvalid("The model returned the resume in an unexpected format.") from e
     ctx.stage("validating")
     resume, dropped = tailor.validate(data, resume_text)
-    template = ctx.payload.get("template") if ctx.payload.get("template") in tailor.TEMPLATES else "classic"
+    template = str(ctx.payload.get("template") or "classic")[:40]
 
     def write(_: Session) -> dict[str, Any]:
-        return {"version_id": str(vid), "job_id": str(job_id), "template": template, "job_title": title,
+        return {"version_id": str(vid), "job_id": str(job_id) if job_id else None, "template": template,
+                "job_title": title if job_id else None,
                 "company": company, "resume": resume, "dropped": dropped[:20], "model": comp.model,
                 "prompt_version": tailor.PROMPT_VERSION,
                 "note": "Built only from facts in your resume. Anything the AI added that isn't in your resume was removed."}

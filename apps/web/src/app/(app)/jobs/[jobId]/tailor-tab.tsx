@@ -139,8 +139,8 @@ export function TailorTab({ jobId, jobTitle }: { jobId: string; jobTitle: string
                 setOpening(true);
                 try {
                   const d = await apiFetch<{ id: string }>("latex/docs", { method: "POST", body: {
-                    title: `${result.resume.name} — ${result.job_title}`.slice(0, 120), template, job_id: jobId,
-                    source: toLatex(result.resume, template) } });
+                    title: `${result.resume.name} — ${result.job_title ?? jobTitle}`.slice(0, 120), template, job_id: jobId,
+                    data: result.resume, source: toLatex(result.resume, template) } });
                   router.push(`/resume-builder/${d.id}`);
                 } catch (e) { notify("error", (e as ApiError).message); setOpening(false); }
               }}>

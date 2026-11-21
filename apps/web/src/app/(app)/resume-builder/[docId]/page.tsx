@@ -3,10 +3,14 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { use, useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Cloud, CloudOff, Code2, Download, Eye, FileCode2, Loader2, Play, ZoomIn, ZoomOut } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Cloud, CloudOff, Code2, Download, Eye, FileCode2, LayoutTemplate, ListChecks, Loader2, Play, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { ApiError, apiFetch } from "@/lib/api";
 import { useBeforeUnload } from "@/lib/hooks";
 import type { LatexEditorHandle } from "@/components/resume/latex-editor";
+import { ResumeForm } from "@/components/resume/resume-form";
+import { TemplateGallery } from "@/components/resume/template-gallery";
+import { Dialog } from "@/components/ui/dialog";
+import { latexTemplate, toLatex, type TailoredResume } from "@/lib/resume-templates";
 import { Button, ErrorState, LoadingBlock, cx } from "@/components/ui/primitives";
 import { useToast } from "@/components/ui/toast";
 
@@ -15,7 +19,7 @@ const LatexEditor = dynamic(() => import("@/components/resume/latex-editor").the
   ssr: false, loading: () => <div className="h-full grid place-items-center text-sm text-muted">Loading editor…</div>,
 });
 
-type Doc = { id: string; title: string; template: string; version: number; source: string; updated_at: string };
+type Doc = { id: string; title: string; template: string; version: number; source: string; data: TailoredResume | null; updated_at: string };
 type CompileOut = { ok: boolean; ms: number; page_count: number; errors: { line: number | null; message: string }[]; pdf: string | null; pages: string[]; log_tail: string };
 type SaveState = "saved" | "saving" | "unsaved" | "error" | "conflict";
 
@@ -50,6 +54,11 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
   const [auto, setAuto] = useState(true);
   const [zoom, setZoom] = useState(1);
   const [pane, setPane] = useState<"code" | "preview">("code");
+  const [data, setData] = useState<TailoredResume | null>(null);
+  const [template, setTemplate] = useState("custom");
+  const [left, setLeft] = useState<"form" | "code">("code");
+  const [gallery, setGallery] = useState(false);
+  const savedData = useRef<string>("null");
   const version = useRef(0);
   const savedSource = useRef<string | null>(null);
   const editor = useRef<LatexEditorHandle | null>(null);
@@ -65,6 +74,7 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
       .then((d) => {
         if (!alive) return;
         setDoc(d); setSource(d.source); setTitle(d.title); version.current = d.version; savedSource.current = d.source;
+        setData(d.data); setTemplate(d.template); setLeft(d.data ? "form" : "code"); savedData.current = JSON.stringify(d.data);
       })
       .catch((e) => { if (alive) setLoadError(e as ApiError); });
     return () => { alive = false; };
@@ -92,12 +102,13 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
   useEffect(() => { if (doc) void compile(); }, [doc, compile]);
 
   // ---------------------------------------------------------------- autosave + autocompile
-  const persist = useCallback(async (patch: { source?: string; title?: string }) => {
+  const persist = useCallback(async (patch: { source?: string; title?: string; data?: TailoredResume | null; template?: string }) => {
     setSave("saving");
     try {
       const r = await apiFetch<{ version: number }>(`latex/docs/${docId}`, { method: "PATCH", body: { ...patch, version: version.current } });
       version.current = r.version;
       if (patch.source !== undefined) savedSource.current = patch.source;
+      if (patch.data !== undefined) savedData.current = JSON.stringify(patch.data);
       setSave(latest.current.source === savedSource.current ? "saved" : "unsaved");
     } catch (e) {
       const err = e as ApiError;
@@ -106,12 +117,33 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
   }, [docId]);
 
   useEffect(() => {
-    if (!doc || source === savedSource.current || save === "conflict") return;
+    const dataJson = JSON.stringify(data);
+    if (!doc || (source === savedSource.current && dataJson === savedData.current) || save === "conflict") return;
     setSave("unsaved");
-    const t = setTimeout(() => void persist({ source }), 1200);
+    const t = setTimeout(() => void persist({ source, ...(dataJson !== savedData.current && data ? { data } : {}) }), 1200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [source]);
+  }, [source, data]);
+
+  // The form and template switcher rebuild the LaTeX from the structured content. If the code was edited by
+  // hand, they ask before replacing it.
+  const generated = data ? toLatex(data, template) : null;
+  const inSync = generated !== null && generated === source;
+  const onForm = (nd: TailoredResume) => { setData(nd); setSource(toLatex(nd, template)); };
+  const rebuildFromForm = () => {
+    if (!data) return;
+    if (!window.confirm("Replace the code with the form content? Your manual code edits will be lost.")) return;
+    setSource(toLatex(data, template));
+  };
+  const changeTemplate = (id: string) => {
+    setGallery(false);
+    if (!data) return;
+    if (!inSync && !window.confirm("Switch template? Your manual code edits will be replaced (your form content is kept).")) return;
+    const src = toLatex(data, id);
+    setTemplate(id);
+    setSource(src);
+    void persist({ template: id, source: src, data });
+  };
 
   useEffect(() => {
     if (!doc || !auto || source === compiledSource) return;
@@ -159,6 +191,10 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
         <label className="hidden sm:inline-flex items-center gap-1.5 text-[13px] text-ink-2 cursor-pointer select-none">
           <input type="checkbox" checked={auto} onChange={(e) => setAuto(e.target.checked)} className="accent-[var(--accent)]" />Auto compile
         </label>
+        <Button variant="secondary" onClick={() => setGallery(true)} disabled={!data}
+          title={data ? "Choose another template" : "This resume is hand-written LaTeX, so templates can't be switched"}>
+          <LayoutTemplate aria-hidden className="size-4" />{data ? latexTemplate(template).label : "Template"}
+        </Button>
         <Button variant="primary" loading={compiling} onClick={() => void compile()} title="Recompile (Ctrl/⌘ + Enter)">
           <Play aria-hidden className="size-4" />Recompile
         </Button>
@@ -187,14 +223,39 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
       <div className="grid gap-3 lg:grid-cols-2 h-[calc(100dvh-210px)] min-h-[520px]">
         {/* code */}
         <section aria-label="LaTeX code" className={cx("rounded-2xl border border-line bg-surface overflow-hidden flex flex-col min-h-0", pane !== "code" && "hidden lg:flex")}>
-          <div className="flex items-center justify-between border-b border-line px-3 py-2 text-[12.5px] text-muted">
-            <span className="inline-flex items-center gap-1.5 font-medium text-ink-2"><FileCode2 aria-hidden className="size-4" />main.tex</span>
-            <span>Ctrl/⌘ + Enter to recompile</span>
+          <div className="flex items-center justify-between gap-2 border-b border-line px-2 py-1.5 text-[12.5px] text-muted">
+            {data ? (
+              <div role="tablist" aria-label="Edit with" className="inline-flex rounded-lg bg-surface-2 p-0.5 gap-0.5">
+                {([["form", "Form", ListChecks], ["code", "Code", FileCode2]] as const).map(([id, l, Icon]) => (
+                  <button key={id} type="button" role="tab" aria-selected={left === id} onClick={() => setLeft(id)}
+                    className={cx("inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[13px] font-medium", left === id ? "bg-surface text-ink shadow-sm" : "text-ink-2 hover:text-ink")}>
+                    <Icon aria-hidden className="size-3.5" />{l}
+                  </button>
+                ))}
+              </div>
+            ) : <span className="inline-flex items-center gap-1.5 font-medium text-ink-2 px-1"><FileCode2 aria-hidden className="size-4" />main.tex</span>}
+            <span className="hidden sm:inline">{left === "code" ? "Ctrl/⌘ + Enter to recompile" : "Changes update the PDF automatically"}</span>
           </div>
-          <div className="flex-1 min-h-0">
-            <LatexEditor value={source} onChange={setSource} onCompile={() => void compile()} handleRef={editor}
-              errorLines={errors.map((e) => e.line ?? 0).filter(Boolean)} />
-          </div>
+          {left === "form" && data ? (
+            <div className="flex-1 min-h-0 overflow-auto">
+              {!inSync ? (
+                <div className="m-4 mb-0 rounded-lg bg-warn-soft px-3 py-2 text-[13px] text-ink">
+                  You edited the code directly, so the form is paused to keep your changes.
+                  <button type="button" onClick={rebuildFromForm} className="ml-1 inline-flex items-center gap-1 font-medium text-accent underline underline-offset-2">
+                    <RotateCcw aria-hidden className="size-3.5" />Use the form again
+                  </button>
+                </div>
+              ) : null}
+              <fieldset disabled={!inSync} className={cx(!inSync && "opacity-60")}>
+                <ResumeForm value={data} onChange={onForm} />
+              </fieldset>
+            </div>
+          ) : (
+            <div className="flex-1 min-h-0">
+              <LatexEditor value={source} onChange={setSource} onCompile={() => void compile()} handleRef={editor}
+                errorLines={errors.map((e) => e.line ?? 0).filter(Boolean)} />
+            </div>
+          )}
         </section>
 
         {/* preview */}
@@ -217,7 +278,7 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
                   <li key={i} className="text-[13px] text-ink">
                     {e.line ? (
                       <button type="button" className="font-semibold text-danger underline underline-offset-2 mr-1.5"
-                        onClick={() => { setPane("code"); setTimeout(() => editor.current?.goToLine(e.line!), 30); }}>Line {e.line}</button>
+                        onClick={() => { setPane("code"); setLeft("code"); setTimeout(() => editor.current?.goToLine(e.line!), 60); }}>Line {e.line}</button>
                     ) : <b className="text-danger mr-1.5">Error</b>}
                     {e.message}
                   </li>
@@ -241,6 +302,13 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
           </div>
         </section>
       </div>
+
+      <Dialog open={gallery} onClose={() => setGallery(false)} size="lg" title="Choose a template"
+        description="Your content stays the same — only the design changes.">
+        <div className="max-h-[65vh] overflow-auto pr-1">
+          <TemplateGallery selected={template} onPick={changeTemplate} columns="grid-cols-2 md:grid-cols-3" />
+        </div>
+      </Dialog>
     </div>
   );
 }

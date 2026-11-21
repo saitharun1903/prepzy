@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+import sqlalchemy.dialects.postgresql  # noqa: F401
 
 from elevate.migration_helpers import ME, SYSTEM
 
@@ -25,6 +26,7 @@ def upgrade() -> None:
     sa.Column('title', sa.String(length=120), nullable=False),
     sa.Column('template', sa.String(length=40), nullable=False),
     sa.Column('source', sa.Text(), nullable=False),
+    sa.Column('data', sa.dialects.postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.Column('job_id', sa.UUID(), nullable=True),
     sa.Column('version', sa.Integer(), server_default=sa.text('1'), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),

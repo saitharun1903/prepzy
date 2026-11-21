@@ -269,8 +269,8 @@ def request_suggestions(rid: uuid.UUID, vid: uuid.UUID, body: SuggestIn, ctx: Au
 
 
 class TailorIn(BaseModel):
-    job_id: uuid.UUID
-    template: str = Field(default="classic", pattern="^(classic|modern|ats)$")
+    job_id: uuid.UUID | None = None  # None: structure the resume as-is (resume builder import), no job tailoring
+    template: str = Field(default="classic", pattern="^[a-z0-9_-]{1,40}$")
 
 
 @router.post("/{rid}/versions/{vid}/tailored", status_code=202)
@@ -281,10 +281,12 @@ def request_tailored(rid: uuid.UUID, vid: uuid.UUID, body: TailorIn, ctx: Authed
     v = _get_version(db, actor.id, rid, vid)
     if v.parse_status != "parsed":
         raise Conflict("Wait until this resume has been parsed.", code="not_parsed")
-    from ..services.jobs import get_job
-    get_job(db, actor.id, body.job_id)
+    if body.job_id:
+        from ..services.jobs import get_job
+        get_job(db, actor.id, body.job_id)
     op, _ = ops.create(db, actor.id, "resume_tailor", {"resume_id": str(rid), "version_id": str(vid),
-                                                       "job_id": str(body.job_id), "template": body.template},
+                                                       "job_id": str(body.job_id) if body.job_id else None,
+                                                       "template": body.template},
                        idempotency_key)
     db.commit()
     return {"operation_id": str(op.id), "status_url": f"/api/v1/operations/{op.id}"}

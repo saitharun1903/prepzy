@@ -71,6 +71,8 @@ jobs:
           node-version: "24"
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Resume templates used by the image smoke test are up to date
+        run: node scripts/gen_latex_smoke.mjs && git diff --exit-code -- infrastructure/render/latex-smoke
       - run: npm run typecheck -w apps/web
       - run: npm run build -w apps/web
       - run: npm run typecheck -w apps/extension

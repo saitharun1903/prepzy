@@ -11,7 +11,7 @@ from typing import Any
 
 import httpx
 from fastapi import APIRouter, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 
 from ..deps import Authed
@@ -68,25 +68,51 @@ def compile_source(body: CompileIn, ctx: Authed, response: Response) -> dict[str
 
 
 # ------------------------------------------------------------------ saved projects
+MAX_DATA_BYTES = 60_000
+
+
+def _check_data(v: dict[str, Any] | None) -> dict[str, Any] | None:
+    import json
+    if v is not None and len(json.dumps(v)) > MAX_DATA_BYTES:
+        raise ValueError("Resume content is too large")
+    return v
+
+
 class DocIn(BaseModel):
     title: str = Field(min_length=1, max_length=120)
     template: str = Field(default="custom", max_length=40, pattern=r"^[a-z0-9_-]+$")
     source: str = Field(min_length=1, max_length=latex.MAX_SOURCE_CHARS)
+    data: dict[str, Any] | None = None
     job_id: uuid.UUID | None = None
+
+    @field_validator("data")
+    @classmethod
+    def _limit_data(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
+        return _check_data(v)
 
 
 class DocPatch(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=120)
     source: str | None = Field(default=None, min_length=1, max_length=latex.MAX_SOURCE_CHARS)
+    template: str | None = Field(default=None, max_length=40, pattern=r"^[a-z0-9_-]+$")
+    data: dict[str, Any] | None = None
+    clear_data: bool = False  # the user chose to keep hand-written LaTeX only
     version: int | None = None  # optimistic concurrency: reject a save based on an older copy
+
+    @field_validator("data")
+    @classmethod
+    def _limit_data(cls, v: dict[str, Any] | None) -> dict[str, Any] | None:
+        return _check_data(v)
 
 
 def _out(d: ResumeDoc, with_source: bool = True) -> dict[str, Any]:
     o: dict[str, Any] = {"id": str(d.id), "title": d.title, "template": d.template, "version": d.version,
+                         "has_data": d.data is not None,
                          "job_id": str(d.job_id) if d.job_id else None,
                          "created_at": d.created_at, "updated_at": d.updated_at}
     if with_source:
         o["source"] = d.source
+        o["data"] = d.data
     return o
 
 
@@ -115,7 +141,7 @@ def create_doc(body: DocIn, ctx: Authed) -> dict[str, Any]:
         from ..services.jobs import get_job
         get_job(db, actor.id, body.job_id)
     d = ResumeDoc(owner_id=actor.id, title=body.title.strip(), template=body.template, source=body.source,
-                  job_id=body.job_id)
+                  data=body.data, job_id=body.job_id)
     db.add(d)
     db.commit()
     db.refresh(d)
@@ -139,6 +165,12 @@ def update_doc(doc_id: uuid.UUID, body: DocPatch, ctx: Authed) -> dict[str, Any]
         d.title = body.title.strip()
     if body.source is not None:
         d.source = body.source
+    if body.template is not None:
+        d.template = body.template
+    if body.data is not None:
+        d.data = body.data
+    elif body.clear_data:
+        d.data = None
     d.version += 1
     d.updated_at = datetime.now(UTC)
     db.commit()

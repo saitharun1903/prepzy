@@ -75,6 +75,16 @@ def test_compile_endpoint_and_saved_projects(client, user):
     stale = client.patch(f"/api/v1/latex/docs/{doc_id}", headers=user["h"], json={"source": DOC, "version": created["version"]})
     assert stale.status_code == 409
     assert "Ravi" in client.get(f"/api/v1/latex/docs/{doc_id}", headers=user["h"]).json()["source"]
+    # structured content + template switch
+    data = {"name": "Asha", "contact": {}, "skills": [], "education": [], "experience": [], "projects": [], "achievements": []}
+    sw = client.patch(f"/api/v1/latex/docs/{doc_id}", headers=user["h"], json={"template": "tech", "data": data})
+    assert sw.status_code == 200 and sw.json()["has_data"]
+    got = client.get(f"/api/v1/latex/docs/{doc_id}", headers=user["h"]).json()
+    assert got["template"] == "tech" and got["data"]["name"] == "Asha"
+    big = client.patch(f"/api/v1/latex/docs/{doc_id}", headers=user["h"], json={"data": {"x": "y" * 70_000}})
+    assert big.status_code == 422
+    cleared = client.patch(f"/api/v1/latex/docs/{doc_id}", headers=user["h"], json={"clear_data": True})
+    assert cleared.json()["has_data"] is False
     assert client.delete(f"/api/v1/latex/docs/{doc_id}", headers=user["h"]).status_code == 204
     assert client.get(f"/api/v1/latex/docs/{doc_id}", headers=user["h"]).status_code == 404
 

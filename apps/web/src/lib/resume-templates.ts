@@ -17,7 +17,7 @@ export type TailoredResume = {
   achievements: string[];
 };
 export type TailorResult = {
-  version_id: string; job_id: string; template: TemplateId; job_title: string; company: string | null;
+  version_id: string; job_id: string | null; template: TemplateId; job_title: string | null; company: string | null;
   resume: TailoredResume; dropped: string[]; model: string; note: string;
 };
 
@@ -81,37 +81,142 @@ function texEntries(items: TailoredEntry[]): string {
   }).join("\n\n");
 }
 
-/** LaTeX styles: the three on-screen templates plus "compact", the popular one-page student layout. */
-export type LatexStyle = TemplateId | "compact";
+// ------------------------------------------------------------------ LaTeX template engine
+/** One professional resume design. Every font here ships with TeX Live's recommended fonts, lmodern or TeX Gyre,
+ * and the production image compiles every template at build time, so all of them are guaranteed to work. */
+export type LatexTemplate = {
+  id: string; label: string; tagline: string; category: "Classic" | "Modern" | "Minimal" | "Executive";
+  font: string[];                 // preamble lines selecting the body font
+  nameFont?: string;              // e.g. \fontfamily{ppl}\selectfont
+  accent: string;                 // hex, no '#'
+  align: "center" | "left";
+  name: { size: string; bold: boolean; caps: "upper" | "small" | "none"; color: boolean };
+  headline: boolean;
+  heading: { caps: "upper" | "small" | "none"; bold: boolean; size: string; color: boolean; font?: string; center?: boolean;
+    rule: "thin" | "thick" | "accent" | "none" };
+  contact: "icons" | "pipes" | "bullets";
+  indent: boolean;
+  bullet: string;
+  topRule?: boolean;              // accent bar under the header
+};
 
-export function toLatex(r: TailoredResume, t: LatexStyle): string {
-  const classic = t === "classic";
-  const compact = t === "compact";
-  const accent = classic ? "\\definecolor{accent}{rgb}{0.36,0.54,0.66} % airforceblue"
-    : t === "modern" ? "\\definecolor{accent}{RGB}{27,47,82}\\definecolor{gold}{RGB}{201,162,75}" : "\\definecolor{accent}{RGB}{0,0,0}";
-  const font = classic || compact ? "\\usepackage{lmodern}" : t === "modern" ? "\\usepackage[default]{lato}" : "\\usepackage{mathptmx}";
-  const heading = classic
-    ? "\\titleformat{\\section}{\\fontfamily{ppl}\\selectfont\\large\\color{accent}}{}{0em}{\\MakeUppercase}[\\color{black}\\titlerule]"
-    : compact
-      ? "\\titleformat{\\section}{\\scshape\\raggedright\\large\\bfseries}{}{0em}{}[\\titlerule]"
-    : t === "modern"
-      ? "\\titleformat{\\section}{\\color{accent}\\bfseries\\normalsize}{}{0em}{\\MakeUppercase}[{\\color{gold}\\titlerule[1.2pt]}]"
-      : "\\titleformat{\\section}{\\bfseries\\normalsize}{}{0em}{\\MakeUppercase}[\\titlerule]";
-  const nameLine = classic
-    ? `{\\fontfamily{ppl}\\selectfont\\Huge\\bfseries\\color{accent}\\MakeUppercase{${tex(r.name)}}}\\\\[6pt]`
-    : compact
-      ? `{\\Huge\\scshape ${tex(r.name)}}\\\\[5pt]`
-    : t === "modern"
-      ? `{\\color{accent}\\fontsize{26}{30}\\selectfont\\bfseries ${tex(r.name)}}\\\\[2pt]${r.headline ? `\n{\\large\\color{gold} ${tex(r.headline)}}\\\\[4pt]` : ""}`
-      : `{\\Huge\\bfseries ${tex(r.name)}}\\\\[6pt]`;
-  // Classic indents everything under a section title, like the usual Overleaf resume.
-  const open = classic ? ["\\begin{resumebody}"] : [];
-  const close = classic ? ["\\end{resumebody}"] : [];
+export const LATEX_TEMPLATE_LIST: LatexTemplate[] = [
+  { id: "classic", label: "Classic", tagline: "The Overleaf favourite — Palatino name, blue headings", category: "Classic",
+    font: ["\\usepackage{lmodern}"], nameFont: "\\fontfamily{ppl}\\selectfont", accent: "5D8AA8", align: "center",
+    name: { size: "\\Huge", bold: true, caps: "upper", color: true }, headline: false,
+    heading: { caps: "upper", bold: false, size: "\\large", color: true, font: "\\fontfamily{ppl}\\selectfont", rule: "thin" },
+    contact: "icons", indent: true, bullet: "\\textbullet" },
+  { id: "compact", label: "Compact", tagline: "Dense one-page student layout with small caps", category: "Classic",
+    font: ["\\usepackage{lmodern}"], accent: "000000", align: "center",
+    name: { size: "\\Huge", bold: false, caps: "small", color: false }, headline: false,
+    heading: { caps: "small", bold: false, size: "\\large", color: false, rule: "thin" },
+    contact: "pipes", indent: false, bullet: "\\textbullet" },
+  { id: "modern", label: "Modern", tagline: "Clean sans-serif with navy and gold", category: "Modern",
+    font: ["\\usepackage{tgheros}", "\\renewcommand{\\familydefault}{\\sfdefault}"], accent: "1B2F52", align: "left",
+    name: { size: "\\Huge", bold: true, caps: "none", color: true }, headline: true,
+    heading: { caps: "upper", bold: true, size: "\\normalsize", color: true, rule: "accent" },
+    contact: "icons", indent: false, bullet: "\\textbullet" },
+  { id: "ats", label: "ATS Simple", tagline: "Plain Times, no colour — safest for job portals", category: "Minimal",
+    font: ["\\usepackage{mathptmx}"], accent: "000000", align: "center",
+    name: { size: "\\Huge", bold: true, caps: "none", color: false }, headline: false,
+    heading: { caps: "upper", bold: true, size: "\\normalsize", color: false, rule: "thin" },
+    contact: "pipes", indent: false, bullet: "\\textbullet" },
+  { id: "executive", label: "Executive", tagline: "Palatino with burgundy accents and a strong rule", category: "Executive",
+    font: ["\\usepackage{tgpagella}"], accent: "7A1F2B", align: "center",
+    name: { size: "\\Huge", bold: false, caps: "small", color: true }, headline: true,
+    heading: { caps: "small", bold: true, size: "\\large", color: true, rule: "thick" },
+    contact: "bullets", indent: true, bullet: "\\textbullet" },
+  { id: "charter", label: "Charter", tagline: "Bitstream Charter, teal headings — calm and readable", category: "Classic",
+    font: ["\\usepackage{charter}"], accent: "0F766E", align: "left",
+    name: { size: "\\huge", bold: true, caps: "none", color: false }, headline: true,
+    heading: { caps: "none", bold: true, size: "\\large", color: true, rule: "thin" },
+    contact: "icons", indent: false, bullet: "\\textendash" },
+  { id: "swiss", label: "Swiss", tagline: "Helvetica, black and grey — sharp and minimal", category: "Minimal",
+    font: ["\\usepackage[scaled=0.95]{helvet}", "\\renewcommand{\\familydefault}{\\sfdefault}"], accent: "4B5563", align: "left",
+    name: { size: "\\Huge", bold: true, caps: "none", color: false }, headline: true,
+    heading: { caps: "upper", bold: true, size: "\\small", color: true, rule: "thin" },
+    contact: "pipes", indent: false, bullet: "\\textbullet" },
+  { id: "elegant", label: "Elegant", tagline: "Century Schoolbook with centred headings", category: "Executive",
+    font: ["\\usepackage{tgschola}"], accent: "1F2937", align: "center",
+    name: { size: "\\huge", bold: false, caps: "upper", color: false }, headline: true,
+    heading: { caps: "small", bold: false, size: "\\large", color: false, center: true, rule: "thin" },
+    contact: "bullets", indent: false, bullet: "\\textbullet" },
+  { id: "tech", label: "Tech", tagline: "Geometric sans with bright blue — great for developers", category: "Modern",
+    font: ["\\usepackage{tgadventor}", "\\renewcommand{\\familydefault}{\\sfdefault}"], accent: "2563EB", align: "left",
+    name: { size: "\\huge", bold: true, caps: "none", color: true }, headline: true,
+    heading: { caps: "upper", bold: true, size: "\\normalsize", color: true, rule: "none" },
+    contact: "icons", indent: false, bullet: "$\\triangleright$", topRule: true },
+  { id: "bookman", label: "Warm", tagline: "Bookman with warm brown accents — friendly and confident", category: "Classic",
+    font: ["\\usepackage{tgbonum}"], accent: "8B5E34", align: "center",
+    name: { size: "\\huge", bold: true, caps: "none", color: true }, headline: false,
+    heading: { caps: "upper", bold: true, size: "\\normalsize", color: true, rule: "thin" },
+    contact: "bullets", indent: true, bullet: "\\textbullet" },
+  { id: "utopia", label: "Utopia", tagline: "Adobe Utopia, indigo small caps — refined", category: "Executive",
+    font: ["\\usepackage{utopia}"], accent: "3730A3", align: "left",
+    name: { size: "\\Huge", bold: true, caps: "none", color: true }, headline: true,
+    heading: { caps: "small", bold: true, size: "\\large", color: true, rule: "thin" },
+    contact: "icons", indent: false, bullet: "\\textbullet" },
+  { id: "navy", label: "Navy", tagline: "Times with navy headings and rules — traditional", category: "Classic",
+    font: ["\\usepackage{tgtermes}"], accent: "1E3A8A", align: "center",
+    name: { size: "\\Huge", bold: true, caps: "none", color: true }, headline: false,
+    heading: { caps: "upper", bold: true, size: "\\normalsize", color: true, rule: "accent" },
+    contact: "pipes", indent: false, bullet: "\\textbullet" },
+  { id: "graphite", label: "Graphite", tagline: "Helvetica in charcoal tones, centred", category: "Modern",
+    font: ["\\usepackage[scaled=0.95]{helvet}", "\\renewcommand{\\familydefault}{\\sfdefault}"], accent: "374151", align: "center",
+    name: { size: "\\huge", bold: true, caps: "upper", color: true }, headline: true,
+    heading: { caps: "upper", bold: true, size: "\\small", color: true, rule: "accent" },
+    contact: "bullets", indent: false, bullet: "\\textbullet", topRule: false },
+  { id: "emerald", label: "Emerald", tagline: "Latin Modern Sans with green accents", category: "Modern",
+    font: ["\\usepackage{lmodern}", "\\renewcommand{\\familydefault}{\\sfdefault}"], accent: "047857", align: "left",
+    name: { size: "\\Huge", bold: true, caps: "none", color: true }, headline: true,
+    heading: { caps: "none", bold: true, size: "\\large", color: true, rule: "thick" },
+    contact: "icons", indent: false, bullet: "\\textbullet" },
+  { id: "crimson", label: "Crimson", tagline: "Palatino with a crimson header bar", category: "Executive",
+    font: ["\\usepackage{mathpazo}"], accent: "B91C1C", align: "left",
+    name: { size: "\\Huge", bold: true, caps: "none", color: false }, headline: true,
+    heading: { caps: "upper", bold: true, size: "\\normalsize", color: true, rule: "none" },
+    contact: "icons", indent: true, bullet: "\\textbullet", topRule: true },
+  { id: "minimal", label: "Minimal", tagline: "Lots of white space, no rules — quietly modern", category: "Minimal",
+    font: ["\\usepackage{lmodern}"], accent: "111827", align: "left",
+    name: { size: "\\huge", bold: true, caps: "none", color: false }, headline: true,
+    heading: { caps: "small", bold: false, size: "\\Large", color: false, rule: "none" },
+    contact: "pipes", indent: false, bullet: "\\textendash" },
+];
+
+export type LatexStyle = string;
+const BY_ID = new Map(LATEX_TEMPLATE_LIST.map((t) => [t.id, t]));
+export const latexTemplate = (id: string): LatexTemplate => BY_ID.get(id) ?? LATEX_TEMPLATE_LIST[0]!;
+
+function texContactFor(r: TailoredResume, mode: LatexTemplate["contact"]): string {
+  const c = r.contact;
+  if (mode === "icons") return texContact(r, " \\quad ");
+  const parts: string[] = [];
+  if (c.phone) parts.push(tex(c.phone));
+  if (c.email) parts.push(`\\href{mailto:${tex(c.email)}}{${tex(c.email)}}`);
+  for (const v of [c.linkedin, c.github, c.website]) if (v) parts.push(`\\href{${texUrl(v)}}{${tex(displayUrl(v))}}`);
+  if (c.location) parts.push(tex(c.location));
+  return parts.join(mode === "pipes" ? " $|$ " : " \\textbullet{} ");
+}
+
+export function toLatex(r: TailoredResume, id: LatexStyle): string {
+  const t = latexTemplate(id);
+  const h = t.heading;
+  const caps = (k: "upper" | "small" | "none") => (k === "small" ? "\\scshape" : "");
+  const headFmt = [h.center ? "\\filcenter" : "", h.font ?? "", h.size, h.bold ? "\\bfseries" : "", caps(h.caps), h.color ? "\\color{accent}" : ""].join("");
+  const after = h.rule === "thin" ? "[\\color{black}\\titlerule]" : h.rule === "thick" ? "[{\\color{accent}\\titlerule[1.2pt]}]"
+    : h.rule === "accent" ? "[{\\color{accent}\\titlerule[0.8pt]}]" : "";
+  const before = h.caps === "upper" ? "\\MakeUppercase" : "";
+  const n = t.name;
+  const nameBody = n.caps === "upper" ? `\\MakeUppercase{${tex(r.name)}}` : tex(r.name);
+  const nameLine = `{${t.nameFont ?? ""}${n.size}${n.bold ? "\\bfseries" : ""}${n.caps === "small" ? "\\scshape" : ""}${n.color ? "\\color{accent}" : ""} ${nameBody}}\\\\[5pt]`;
+  const headline = t.headline && r.headline ? `{\\large ${t.accent !== "000000" ? "\\color{accent}" : ""}${tex(r.headline)}}\\\\[4pt]` : "";
+  const open = t.indent ? ["\\begin{resumebody}"] : [];
+  const close = t.indent ? ["\\end{resumebody}"] : [];
   const out: string[] = [
-    "% Generated by Prepzy -- compile with pdfLaTeX (e.g. on Overleaf).",
+    `% ${t.label} resume template -- generated by Prepzy. Compile with pdfLaTeX (also works on Overleaf).`,
     "\\documentclass[10pt,a4paper]{article}",
-    `\\usepackage[top=0.45in,bottom=0.45in,left=0.55in,right=0.55in]{geometry}`,
-    font,
+    "\\usepackage[top=0.45in,bottom=0.45in,left=0.55in,right=0.55in]{geometry}",
+    ...t.font,
     "\\usepackage[T1]{fontenc}",
     "\\usepackage[utf8]{inputenc}",
     "\\usepackage{xcolor}",
@@ -119,19 +224,21 @@ export function toLatex(r: TailoredResume, t: LatexStyle): string {
     "\\usepackage{enumitem}",
     "\\usepackage{fontawesome5}",
     "\\usepackage[hidelinks]{hyperref}",
-    accent,
+    `\\definecolor{accent}{HTML}{${t.accent}}`,
     "\\pagestyle{empty}",
     "\\setlength{\\parindent}{0pt}",
-    heading,
-    "\\titlespacing*{\\section}{0pt}{7pt}{4pt}",
-    "\\setlist[itemize]{leftmargin=1.35em,itemsep=1pt,topsep=2pt,parsep=0pt,label=\\textbullet}",
+    `\\titleformat{\\section}{${headFmt}}{}{0em}{${before}}${after}`,
+    "\\titlespacing*{\\section}{0pt}{8pt}{4pt}",
+    `\\setlist[itemize]{leftmargin=1.35em,itemsep=1pt,topsep=2pt,parsep=0pt,label=${t.bullet}}`,
     "\\newenvironment{resumebody}{\\begin{list}{}{\\setlength{\\leftmargin}{0.8em}\\setlength{\\topsep}{0pt}\\setlength{\\itemsep}{0pt}\\setlength{\\parsep}{0pt}}\\item[]}{\\end{list}}",
     "",
     "\\begin{document}",
-    t === "modern" ? "" : "\\begin{center}",
+    t.align === "center" ? "\\begin{center}" : "\\begin{flushleft}",
     nameLine,
-    `{\\small ${texContact(r, compact ? " $|$ " : " \\quad ")}}`,
-    t === "modern" ? "\\vspace{2pt}" : "\\end{center}",
+    ...(headline ? [headline] : []),
+    `{\\small ${texContactFor(r, t.contact)}}`,
+    t.align === "center" ? "\\end{center}" : "\\end{flushleft}",
+    ...(t.topRule ? ["\\vspace{-6pt}{\\color{accent}\\rule{\\linewidth}{2pt}}", "\\vspace{-2pt}"] : []),
   ];
   const section = (title: string, body: string[]) => out.push("", `\\section{${title}}`, ...open, ...body, ...close);
   if (r.summary) section("Professional Summary", [texRich(r.summary)]);
@@ -179,12 +286,7 @@ export function toPlainText(r: TailoredResume): string {
 }
 
 // ------------------------------------------------------------------ resume builder starters
-export const LATEX_TEMPLATES: { id: LatexStyle; name: string; tagline: string }[] = [
-  { id: "classic", name: "Classic", tagline: "The Overleaf look — Palatino name, blue headings" },
-  { id: "compact", name: "Compact", tagline: "Dense one-page student layout, small caps" },
-  { id: "modern", name: "Modern", tagline: "Clean sans-serif, navy and gold" },
-  { id: "ats", name: "ATS Simple", tagline: "Plain Times — safest for job portals" },
-];
+export const LATEX_TEMPLATES = LATEX_TEMPLATE_LIST.map(({ id, label, tagline, category }) => ({ id, name: label, tagline, category }));
 
 /** Placeholder content for a new resume: obviously fictional, so nobody ships it by mistake. */
 export const SAMPLE_RESUME: TailoredResume = {
