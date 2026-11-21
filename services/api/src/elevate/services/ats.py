@@ -160,7 +160,12 @@ def _pdf_facts(data: bytes) -> FileFacts:
     if len(left_starts) >= 10:
         right = [x for x in left_starts if 0.40 <= x <= 0.70]
         left = [x for x in left_starts if x < 0.25]
-        if len(right) >= 3 and len(right) > 0.2 * len(left_starts) and len(left) > 0.3 * len(left_starts):
+        # A real second column starts every line at the same x; right-aligned dates/tech lists (\hfill) start
+        # wherever their length puts them. So require one start position shared by several lines.
+        from collections import Counter
+        same_x = max(Counter(round(x * 200) for x in right).values(), default=0)  # 0.5% of page width
+        if (len(right) >= 3 and len(right) > 0.2 * len(left_starts) and len(left) > 0.3 * len(left_starts)
+                and same_x >= max(4, 0.5 * len(right))):
             facts.columns = True
     facts.odd_chars = len(_PUA.findall(text))
     return facts

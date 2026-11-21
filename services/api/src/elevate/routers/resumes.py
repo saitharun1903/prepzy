@@ -131,8 +131,12 @@ def get_version(rid: uuid.UUID, vid: uuid.UUID, ctx: Authed, job_id: uuid.UUID |
         if a:
             seen: dict[str, dict[str, Any]] = {}
             for req in a.result.get("requirements", []):
+                ids = [c["id"] for c in req.get("concepts", [])]
                 for c in req.get("concepts", []):
-                    seen[c["id"]] = c
+                    alts = set(seen.get(c["id"], {}).get("alts", []))
+                    if req.get("group") == "any" and len(ids) > 1:  # "Java or Kotlin": either one is enough
+                        alts |= {i for i in ids if i != c["id"]}
+                    seen[c["id"]] = {**c, "alts": sorted(alts)}
             job_concepts = list(seen.values())
     return {"resume": {"id": str(r.id), "name": r.name, "is_default": r.is_default},
             "version": {**_version_meta(v), "text": v.text, "extracted": v.extracted, "reviewed": v.reviewed,

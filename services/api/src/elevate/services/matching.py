@@ -31,7 +31,7 @@ from typing import Any
 from .resumes import effective_skills
 from .taxonomy import load_taxonomy
 
-SCORING_VERSION = "score-3"
+SCORING_VERSION = "score-4"  # score-4: an unneeded "or" alternative is never a gap
 ADJACENT_CREDIT = 0.25
 MIN_COMPLETENESS = 0.6
 MIN_ASSESSABLE = 2
@@ -168,6 +168,9 @@ def compute(analysis_result: dict[str, Any], resume_text: str | None, resume_ext
             else:
                 credit = 1.0 if have else 0.0
                 unit["rule"] = "R1-any" if base["group"] == "any" else "R1"
+                if base["group"] == "any" and have:
+                    # "Java or Kotlin" with Java on the resume: Kotlin is an alternative, never a gap to study.
+                    unit["missing"] = []
             if family_label:
                 unit["rule"] = "R7"
                 unit["notes"].append(f"Broad requirement ({family_label}): any one of the listed skills counts.")

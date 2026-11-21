@@ -117,6 +117,16 @@ def test_either_alternative_satisfies_python_or_r():
         assert res["summary"]["required"]["coverage"] == 100.0, skill
 
 
+def test_unneeded_alternative_is_never_a_gap():
+    # "3+ years of Java or Kotlin" with Java (but less experience): partly met because of the years,
+    # yet Kotlin must not be suggested as something to learn.
+    a = _analysis(("3+ years of professional experience with Java or Kotlin.", "required"))
+    text, ext = _resume("Experience\nBackend Intern, Acme - Jun 2025 - Aug 2025\n- Built REST APIs in Java.\nSkills\nJava\n")
+    res = matching.compute(a, text, ext, None, [])
+    assert res["requirements"][0]["status"] == "partial"
+    assert res["requirements"][0]["missing"] == [] and not any(p["concept_id"] == "kotlin" for p in res["priorities"])
+
+
 def test_repeated_keywords_do_not_inflate_coverage():
     a = _analysis(("Python", "required"), ("Kubernetes", "required"), ("SQL", "required"))
     once = matching.compute(a, *_resume("Skills\nPython\n"), None, [])

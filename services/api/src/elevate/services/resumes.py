@@ -377,7 +377,7 @@ def ats_findings(text: str, extracted: dict[str, Any], job_concepts: list[dict[s
                       "why": "Some parsers read table cells out of order."})
     if job_concepts:
         have = {s["id"] for s in extracted.get("skills", [])}
-        missing = [c for c in job_concepts if c["id"] not in have]
+        missing = [c for c in job_concepts if c["id"] not in have and not set(c.get("alts", [])) & have]
         if missing:
             f.append({"id": "job_keywords_absent", "severity": "info", "category": "relevance",
                       "message": "Job skills not mentioned in this resume: " + ", ".join(c["label"] for c in missing[:12]),
