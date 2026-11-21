@@ -33,6 +33,7 @@ from ..models import (
     RefreshToken,
     Reminder,
     Resume,
+    ResumeDoc,
     ResumeVersion,
     Roadmap,
     RoadmapEvent,
@@ -70,7 +71,7 @@ def export(ctx: Authed) -> Response:
         ("interview_answers", InterviewAnswer, InterviewAnswer.owner_id),
         ("roadmaps", Roadmap, Roadmap.owner_id), ("roadmap_tasks", RoadmapTask, RoadmapTask.owner_id),
         ("roadmap_events", RoadmapEvent, RoadmapEvent.owner_id), ("applications", Application, Application.owner_id),
-        ("application_events", ApplicationEvent, ApplicationEvent.owner_id), ("notes", Note, Note.owner_id),
+        ("application_events", ApplicationEvent, ApplicationEvent.owner_id), ("notes", Note, Note.owner_id), ("resume_docs", ResumeDoc, ResumeDoc.owner_id),
         ("reminders", Reminder, Reminder.owner_id), ("notifications", Notification, Notification.owner_id),
         ("knowledge_sources", KnowledgeSource, KnowledgeSource.owner_id),
     ]

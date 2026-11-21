@@ -195,6 +195,7 @@ def create_app() -> FastAPI:
         interviews,
         jobs,
         knowledge,
+        latex,
         matching,
         notifications,
         operations,
@@ -203,7 +204,7 @@ def create_app() -> FastAPI:
         roadmaps,
     )
     for r in (auth, jobs, operations, profile, resumes, matching, interviews, roadmaps, applications, notifications,
-              knowledge, account, capabilities):
+              knowledge, account, capabilities, latex):
         app.include_router(r.router)
     return app
 

@@ -5,7 +5,7 @@ import { ZapMark, ZapWordmark } from "@/components/brand/logo";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  Bell, Briefcase, CalendarCheck, FileText, Home, LogOut, MailWarning, Menu, MessagesSquare, Puzzle, Route, Settings, ShieldCheck, UserRound, X,
+  Bell, Briefcase, CalendarCheck, FileCode2, FileText, Home, LogOut, MailWarning, Menu, MessagesSquare, Puzzle, Route, Settings, ShieldCheck, UserRound, X,
 } from "lucide-react";
 import { sessionPost } from "@/lib/api";
 import { ResendVerification, cx } from "@/components/ui/primitives";
@@ -16,6 +16,7 @@ type NavItem = { href: string; label: string; short?: string; icon: typeof Home;
 // Ordered as the user's journey: add evidence, analyze a job, prepare, practise, apply.
 const NAV: NavItem[] = [
   { href: "/", label: "Home", icon: Home, group: "main" },
+  { href: "/resume-builder", label: "Resume builder", icon: FileCode2, group: "main" },
   { href: "/resumes", label: "My resume", short: "Resume", icon: FileText, step: 1, group: "steps" },
   { href: "/jobs", label: "Jobs & match", short: "Jobs", icon: Briefcase, step: 2, group: "steps" },
   { href: "/preparation", label: "Study plan", short: "Plan", icon: Route, step: 3, group: "steps" },
@@ -162,6 +163,8 @@ function VerifyEmailBanner() {
 
 function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  // The LaTeX editor needs the full width for code + preview side by side.
+  const wide = /^\/resume-builder\/[^/]+/.test(pathname);
   const [drawer, setDrawer] = useState(false);
   const { me, unread } = useSession();
   useEffect(() => setDrawer(false), [pathname]);
@@ -202,8 +205,9 @@ function Shell({ children }: { children: ReactNode }) {
         </div>
       </Dialog>
 
-      <main id="main" tabIndex={-1} className="min-w-0 px-4 sm:px-8 lg:px-12 pt-6 sm:pt-10 pb-28 lg:pb-16 focus:outline-none">
-        <div className="mx-auto max-w-[1080px]">
+      <main id="main" tabIndex={-1} className={cx("min-w-0 px-4 sm:px-8 pt-6 pb-28 lg:pb-16 focus:outline-none",
+        wide ? "lg:px-6 sm:pt-6" : "lg:px-12 sm:pt-10")}>
+        <div className={cx("mx-auto", wide ? "max-w-none" : "max-w-[1080px]")}>
           <VerifyEmailBanner />
           {children}
         </div>

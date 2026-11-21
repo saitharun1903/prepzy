@@ -131,3 +131,19 @@ started by `scripts/start_prepzy.py`): Next.js listens on `$PORT` and forwards `
 Render's 750 free hours; two do not. Keep it awake with a free uptime monitor (e.g. UptimeRobot) pinging
 `https://<service>.onrender.com/health/live` every 10 minutes. The old `elevate-web` service redirects to
 the new address when `ELEVATE_REDIRECT_ORIGIN` is set on it. Memory use measured locally: ~260 MB of 512 MB.
+
+## Resume builder (LaTeX) security
+
+The resume builder compiles user-written LaTeX with TeX Live `pdflatex` inside the Prepzy image.
+
+- **TeX Live hardening:** shell escape is off, and `openin_any=p` / `openout_any=p` (paranoid mode) block absolute
+  paths, `..` and dot-files. Writes are only allowed in the job's own folder.
+- **Per compile:** each compile gets a fresh empty folder, a minimal environment, and limits set with `prlimit`
+  (25 s CPU, 1.5 GB address space, 30 MB files, 35 s wall clock), plus a 150k-character source limit and
+  30 compiles per user per minute.
+- **Privilege separation:** `start_prepzy.py` starts as root only to launch each process as its own user. The API
+  and web run as `prepzy`. `scripts/latex_runner.py` runs as `texrunner` with an empty environment and is reachable
+  only on `127.0.0.1:8100` with a per-boot token. It cannot read the API's secrets in `/proc/<pid>/environ` or its
+  files.
+- **Build check:** the image build compiles every template (`infrastructure/render/latex-smoke/`), so a broken TeX
+  install fails the build.

@@ -32,13 +32,40 @@ RUN npm run build -w apps/web
 
 # ---- runtime
 FROM python:3.13-slim
+# LaTeX for the resume builder: TeX Live (pdflatex) + the packages resumes commonly use, TeX Gyre fonts, Font
+# Awesome 5 from CTAN (not packaged separately in Debian), and poppler for page previews. prlimit caps compiles.
+RUN set -e; apt-get update \
+ && apt-get install -y --no-install-recommends texlive-latex-base texlive-latex-recommended texlive-latex-extra \
+      texlive-fonts-recommended lmodern tex-gyre poppler-utils util-linux curl unzip ca-certificates \
+ && curl -fsSL --retry 4 --retry-delay 3 -o /tmp/fa5.zip "https://mirrors.ctan.org/fonts/fontawesome5.zip" \
+ && mkdir -p /tmp/fa5 && unzip -q /tmp/fa5.zip -d /tmp/fa5 \
+ && T=/usr/local/share/texmf \
+ && place() { mkdir -p "$T/$2"; find /tmp/fa5 -type f -name "$1" -not -path "*/doc/*" -exec cp {} "$T/$2/" \; ; } \
+ && place '*.sty' tex/latex/fontawesome5 && place '*.fd' tex/latex/fontawesome5 && place '*.def' tex/latex/fontawesome5 \
+ && place '*.pfb' fonts/type1/public/fontawesome5 && place '*.tfm' fonts/tfm/public/fontawesome5 \
+ && place '*.enc' fonts/enc/dvips/fontawesome5 && place '*.map' fonts/map/dvips/fontawesome5 \
+ && rm -rf /tmp/fa5 /tmp/fa5.zip \
+ && mktexlsr >/dev/null \
+ && kpsewhich fontawesome5.sty fontawesome5.map \
+ && updmap-sys --enable Map=fontawesome5.map >/dev/null \
+ && apt-get purge -y curl unzip && apt-get autoremove -y \
+ && rm -rf /var/lib/apt/lists/* /usr/share/doc/* /usr/share/man/* /usr/share/texlive/texmf-dist/doc
 COPY --from=web /usr/local/bin/node /usr/local/bin/node
-RUN useradd --create-home --uid 10001 prepzy
+RUN useradd --create-home --uid 10001 prepzy \
+ && useradd --no-create-home --uid 10002 --shell /usr/sbin/nologin texrunner
 WORKDIR /app
 COPY --from=api --chown=prepzy:prepzy /app/services/api /app/services/api
 COPY --chown=prepzy:prepzy database/reference-data /app/database/reference-data
 COPY --chown=prepzy:prepzy ai/evaluation/results /app/ai/evaluation/results
-COPY --chown=prepzy:prepzy scripts/db_bootstrap.py scripts/start_prepzy.py /app/scripts/
+COPY --chown=prepzy:prepzy scripts/db_bootstrap.py scripts/start_prepzy.py scripts/latex_runner.py /app/scripts/
+# Build-time smoke test: every resume template must compile with the installed TeX (fails the build otherwise).
+COPY infrastructure/render/latex-smoke /tmp/latex-smoke
+RUN cd /tmp/latex-smoke && for f in *.tex; do t="${f%.tex}"; \
+      pdflatex -no-shell-escape -interaction=nonstopmode -halt-on-error "$f" >/dev/null \
+      || { echo "LaTeX template $t failed"; tail -30 "$t.log"; exit 1; }; \
+      if grep -q "Font shape .* undefined" "$t.log"; then echo "Template $t is missing a font"; grep "Font shape" "$t.log"; exit 1; fi; \
+    done \
+ && cd / && rm -rf /tmp/latex-smoke
 COPY --from=web --chown=prepzy:prepzy /app/web/node_modules /app/web/node_modules
 COPY --from=web --chown=prepzy:prepzy /app/web/package.json /app/web/package.json
 COPY --from=web --chown=prepzy:prepzy /app/web/packages /app/web/packages
@@ -50,7 +77,8 @@ ENV PATH="/app/services/api/.venv/bin:$PATH" \
     ELEVATE_ENV=production \
     ELEVATE_EMBEDDED_WORKER=true \
     ELEVATE_DATA_DIR=/tmp/elevate-data
-USER prepzy
+# The supervisor starts as root only to launch each process as its own user (see scripts/start_prepzy.py):
+# API + web as `prepzy`, the LaTeX compiler as `texrunner` with an empty environment.
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s CMD python -c "import urllib.request,os;urllib.request.urlopen(f'http://127.0.0.1:{os.environ.get(\"PORT\",\"3000\")}/health/live',timeout=4)"
 CMD ["python", "/app/scripts/start_prepzy.py"]
