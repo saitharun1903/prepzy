@@ -31,7 +31,7 @@ function CopyBtn({ text, label = "Copy" }: { text: string; label?: string }) {
 
 function Card({ icon, title, hint, actions, children }: { icon: ReactNode; title: string; hint?: string; actions?: ReactNode; children: ReactNode }) {
   return (
-    <section className="rounded-2xl border border-line bg-surface p-4 sm:p-5 flex flex-col gap-3">
+    <section className="min-w-0 rounded-2xl border border-line bg-surface p-4 sm:p-5 flex flex-col gap-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="flex items-start gap-2.5 min-w-0">
           <span className="grid place-items-center size-9 rounded-xl bg-accent-soft text-accent shrink-0">{icon}</span>
@@ -219,7 +219,7 @@ export function ApplyKitTab({ jobId, jobTitle, company }: { jobId: string; jobTi
 
       {/* 2 — resume + ATS */}
       {resume ? (
-        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <Card icon={<FileText aria-hidden className="size-5" />} title="Tailored resume" hint={`For ${resume.job_title ?? jobTitle}${resume.company ? ` at ${resume.company}` : ""} · ${latexTemplate(template).label} template`}
             actions={<>
               <Button size="sm" variant="primary" disabled={!pdf?.pdf || compiling} onClick={() => pdf?.pdf && downloadBlob(b64ToBlob(pdf.pdf, "application/pdf"), `${base}_Resume.pdf`)}>
@@ -256,8 +256,8 @@ export function ApplyKitTab({ jobId, jobTitle, company }: { jobId: string; jobTi
 
       {/* 3 — messages */}
       {kit ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="min-w-0 lg:col-span-2">
             <Card icon={<FileText aria-hidden className="size-5" />} title="Cover letter" hint="Edit anything, then download or copy."
               actions={<>
                 <Button size="sm" variant="primary" loading={letterBusy} onClick={downloadLetter}><Download aria-hidden className="size-4" />PDF</Button>
@@ -284,7 +284,7 @@ export function ApplyKitTab({ jobId, jobTitle, company }: { jobId: string; jobTi
             <Textarea aria-label="Referral request" rows={autoRows(kit.referral_message, 6)} value={kit.referral_message} onChange={(e) => setKit({ ...kit, referral_message: e.target.value })} />
           </Card>
 
-          <div className="lg:col-span-2">
+          <div className="min-w-0 lg:col-span-2">
             <Card icon={<Mail aria-hidden className="size-5" />} title="Cold email to a recruiter or hiring manager" hint="Replace [Name], attach your resume PDF."
               actions={<>
                 <a href={mailto} className="inline-flex items-center gap-1.5 h-8 rounded-lg px-3 text-sm font-medium bg-accent text-white hover:opacity-90"><Mail aria-hidden className="size-4" />Open in email</a>

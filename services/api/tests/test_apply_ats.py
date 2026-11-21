@@ -71,3 +71,32 @@ def test_same_input_same_score():
     a = ats.check(data=None, kind=None, resume_text=RESUME, job_text=JOB, job_url=None, requirements=None, ats="lever")
     b = ats.check(data=None, kind=None, resume_text=RESUME, job_text=JOB, job_url=None, requirements=None, ats="lever")
     assert a["score"] == b["score"]
+
+
+RESUME_SHORT = ("Asha Example\nasha@example.com | +91 90000 00000\nEDUCATION\nB.Tech Computer Science, Example University, 2021-2025\n"
+                "SKILLS\nJava, PostgreSQL, SQL, Docker, Git\nPROJECTS\nLibrary API - Built a REST service in Java with PostgreSQL "
+                "for book loans, with unit tests and a Docker image for local runs.\nExpense tracker - Java desktop app storing "
+                "expenses in PostgreSQL with monthly summaries and charts for each category.\n")
+
+
+def test_ats_job_keywords_follow_sections_or_groups_and_skip_industry_words():
+    from elevate.services import ats
+    job = ("We build software for our logistics platform.\n\nRequirements\n- Java or Kotlin.\n- SQL databases such as PostgreSQL or MySQL.\n"
+           "\nNice to have\n- Docker and Kubernetes.\n- CI/CD pipelines (GitHub Actions or Jenkins).\n")
+    kws = {k["id"]: k for k in ats.job_keywords(None, job)}
+    assert "supply_chain" not in kws and "logistics" not in kws  # industry word in the intro is not a skill
+    assert kws["kubernetes"]["importance"] == "preferred"         # under "Nice to have"
+    assert "git" not in kws                                        # "GitHub" inside "GitHub Actions"
+    assert "mysql" in kws["kotlin"]["alternatives"] or "java" in kws["kotlin"]["alternatives"]
+    r = ats.check(data=None, kind=None, resume_text=RESUME_SHORT,
+                  job_text=job, job_url=None, requirements=None, ats="greenhouse", job_title=None)
+    missing = {k["id"] for k in r["keywords"]["missing"]}
+    assert "kotlin" not in missing and "mysql" not in missing      # Java / PostgreSQL satisfy the "or"
+    assert "kubernetes" in missing
+
+
+def test_kit_guard_ignores_digits_inside_company_names():
+    from elevate.services.apply_kit import Guard
+    g = Guard("Asha\nBuilt REST APIs in Java with Spring Boot.", "Back End Developer Intern at Jobs4PanIndia")
+    assert g.sentence_ok("I'm applying for the Back End Developer Intern role at Jobs4PanIndia.")
+    assert not g.sentence_ok("I improved latency by 40% at my internship.")
