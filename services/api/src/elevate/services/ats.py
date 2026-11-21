@@ -193,29 +193,71 @@ def file_facts(data: bytes, kind: str) -> FileFacts:
 
 
 # ------------------------------------------------------------------ keywords
+def _text_requirements(job_text: str) -> list[dict[str, Any]]:
+    """Requirements from pasted text. Lines under headings like "Requirements" / "Nice to have" take the heading's
+    importance; other lines get it from their own wording ("required", "must", "a plus", "preferred")."""
+    from .job_analysis import build_requirement, deterministic_requirements, section_requirement_lines
+    tax = load_taxonomy()
+    reqs: list[dict[str, Any]] = []
+    covered: set[str] = set()
+    for body, span, imp in section_requirement_lines(job_text):
+        if tax.find_in_text(body):
+            r = build_requirement(f"s{len(reqs) + 1}", body, span, "skill", imp, "rules")
+            reqs.append(r)
+            covered |= {c["id"] for c in r["concepts"]}
+    has_sections = bool(reqs)
+    split = re.sub(r"(?<!\be\.g\.)(?<!\bi\.e\.)(?<=[.;!?])[ \t]+(?=[A-Z0-9])", "\n", job_text)
+    for r in deterministic_requirements(split):
+        if has_sections:
+            # The posting has requirement sections; other lines (intro, duties) only add concrete tools as nice-to-haves,
+            # never an industry word like "logistics".
+            r["concepts"] = [c for c in r["concepts"] if tax.skills[c["id"]].kind in ("tool", "technical")]
+            if r["importance"] in ("unclear", None):
+                r["importance"] = "preferred"
+        if r["concepts"] and not {c["id"] for c in r["concepts"]} <= covered:
+            reqs.append(r)
+            covered |= {c["id"] for c in r["concepts"]}
+    return reqs
+
+
+def _nested(text: str) -> set[str]:
+    """Concepts found only inside a longer concept's match ("GitHub" inside "GitHub Actions")."""
+    found = load_taxonomy().find_in_text(text)
+    spans = [(a, b, cid) for cid, ss in found.items() for a, b in ss]
+    return {cid for cid, ss in found.items()
+            if all(any(o != cid and a2 <= a and b <= b2 and (b2 - a2) > (b - a) for a2, b2, o in spans) for a, b in ss)}
+
+
 def job_keywords(requirements: list[dict[str, Any]] | None, job_text: str) -> list[dict[str, Any]]:
     """Skills the job asks for: from the analysed requirements when available, else found in the text."""
     tax = load_taxonomy()
     out: dict[str, dict[str, Any]] = {}
     if not requirements and job_text:
-        # Pasted text: use the same rule-based requirement splitter as job analysis (importance from wording such as
-        # "required", "must", "nice to have", "preferred", "plus").
-        from .job_analysis import deterministic_requirements
-        requirements = deterministic_requirements(re.sub(r"(?<!\be\.g\.)(?<!\bi\.e\.)(?<=[.;!?])\s+(?=[A-Z0-9])", "\n", job_text))
+        requirements = _text_requirements(job_text)
     if requirements:
         for r in requirements:
             if r.get("removed_by_user") or r.get("negated"):
                 continue
             # Listed skills are expected unless the posting marks them optional ("preferred", "nice to have", "plus").
             imp = "preferred" if r.get("importance") in ("preferred", "optional") else "required"
-            for c in r.get("concepts", []):
-                if c["id"] in tax.skills and tax.skills[c["id"]].kind != "soft":
-                    cur = out.get(c["id"])
-                    if not cur or (cur["importance"] == "preferred" and imp == "required"):
-                        out[c["id"]] = {"id": c["id"], "label": tax.skills[c["id"]].label, "importance": imp}
+            inner = _nested(r.get("text") or "")
+            ids = [c["id"] for c in r.get("concepts", []) if c["id"] in tax.skills and tax.skills[c["id"]].kind != "soft"
+                   and c["id"] not in inner]
+            # "Java or Kotlin": having any one of them satisfies the requirement.
+            alts = ids if r.get("group") == "any" and len(ids) > 1 else []
+            for cid in ids:
+                cur = out.get(cid)
+                if not cur or (cur["importance"] == "preferred" and imp == "required"):
+                    out[cid] = {"id": cid, "label": tax.skills[cid].label, "importance": imp,
+                                "alternatives": [a for a in alts if a != cid]}
+    inner_all = _nested(job_text)
     for cid, spans in tax.find_in_text(job_text).items():
-        if cid in tax.skills and tax.skills[cid].kind != "soft" and cid not in out:
-            out[cid] = {"id": cid, "label": tax.skills[cid].label, "importance": "required" if len(spans) > 1 else "preferred"}
+        if cid in inner_all:
+            continue
+        # Mentions outside the requirement lines (company blurb, perks): only real skills, never an industry word.
+        if cid in tax.skills and tax.skills[cid].kind in ("tool", "technical") and cid not in out:
+            out[cid] = {"id": cid, "label": tax.skills[cid].label, "importance": "required" if len(spans) > 1 else "preferred",
+                        "alternatives": []}
     for cid, k in out.items():
         spans = tax.find_in_text(job_text).get(cid, [])
         k["job_term"] = job_text[spans[0][0]:spans[0][1]] if spans else k["label"]
@@ -264,6 +306,11 @@ def check(*, data: bytes | None, kind: str | None, resume_text: str | None, job_
             (matched if exact or not prof.exact_keywords else alias_only).append(row)
         else:
             missing.append(k)
+    # Drop "or" alternatives once one of them is on the resume (Java present → Kotlin not missing).
+    have_ids = {k["id"] for k in matched + alias_only}
+    satisfied = [k for k in missing if set(k.get("alternatives") or []) & have_ids]
+    missing = [k for k in missing if k not in satisfied]
+    kws = [k for k in kws if k not in satisfied]
     w = {"required": 2.0, "preferred": 1.0}
     total = sum(w[k["importance"]] for k in kws) or 1.0
     got = sum(w[k["importance"]] for k in matched) + 0.5 * sum(w[k["importance"]] for k in alias_only)

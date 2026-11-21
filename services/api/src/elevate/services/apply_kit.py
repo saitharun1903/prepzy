@@ -83,7 +83,9 @@ _SENT = re.compile(r"(?<=[.!?])\s+(?=[A-Z\[\"'(])")
 
 
 def _nums(s: str) -> set[str]:
-    return {n.rstrip(".,") for n in re.findall(r"\d+(?:[.,]\d+)?%?", s)}
+    # Digits inside a word are part of a name ("Jobs4PanIndia", "B2B", "Web3"), not a claimed number.
+    return {n.rstrip(".,") for n in re.findall(r"(?<![A-Za-z\d])\d+(?:[.,]\d+)?%?(?![A-Za-z]*[A-Za-z]\w)", s)
+            if not re.search(r"[A-Za-z]", n)}
 
 
 class Guard:
