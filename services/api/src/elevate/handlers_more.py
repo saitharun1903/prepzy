@@ -197,8 +197,8 @@ def handle_resume_tailor(ctx: OpContext) -> None:
         raise ModelOutputInvalid("The model returned the resume in an unexpected format.") from e
     ctx.stage("validating")
     resume, dropped = tailor.validate(data, resume_text)
-    if not job_id:
-        resume = tailor.snap_to_original(resume, resume_text)
+    # Bullets always stay the candidate's own words; a job-tailored summary is kept.
+    resume = tailor.snap_to_original(resume, resume_text, keep_summary=bool(job_id))
     template = str(ctx.payload.get("template") or "classic")[:40]
 
     def write(_: Session) -> dict[str, Any]:

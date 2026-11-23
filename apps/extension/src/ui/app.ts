@@ -1044,6 +1044,7 @@ function runCoachAction(action: string, job: JobView): void {
   if (action === "practice") openTab(`${web}/interviews/new?job_id=${job.job.id}`);
   else if (action === "plan") openTab(`${web}/preparation?job_id=${job.job.id}`);
   else if (action === "resume") openTab(`${web}/resumes`);
+  else if (action === "ats") openTab(`${web}/ats?job_id=${encodeURIComponent(job.job.id)}`);
   else if (action === "analyze") void startOver();
   else openTab(report);
 }
@@ -1349,6 +1350,7 @@ function prepareCard(job: JobView, items: ChecklistItem[]): HTMLElement {
       const u = dashboardUrl(job.job.id);
       openTab(u ? `${u}?tab=apply` : null);
     }, { kind: "quiet", id: "btn-tailor" }),
+    button("◎ ATS score for this job ↗", () => runCoachAction("ats", job), { kind: "quiet", id: "btn-ats" }),
   );
 }
 

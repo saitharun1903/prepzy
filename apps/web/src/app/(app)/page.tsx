@@ -2,7 +2,7 @@
 
 import { LinkImport } from "@/components/link-import";
 import Link from "next/link";
-import { ArrowRight, Bell, Briefcase, CalendarCheck, CalendarClock, Check, FileText, MessagesSquare, Route, UserRound } from "lucide-react";
+import { ArrowRight, Bell, Briefcase, CalendarCheck, CalendarClock, Check, FileCode2, FileText, Gauge, MessagesSquare, Route, UserRound, Wand2 } from "lucide-react";
 import { useApi } from "@/lib/hooks";
 import { formatDateTime, humanize, jobTitle, relativeTime } from "@/lib/format";
 import type { InterviewSessionSummary, JobSummary, Profile, Reminder, Resume, RoadmapSummary } from "@/lib/types";
@@ -123,6 +123,27 @@ export default function HomePage() {
       <LinkImport className="mb-8" title="Found a job? Paste its link" />
 
       <Journey steps={steps} loading={loading} />
+
+      <section aria-labelledby="tools-h" className="mb-12">
+        <SectionTitle id="tools-h">Quick tools</SectionTitle>
+        <ul className="grid gap-3 sm:grid-cols-3">
+          {([
+            [Wand2, "Apply kit", "Resume PDF, cover letter and messages for a job", analyzed ? `/jobs/${analyzed.id}?tab=apply` : "/jobs"],
+            [Gauge, "ATS checker", "See how a company's ATS reads your resume", analyzed ? `/ats?job_id=${analyzed.id}` : "/ats"],
+            [FileCode2, "Resume builder", "16 LaTeX templates with a live PDF preview", "/resume-builder"],
+          ] as const).map(([Icon, t, d, href]) => (
+            <li key={t}>
+              <Link href={href} className="group flex items-start gap-3 rounded-2xl border border-line bg-surface p-4 transition hover:border-accent/50 hover:shadow-[0_14px_36px_-24px_rgba(15,29,51,0.6)]">
+                <span aria-hidden className="icon-chip size-10 shrink-0"><Icon className="size-5" /></span>
+                <span className="min-w-0">
+                  <span className="flex items-center gap-1 font-semibold text-ink">{t}<ArrowRight aria-hidden className="size-4 opacity-0 -translate-x-1 transition group-hover:opacity-100 group-hover:translate-x-0" /></span>
+                  <span className="block text-[13px] text-ink-2 mt-0.5">{d}</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       {actions.length ? (
       <section aria-labelledby="next-actions" className="mb-12">

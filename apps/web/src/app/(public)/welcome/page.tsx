@@ -31,7 +31,7 @@ const PRINCIPLES = [
 
 export default function WelcomePage() {
   return (
-    <div className="mx-auto w-full max-w-6xl flex flex-col gap-20">
+    <div className="mx-auto w-full max-w-6xl flex flex-col gap-20 overflow-x-clip">
       <section className="grid gap-10 lg:grid-cols-[1.05fr_1fr] lg:items-center">
         <div className="flex flex-col items-start gap-5">
           <p className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-white/70 px-3 py-1 text-[13px] font-medium text-gold-ink shadow-sm">
