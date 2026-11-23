@@ -3,7 +3,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { use, useCallback, useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowLeft, CheckCircle2, Cloud, CloudOff, Code2, Download, Eye, FileCode2, LayoutTemplate, ListChecks, Loader2, Maximize2, Play, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CheckCircle2, Cloud, CloudOff, Code2, Download, Eye, FileCode2, LayoutTemplate, ListChecks, Loader2, Maximize2, PenLine, Play, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { ApiError, apiFetch } from "@/lib/api";
 import { useBeforeUnload } from "@/lib/hooks";
 import type { LatexEditorHandle } from "@/components/resume/latex-editor";
@@ -250,7 +250,7 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
 
       {/* mobile pane switch */}
       <div role="tablist" aria-label="View" className="lg:hidden inline-flex self-start rounded-xl bg-surface-2 p-1 gap-1">
-        {([["code", "Code", Code2], ["preview", "Preview", Eye]] as const).map(([id, label, Icon]) => (
+        {([["code", "Edit", PenLine], ["preview", "Preview", Eye]] as const).map(([id, label, Icon]) => (
           <button key={id} type="button" role="tab" aria-selected={pane === id} onClick={() => setPane(id)}
             className={cx("inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium", pane === id ? "bg-surface text-ink shadow-sm" : "text-ink-2")}>
             <Icon aria-hidden className="size-4" />{label}{id === "preview" && errors.length ? <span className="ml-1 rounded-full bg-danger px-1.5 text-[11px] text-white">{errors.length}</span> : null}

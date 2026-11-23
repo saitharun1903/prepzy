@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import {
-  forwardRef, useId, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes,
+  forwardRef, useEffect, useId, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from "react";
 import { AlertTriangle, CheckCircle2, CircleDashed, Info, Loader2, MailWarning, X, XCircle } from "lucide-react";
@@ -323,6 +323,15 @@ export function DefinitionList({ items }: { items: { term: ReactNode; desc: Reac
 export function Tabs({ tabs, value, onChange, label }: {
   tabs: { id: string; label: ReactNode }[]; value: string; onChange: (id: string) => void; label: string;
 }) {
+  const listRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // Scroll only the tab strip (never the page) so the selected tab is visible.
+    const list = listRef.current, sel = list?.querySelector<HTMLElement>('[aria-selected="true"]');
+    if (!list || !sel) return;
+    const left = sel.offsetLeft - list.offsetLeft, right = left + sel.offsetWidth;
+    if (left < list.scrollLeft) list.scrollLeft = left - 16;
+    else if (right > list.scrollLeft + list.clientWidth) list.scrollLeft = right - list.clientWidth + 48;
+  }, [value]);
   const onKey = (e: React.KeyboardEvent, idx: number) => {
     let next = idx;
     if (e.key === "ArrowRight") next = (idx + 1) % tabs.length;
@@ -335,7 +344,10 @@ export function Tabs({ tabs, value, onChange, label }: {
     document.getElementById(`tab-${tabs[next].id}`)?.focus();
   };
   return (
-    <div role="tablist" aria-label={label} className="flex gap-1 overflow-x-auto border-b border-line -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none">
+    // On phones the tabs scroll sideways: fade the right edge so it's clear there's more, and keep the
+    // selected tab in view.
+    <div role="tablist" aria-label={label} ref={listRef}
+      className="flex gap-1 overflow-x-auto border-b border-line -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-none [mask-image:linear-gradient(to_right,black_82%,transparent)] sm:[mask-image:none]">
       {tabs.map((t, i) => {
         const sel = t.id === value;
         return (
