@@ -12,7 +12,7 @@ export type Kit = {
 export type KitResult = {
   job_id: string; version_id: string; job_title: string; company: string | null; kit: Kit; removed: string[]; note: string;
 };
-export type CompileOut = { ok: boolean; ms: number; page_count: number; errors: { line: number | null; message: string }[]; pdf: string | null; pages: string[] };
+export type CompileOut = { ok: boolean; ms: number; page_count: number; overfull?: boolean; errors: { line: number | null; message: string }[]; pdf: string | null; pages: string[] };
 
 export const LINKEDIN_LIMIT = 300;
 
@@ -76,16 +76,14 @@ ${r?.name ? tex(r.name) : ""}
 export async function fitToPage(
   r: TailoredResume, template: string, compile: (source: string) => Promise<CompileOut>,
 ): Promise<{ source: string; out: CompileOut }> {
+  // Compile the page-filling version straight away; the compiler's own overflow warning says when it doesn't fit.
+  // Usually one compile: 11pt filled. Long resumes drop to 10pt, and only past that to a plain (2-page) layout.
   for (const size of ["11pt", "10pt"] as const) {
-    const plainSrc = toLatex(r, template, { size });
-    const plain = await compile(plainSrc);
-    if (!plain.ok) return { source: plainSrc, out: plain };
-    if (plain.page_count > 1 && size === "11pt") continue;
-    if (plain.page_count > 1) return { source: plainSrc, out: plain };
-    const fillSrc = toLatex(r, template, { size, fill: true });
-    const filled = await compile(fillSrc);
-    return filled.ok && filled.page_count === 1 ? { source: fillSrc, out: filled } : { source: plainSrc, out: plain };
+    const src = toLatex(r, template, { size, fill: true });
+    const out = await compile(src);
+    if (out.ok && out.page_count === 1 && !out.overfull) return { source: src, out };
+    if (!out.ok && size === "11pt") break;
   }
-  const src = toLatex(r, template);
+  const src = toLatex(r, template, { size: "10pt" });
   return { source: src, out: await compile(src) };
 }

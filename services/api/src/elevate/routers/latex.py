@@ -25,12 +25,12 @@ MAX_DOCS = 50
 _local_slots = threading.BoundedSemaphore(2)
 
 
-def _compile(source: str) -> dict[str, Any]:
+def _compile(source: str, previews: bool = True) -> dict[str, Any]:
     """Production: the isolated runner (separate uid, empty env). Dev/tests: in-process with the same limits."""
     url, token = os.environ.get("ELEVATE_LATEX_RUNNER_URL"), os.environ.get("ELEVATE_LATEX_RUNNER_TOKEN")
     if url and token:
         try:
-            r = httpx.post(f"{url}/compile", json={"source": source}, headers={"X-Runner-Token": token}, timeout=60)
+            r = httpx.post(f"{url}/compile", json={"source": source, "previews": previews}, headers={"X-Runner-Token": token}, timeout=60)
         except httpx.HTTPError as e:
             raise CapabilityUnavailable("The LaTeX compiler is not reachable right now. Try again shortly.",
                                         code="latex_unavailable", retryable=True) from e
@@ -44,10 +44,10 @@ def _compile(source: str) -> dict[str, Any]:
     if not _local_slots.acquire(timeout=40):
         raise CapabilityUnavailable("The compiler is busy. Try again in a few seconds.", code="latex_busy", retryable=True)
     try:
-        res = latex.compile_tex(source)
+        res = latex.compile_tex(source, previews=previews)
     finally:
         _local_slots.release()
-    return {"ok": res.ok, "ms": res.ms, "page_count": res.page_count, "log_tail": res.log_tail,
+    return {"ok": res.ok, "ms": res.ms, "page_count": res.page_count, "overfull": res.overfull, "log_tail": res.log_tail,
             "errors": [{"line": e.line, "message": e.message} for e in res.errors],
             "pdf": base64.b64encode(res.pdf).decode() if res.pdf else None,
             "pages": [base64.b64encode(p).decode() for p in res.pages]}
@@ -55,6 +55,7 @@ def _compile(source: str) -> dict[str, Any]:
 
 class CompileIn(BaseModel):
     source: str = Field(min_length=1, max_length=latex.MAX_SOURCE_CHARS)
+    previews: bool = True  # False skips the page images (fit-to-page trial compiles)
 
 
 @router.post("/compile")
@@ -64,7 +65,7 @@ def compile_source(body: CompileIn, ctx: Authed, response: Response) -> dict[str
     db, actor = ctx
     rate_limit(db, f"latex:{actor.id}", limit=30, window_seconds=60)
     response.headers["Cache-Control"] = "no-store"
-    return _compile(body.source)
+    return _compile(body.source, body.previews)
 
 
 # ------------------------------------------------------------------ saved projects
