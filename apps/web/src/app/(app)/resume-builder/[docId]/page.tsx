@@ -63,8 +63,9 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
   const version = useRef(0);
   const savedSource = useRef<string | null>(null);
   const editor = useRef<LatexEditorHandle | null>(null);
-  const latest = useRef({ source: "", title: "" });
-  latest.current = { source, title };
+  const latest = useRef<{ source: string; title: string; data: TailoredResume | null; template: string }>({ source: "", title: "", data: null, template: "custom" });
+  latest.current = { source, title, data, template };
+  const fitRef = useRef<((silent?: boolean) => Promise<void>) | null>(null);
 
   useBeforeUnload(save === "unsaved" || save === "saving");
 
@@ -100,7 +101,15 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
     }
   }, []);
 
-  useEffect(() => { if (doc) void compile(); }, [doc, compile]);
+  // On open: a resume built from the form is fitted to the page automatically; hand-written code just compiles.
+  const opened = useRef(false);
+  useEffect(() => {
+    if (!doc || opened.current) return;
+    opened.current = true;
+    const d = latest.current;
+    if (d.data && d.source === toLatex(d.data, d.template, { size: /\\documentclass\[11pt/.test(d.source) ? "11pt" : "10pt" })) void fitRef.current?.(true);
+    else void compile();
+  }, [doc, compile]);
 
   // ---------------------------------------------------------------- autosave + autocompile
   const persist = useCallback(async (patch: { source?: string; title?: string; data?: TailoredResume | null; template?: string }) => {
@@ -140,9 +149,9 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
     setSource(toLatex(data, template, editLayout));
   };
   const [fitting, setFitting] = useState(false);
-  const fitPage = async () => {
+  const fitPage = async (silent = false) => {
     if (!data) return;
-    if (!inSync && !window.confirm("Fit to page rebuilds the code from the form. Your manual code edits will be replaced.")) return;
+    if (!silent && !inSync && !window.confirm("Fit to page rebuilds the code from the form. Your manual code edits will be replaced.")) return;
     setFitting(true);
     try {
       const { source: src, out } = await fitToPage(data, template, (x) => apiFetch<CompileOut>("latex/compile", { method: "POST", body: { source: x } }));
@@ -166,11 +175,14 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
     void persist({ template: id, source: src, data });
   };
 
+  // Form edits and template switches produce plain spacing; fit them to the page automatically.
+  const plainFromForm = data ? toLatex(data, template, editLayout) : null;
+  fitRef.current = fitPage;
   useEffect(() => {
     if (!doc || !auto || source === compiledSource) return;
-    const t = setTimeout(() => void compile(), 2500);
+    const t = setTimeout(() => void (source === plainFromForm ? fitRef.current?.(true) : compile()), 2500);
     return () => clearTimeout(t);
-  }, [source, auto, doc, compiledSource, compile]);
+  }, [source, auto, doc, compiledSource, compile, plainFromForm]);
 
   const saveTitle = () => {
     const t = title.trim();

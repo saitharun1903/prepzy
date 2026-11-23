@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { FileUp, Gauge } from "lucide-react";
 import { ApiError, apiFetch } from "@/lib/api";
 import { useApi } from "@/lib/hooks";
@@ -41,6 +41,11 @@ export default function AtsPage() {
   const [result, setResult] = useState<{ r: AtsResult; versionId: string | null } | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
 
+  // Opened from the extension or a job page: /ats?job_id=… preselects that saved job.
+  useEffect(() => {
+    const j = new URLSearchParams(window.location.search).get("job_id");
+    if (j && /^[0-9a-f-]{36}$/i.test(j)) { setJmode("saved"); setJobId(j); }
+  }, []);
   const hasJobs = Boolean(jobs.data?.items.length);
   const job = jobId || jobs.data?.items[0]?.id || "";
   const ready = (rmode === "upload" ? Boolean(file) : Boolean(pick?.versionId))
