@@ -22,7 +22,9 @@ function renameOk(src: string, dst: string): boolean {
 type FixResult = { resume: TailoredResume; added: string[]; renamed: string[]; dropped: string[]; job_title: string | null };
 
 /** One click: rebuild the student's own resume in LaTeX with the job's keywords, then score the new PDF. */
-export function AtsFix({ before, versionId, picked }: { before: AtsResult; versionId: string | null; picked: string[] }) {
+export function AtsFix({ before, versionId, picked, onPickAll }: {
+  before: AtsResult; versionId: string | null; picked: string[]; onPickAll?: (labels: string[]) => void;
+}) {
   const router = useRouter();
   const { notify } = useToast();
   const [template, setTemplate] = useState("ats");
@@ -36,12 +38,18 @@ export function AtsFix({ before, versionId, picked }: { before: AtsResult; versi
   const [working, setWorking] = useState(false);
   const [saving, setSaving] = useState(false);
   const seq = useRef(0);
+  const [asking, setAsking] = useState(false);
+  const missing = before.keywords.missing.map((k) => k.job_term || k.label).slice(0, 25);
 
   const renames = [...before.keywords.matched, ...before.keywords.alias_only]
     .filter((k) => k.exact === false && k.resume_term && k.job_term && renameOk(k.resume_term, k.job_term))
     .map((k) => ({ from_term: k.resume_term!, to_term: k.job_term! }));
 
-  const start = async () => {
+  // One click: with nothing ticked, ask once whether to add the missing skills (only the user knows they have them).
+  const onFix = () => { if (!picked.length && missing.length && !fixed) setAsking(true); else void start(picked); };
+
+  const start = async (skills: string[]) => {
+    setAsking(false);
     setStarting(true);
     setError(null);
     setFixed(null);
@@ -52,7 +60,7 @@ export function AtsFix({ before, versionId, picked }: { before: AtsResult; versi
       const r = await apiFetch<Accepted>("ats/fix", { method: "POST", idempotencyKey: newIdempotencyKey(), body: {
         ...(versionId ? { resume_version_id: versionId } : { resume_text: before.parsed.text }),
         ...(job?.id ? { job_id: job.id } : { job_text: job?.text ?? "" }),
-        job_title: job?.title ?? null, add_skills: picked, renames, template,
+        job_title: job?.title ?? null, add_skills: skills, renames, template,
       } });
       setOpId(r.operation_id);
     } catch (e) {
@@ -122,10 +130,23 @@ export function AtsFix({ before, versionId, picked }: { before: AtsResult; versi
       </div>
 
       <div className="mt-4">
-        <Button variant="primary" loading={starting || Boolean(opId)} onClick={start}>
-          <Wand2 aria-hidden className="size-4" />{fixed ? "Fix again" : "Fix my resume"}
+        <Button variant="primary" loading={starting || Boolean(opId)} onClick={onFix}>
+          <Wand2 aria-hidden className="size-4" />{fixed ? "Fix again" : "Fix my resume"}{picked.length ? ` · add ${picked.length} skill${picked.length > 1 ? "s" : ""}` : ""}
         </Button>
       </div>
+      {asking ? (
+        <div role="dialog" aria-label="Add missing skills?" className="mt-3 rounded-xl border border-accent/30 bg-accent/5 p-4">
+          <p className="text-[14px] text-ink">
+            Add the {missing.length} missing skill{missing.length > 1 ? "s" : ""} to your resume? <span className="text-ink-2">{missing.join(", ")}</span>
+          </p>
+          <p className="text-[12.5px] text-muted mt-1">Only add skills you can talk about in an interview — recruiters ask.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="primary" onClick={() => { onPickAll?.(missing); void start(missing); }}>Add all {missing.length} — I have them</Button>
+            <Button variant="secondary" onClick={() => { setAsking(false); document.getElementById("ats-result")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>Let me choose</Button>
+            <Button variant="ghost" onClick={() => void start([])}>Fix without adding</Button>
+          </div>
+        </div>
+      ) : null}
       {opId ? <div className="mt-3"><OperationStatus<FixResult> compact opId={opId} label="Fixing your resume" onDone={(op) => {
         setOpId(null);
         if (op.result && "resume" in op.result) setFixed(op.result);
@@ -146,7 +167,7 @@ export function AtsFix({ before, versionId, picked }: { before: AtsResult; versi
             ) : null}
             {fixed.added.length || fixed.renamed.length ? (
               <ul className="text-[13.5px] text-ink-2 list-disc pl-5">
-                {fixed.added.length ? <li>Added to Skills: {fixed.added.join(", ")}</li> : null}
+                {fixed.added.length ? <li>Added to your Skills (each in its matching group): <b>{fixed.added.join(", ")}</b></li> : null}
                 {fixed.renamed.map((x) => <li key={x}>Reworded {x}</li>)}
               </ul>
             ) : null}

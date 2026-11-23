@@ -141,3 +141,16 @@ def test_ats_fix_never_renames_to_generic_words():
     r = {"summary": "Uses Docker.", "skills": [{"group": "Tools", "items": ["Docker", "Git"]}], "experience": [], "projects": []}
     out, _, renamed = apply_keywords(r, [], [{"from_term": "Docker", "to_term": "containers"}])
     assert out["skills"][0]["items"] == ["Docker", "Git"] and renamed == []
+
+
+def test_added_skills_go_to_the_matching_group():
+    from elevate.services.ats_fix import apply_keywords
+    r = {"skills": [{"group": "Languages", "items": ["Java"]}, {"group": "Frameworks & Libraries", "items": ["React"]},
+                    {"group": "Cloud & DevOps", "items": ["Docker"]}, {"group": "Core Concepts", "items": ["OOP"]}]}
+    out, added, _ = apply_keywords(r, ["TypeScript", "JPA", "Kubernetes", "Azure", "machine learning", "Java"], [])
+    groups = {g["group"]: g["items"] for g in out["skills"]}
+    assert groups["Languages"] == ["Java", "TypeScript"]
+    assert groups["Frameworks & Libraries"] == ["React", "JPA"]
+    assert groups["Cloud & DevOps"] == ["Docker", "Kubernetes", "Azure"]
+    assert groups["Core Concepts"] == ["OOP", "Machine Learning"]
+    assert "Java" not in added and len(added) == 5
