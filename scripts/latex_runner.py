@@ -50,8 +50,9 @@ class Handler(BaseHTTPRequestHandler):
             self._send(413, {"error": "too large"})
             return
         try:
-            source = json.loads(self.rfile.read(length))["source"]
-            if not isinstance(source, str):
+            body = json.loads(self.rfile.read(length))
+            source, previews = body["source"], body.get("previews", True)
+            if not isinstance(source, str) or not isinstance(previews, bool):
                 raise ValueError
         except (ValueError, KeyError, TypeError):
             self._send(400, {"error": "bad request"})
@@ -60,11 +61,11 @@ class Handler(BaseHTTPRequestHandler):
             self._send(503, {"error": "busy"})
             return
         try:
-            r = compile_tex(source)
+            r = compile_tex(source, previews=previews)
         finally:
             SLOTS.release()
         self._send(200, {
-            "ok": r.ok, "ms": r.ms, "page_count": r.page_count, "log_tail": r.log_tail,
+            "ok": r.ok, "ms": r.ms, "page_count": r.page_count, "overfull": r.overfull, "log_tail": r.log_tail,
             "errors": [{"line": e.line, "message": e.message} for e in r.errors],
             "pdf": base64.b64encode(r.pdf).decode() if r.pdf else None,
             "pages": [base64.b64encode(p).decode() for p in r.pages],

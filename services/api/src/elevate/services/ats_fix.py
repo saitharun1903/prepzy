@@ -11,7 +11,54 @@ from __future__ import annotations
 import re
 from typing import Any
 
-_GROUP_HINT = re.compile(r"tool|technolog|framework|other|skill", re.IGNORECASE)
+# Which kind of skill a keyword is, and which of the user's own Skills groups that kind belongs in.
+_KINDS: list[tuple[str, set[str], str]] = [
+    ("language", {"python", "java", "javascript", "typescript", "c", "c++", "c#", "go", "golang", "rust", "kotlin", "swift",
+                  "ruby", "php", "scala", "r", "sql", "html", "html5", "css", "css3", "bash", "shell", "dart", "matlab",
+                  "perl", "objective-c", "solidity", "haskell", "elixir", "lua", "groovy", "julia"},
+     r"language|programming|coding"),
+    ("database", {"mysql", "postgresql", "postgres", "mongodb", "redis", "oracle", "sqlite", "cassandra", "dynamodb",
+                  "elasticsearch", "firebase", "mariadb", "neo4j", "snowflake", "bigquery", "sql server", "nosql"},
+     r"database|\bdb|data ?stor|storage"),
+    ("cloud", {"aws", "azure", "gcp", "google cloud", "docker", "kubernetes", "k8s", "terraform", "jenkins", "ansible",
+               "ci/cd", "github actions", "gitlab ci", "kafka", "apache kafka", "rabbitmq", "linux", "nginx", "helm",
+               "openshift", "heroku", "vercel", "serverless", "lambda", "prometheus", "grafana"},
+     r"cloud|devops|infra|platform|deploy|ops"),
+    ("framework", {"react", "reactjs", "react.js", "angular", "vue", "vue.js", "next.js", "nextjs", "node.js", "nodejs",
+                   "express", "express.js", "django", "flask", "fastapi", "spring", "spring boot", "jpa", "hibernate",
+                   ".net", "asp.net", "redux", "flutter", "react native", "tensorflow", "pytorch", "keras", "pandas",
+                   "numpy", "scikit-learn", "tailwind", "bootstrap", "jquery", "graphql", "laravel", "rails", "junit",
+                   "selenium", "jest", "spark", "hadoop", "langchain"},
+     r"framework|librar|frontend|front-end|backend|back-end|web|stack"),
+    ("tool", {"git", "github", "gitlab", "jira", "postman", "figma", "maven", "gradle", "vs code", "intellij", "tableau",
+              "power bi", "excel", "webpack", "vite", "npm", "confluence", "linux"},
+     r"tool|software|technolog"),
+]
+
+
+def _kind(skill: str) -> str:
+    k = skill.lower()
+    for name, words, _ in _KINDS:
+        if k in words:
+            return name
+    return "concept" if (" " in k or k.islower()) else "tool"
+
+
+def best_group(groups: list[dict[str, Any]], skill: str) -> dict[str, Any] | None:
+    """The user's own Skills group this skill belongs in (Languages, Frameworks, Cloud...), else a general one."""
+    if not groups:
+        return None
+    kind = _kind(skill)
+    hint = {n: h for n, _, h in _KINDS}.get(kind, r"concept|core|area|competenc|knowledge|fundamental|other")
+    for g in groups:
+        if re.search(hint, g.get("group", ""), re.IGNORECASE):
+            return g
+    if kind == "concept":
+        for g in groups:
+            if re.search(r"concept|core|area|competenc|knowledge|fundamental|other", g.get("group", ""), re.IGNORECASE):
+                return g
+    general = re.compile(r"tool|technolog|other|skill|general|misc", re.IGNORECASE)
+    return next((g for g in groups if general.search(g.get("group", ""))), groups[-1])
 
 
 def _word(term: str) -> re.Pattern[str]:
@@ -55,7 +102,9 @@ def apply_keywords(resume: dict[str, Any], add_skills: list[str], renames: list[
         skill = re.sub(r"\s+", " ", raw).strip()[:60]
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9 +#./&()-]*", skill or "") or not skill or skill.lower() in present:
             continue
-        target = next((g for g in groups if _GROUP_HINT.search(g.get("group", ""))), groups[-1] if groups else None)
+        target = best_group(groups, skill)
+        if skill.islower() and _kind(skill) == "concept":
+            skill = " ".join(w[:1].upper() + w[1:] for w in skill.split())  # "machine learning" -> "Machine Learning"
         if target is None:
             target = {"group": "Skills", "items": []}
             groups.append(target)

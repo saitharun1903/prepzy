@@ -99,3 +99,12 @@ def test_docs_are_private_to_their_owner(client, user):
     assert client.get(f"/api/v1/latex/docs/{d['id']}", headers=h2).status_code == 404
     assert client.patch(f"/api/v1/latex/docs/{d['id']}", headers=h2, json={"title": "x"}).status_code == 404
     assert client.delete(f"/api/v1/latex/docs/{d['id']}", headers=h2).status_code == 404
+
+
+@needs_tex
+def test_overflow_flag_and_preview_skip():
+    box = r"\documentclass{article}\begin{document}\noindent\begin{minipage}[b][2cm][s]{\linewidth}%s\end{minipage}\end{document}"
+    fits = compile_tex(box % "One line.", previews=False)
+    assert fits.ok and not fits.overfull and fits.pages == [] and fits.page_count == 1
+    over = compile_tex(box % r"\rule{1pt}{6cm}")
+    assert over.ok and over.overfull and over.pages

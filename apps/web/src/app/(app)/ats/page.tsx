@@ -133,9 +133,10 @@ export default function AtsPage() {
       {result ? (
         <div id="ats-result" className="flex flex-col gap-6 scroll-mt-6">
           <section className="rounded-2xl border border-line bg-surface p-5">
-            <AtsReport r={result.r} picked={picked} onPick={(l) => setPicked((s) => { const n = new Set(s); if (n.has(l)) n.delete(l); else n.add(l); return n; })} />
+            <AtsReport r={result.r} picked={picked} onPickAll={(ls) => setPicked(new Set(ls))}
+              onPick={(l) => setPicked((s) => { const n = new Set(s); if (n.has(l)) n.delete(l); else n.add(l); return n; })} />
           </section>
-          <AtsFix before={result.r} versionId={result.versionId} picked={[...picked]} />
+          <AtsFix before={result.r} versionId={result.versionId} picked={[...picked]} onPickAll={(ls) => setPicked(new Set(ls))} />
         </div>
       ) : null}
     </>

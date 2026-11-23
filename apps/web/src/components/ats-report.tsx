@@ -39,8 +39,8 @@ const VERDICT = (s: number) =>
   s >= 85 ? "Ready to apply" : s >= 70 ? "Good — a few quick fixes" : s >= 50 ? "Needs work before you apply" : "Likely to be filtered out";
 
 /** A short, student-friendly ATS report: score, top fixes, keywords. Details stay folded. */
-export function AtsReport({ r, compact, picked, onPick }: {
-  r: AtsResult; compact?: boolean; picked?: Set<string>; onPick?: (label: string) => void;
+export function AtsReport({ r, compact, picked, onPick, onPickAll }: {
+  r: AtsResult; compact?: boolean; picked?: Set<string>; onPick?: (label: string) => void; onPickAll?: (labels: string[]) => void;
 }) {
   const kw = r.keywords;
   const fixes = r.issues.filter((i) => !/skills? not found/i.test(i.title)).slice(0, compact ? 2 : 4);
@@ -68,7 +68,14 @@ export function AtsReport({ r, compact, picked, onPick }: {
           <p className="text-sm font-semibold text-ink">Job keywords</p>
           {missing.length ? (
             <>
-              <p className="text-[13px] text-muted mt-0.5">{onPick ? "Missing — tap the ones you really have, and we'll add them." : "Missing from your resume."}</p>
+              <p className="text-[13px] text-muted mt-0.5">
+                {onPick ? "Missing — tap the ones you really have, and we'll add them to your resume." : "Missing from your resume."}
+                {onPickAll ? (() => {
+                  const all = missing.map((k) => k.job_term || k.label);
+                  const every = all.every((l) => picked?.has(l));
+                  return <> <button type="button" onClick={() => onPickAll(every ? [] : all)} className="font-medium text-accent hover:underline">{every ? "Clear" : "Select all"}</button></>;
+                })() : null}
+              </p>
               <ul className="mt-2 flex flex-wrap gap-1.5">
                 {missing.map((k) => {
                   const label = k.job_term || k.label;

@@ -66,6 +66,7 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
   const latest = useRef<{ source: string; title: string; data: TailoredResume | null; template: string }>({ source: "", title: "", data: null, template: "custom" });
   latest.current = { source, title, data, template };
   const fitRef = useRef<((silent?: boolean) => Promise<void>) | null>(null);
+  const failedSource = useRef<string | null>(null);  // auto-compile doesn't retry a source the server just failed on
 
   useBeforeUnload(save === "unsaved" || save === "saving");
 
@@ -94,6 +95,7 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
       setCompiledSource(src);
       return r;
     } catch (e) {
+      failedSource.current = src;
       setCompileError((e as ApiError).message);
       return null;
     } finally {
@@ -160,6 +162,7 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
       setCompiledSource(src);
       void persist({ source: src, data });
     } catch (e) {
+      failedSource.current = latest.current.source;
       notify("error", (e as ApiError).message);
     } finally {
       setFitting(false);
@@ -179,10 +182,11 @@ export default function EditorPage({ params }: { params: Promise<{ docId: string
   const plainFromForm = data ? toLatex(data, template, editLayout) : null;
   fitRef.current = fitPage;
   useEffect(() => {
-    if (!doc || !auto || source === compiledSource) return;
+    // One compile at a time: when the running one finishes, this re-runs and picks up any newer edits.
+    if (!doc || !auto || source === compiledSource || source === failedSource.current || compiling || fitting) return;
     const t = setTimeout(() => void (source === plainFromForm ? fitRef.current?.(true) : compile()), 2500);
     return () => clearTimeout(t);
-  }, [source, auto, doc, compiledSource, compile, plainFromForm]);
+  }, [source, auto, doc, compiledSource, compile, plainFromForm, compiling, fitting]);
 
   const saveTitle = () => {
     const t = title.trim();

@@ -47,6 +47,7 @@ class CompileResult:
     log_tail: str = ""
     ms: int = 0
     page_count: int = 0
+    overfull: bool = False  # content ran past the bottom of a fixed-height box (used by fit-to-page)
 
 
 def _limited(cmd: list[str]) -> list[str]:
@@ -124,7 +125,7 @@ def _friendly(e: TexError) -> TexError:
     return TexError(e.line, msg)
 
 
-def compile_tex(source: str, *, engine: str = "pdflatex") -> CompileResult:
+def compile_tex(source: str, *, engine: str = "pdflatex", previews: bool = True) -> CompileResult:
     started = time.monotonic()
     if len(source) > MAX_SOURCE_CHARS:
         return CompileResult(ok=False, errors=[TexError(None, "The document is too long (150,000 characters max).")])
@@ -165,7 +166,7 @@ def compile_tex(source: str, *, engine: str = "pdflatex") -> CompileResult:
             pdf = f.read()
         pages: list[bytes] = []
         pdftoppm = shutil.which("pdftoppm", path="/usr/local/bin:/usr/bin:/bin")
-        if pdftoppm:
+        if pdftoppm and previews:
             try:
                 subprocess.run(_limited([pdftoppm, "-r", str(PREVIEW_DPI), "-png", "-l", str(MAX_PREVIEW_PAGES), "main.pdf",
                                          "page"]),
@@ -179,6 +180,7 @@ def compile_tex(source: str, *, engine: str = "pdflatex") -> CompileResult:
         m = re.search(r"Output written on main\.pdf \((\d+) pages?", log)
         count = int(m.group(1)) if m else len(pages)
         return CompileResult(ok=True, pdf=pdf, pages=pages, log_tail=tail, page_count=count,
+                             overfull="Overfull \\vbox" in log,
                              ms=int((time.monotonic() - started) * 1000))
     finally:
         shutil.rmtree(job, ignore_errors=True)
