@@ -141,6 +141,9 @@ export function AtsFix({ before, versionId, picked }: { before: AtsResult; versi
               {after ? <ScoreRing value={after.score} size={92} /> : <span className="text-sm text-muted">{working ? "Scoring…" : ""}</span>}
             </div>
             {after ? <p className="text-[14px] text-ink-2">New score for <b>{after.ats.name}</b>{after.keywords.missing.length ? <> · still missing: {after.keywords.missing.slice(0, 5).map((k) => k.job_term || k.label).join(", ")}</> : null}</p> : null}
+            {after && after.score < before.score ? (
+              <p className="text-[13px] text-warn">Your original file already scores a little higher ({before.score}). Keep it unless you prefer this template — or tap a missing skill you have and fix again.</p>
+            ) : null}
             {fixed.added.length || fixed.renamed.length ? (
               <ul className="text-[13.5px] text-ink-2 list-disc pl-5">
                 {fixed.added.length ? <li>Added to Skills: {fixed.added.join(", ")}</li> : null}

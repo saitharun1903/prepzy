@@ -1,5 +1,5 @@
 {
-  "version": "tax-2026.10.1",
+  "version": "tax-2026.11.1",
   "license": "Authored for Elevate (project-internal reference data). Skill names are generic industry terms.",
   "language": "en",
   "notes": "aliases = reviewed exact equivalents (full credit). related = adjacent concepts (partial credit only under scoring rule R2, never full). prereqs = learning order for roadmaps.",

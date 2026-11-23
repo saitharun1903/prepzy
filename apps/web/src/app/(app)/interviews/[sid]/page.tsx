@@ -50,11 +50,20 @@ function SessionTimer({ sid, minutes }: { sid: string; minutes: number }) {
 }
 
 function EvaluationView({ ev }: { ev: Evaluation }) {
+  if (!ev.assessable) {
+    // Nothing could be rated (off-topic or too thin): coach instead of listing six "cannot assess" rows.
+    return (
+      <div className="flex flex-col gap-3">
+        <Notice tone="warn" title="This answer doesn't address the question yet">
+          {ev.reason || "There wasn't enough about this question to give feedback."} Try again and cover these points:
+          <ul className="mt-2 list-disc pl-5 flex flex-col gap-1">{ev.criteria.map((c, i) => <li key={i}>{c.criterion}</li>)}</ul>
+        </Notice>
+        <p className="text-[12px] text-muted">Tip: open with a one-line definition, then give a concrete example from your own work, then a trade-off.</p>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-col gap-4">
-      {!ev.assessable ? (
-        <Notice tone="warn" title="Insufficient to assess">{ev.reason || "The answer did not give enough to rate against the rubric."}</Notice>
-      ) : null}
       <ul className="divide-y divide-line border-y border-line">
         {ev.criteria.map((c, i) => {
           const r = RATING[c.rating] || RATING.cannot_assess;
@@ -65,7 +74,7 @@ function EvaluationView({ ev }: { ev: Evaluation }) {
               <div className="min-w-0">
                 <p className="text-sm text-ink">{c.criterion}</p>
                 {c.answer_quote ? <blockquote className="mt-1 border-l-2 border-line-strong pl-2 text-[13px] text-ink-2 break-words">&ldquo;{c.answer_quote}&rdquo;</blockquote> : null}
-                {c.comment ? <p className="mt-1 text-[13px] text-muted">{c.comment}</p> : null}
+                {c.comment && !/^not evaluated by the model\.?$/i.test(c.comment) ? <p className="mt-1 text-[13px] text-muted">{c.comment}</p> : null}
               </div>
             </li>
           );
